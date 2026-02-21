@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+transformers
+torch
+pdfplumber
+python-docx
+scikit-learn
+datasets
+pandas
+accelerate
+python-multipart
+pytest
+httpx
