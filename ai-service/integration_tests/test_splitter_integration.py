@@ -1,4 +1,4 @@
-from extractor import split_into_clauses
+from extractor import split_into_clauses, split_into_clauses_with_sections
 
 
 def test_splits_numeric_clauses():
@@ -104,3 +104,81 @@ def test_splits_embedded_numbering_in_flattened_text():
 
 def test_returns_empty_for_blank_input():
     assert split_into_clauses("   \n\n\t") == []
+
+
+def test_excludes_document_preamble_before_first_numbered_clause():
+    text = """
+    FREELANCING CONTRACT
+    This Agreement is made and entered into by and between:
+    Client: Maria Santos
+    Freelancer: Jarduliza Arellano
+
+    1. Scope of Work. The Freelancer shall perform a fairness evaluation.
+    2. Payment Terms. The Client shall pay within five (5) business days.
+    """
+    clauses = split_into_clauses(text)
+    assert len(clauses) >= 2
+    assert clauses[0].startswith("1. Scope of Work.")
+    joined = " ".join(clauses).lower()
+    assert "this agreement is made and entered into" not in joined
+    assert "client: maria santos" not in joined
+
+
+def test_removes_signature_block_from_last_clause():
+    text = """
+    12. Governing Law. This Agreement shall be governed by Philippine law.
+    Client Signature: ___________________________ Date: ____________
+    Freelancer Signature: ________________________ Date: ____________
+    """
+    clauses = split_into_clauses(text)
+    assert len(clauses) == 1
+    assert clauses[0].startswith("12. Governing Law.")
+    assert "client signature" not in clauses[0].lower()
+    assert "freelancer signature" not in clauses[0].lower()
+
+
+def test_returns_sections_for_audit_metadata():
+    text = """
+    FREELANCING CONTRACT
+    This Agreement is between Client and Freelancer.
+
+    1. Scope. The Freelancer shall evaluate the contract for fairness.
+    2. Payment. The Client shall pay within five (5) business days.
+    Client Signature: __________________ Date: ____________
+    Freelancer Signature: ______________ Date: ____________
+    """
+    sections = split_into_clauses_with_sections(text)
+
+    assert "this agreement is between client and freelancer" in sections["preamble"].lower()
+    assert len(sections["clauses"]) == 2
+    assert sections["clauses"][0].startswith("1. Scope.")
+    assert sections["clauses"][1].startswith("2. Payment.")
+    assert "client signature" in sections["signature_block"].lower()
+    assert "freelancer signature" in sections["signature_block"].lower()
+
+
+def test_does_not_split_on_parenthetical_acronym_like_sow():
+    text = """
+    2. Services and Statements of Work.
+    2.1 Service Provider shall perform services set forth in one or more Statements of Work (SOW) executed by authorized representatives of both Parties.
+    2.2 If there is a conflict between this Agreement and an SOW, the SOW controls only for terms expressly addressed in that SOW.
+    """
+    clauses = split_into_clauses(text)
+    joined = " ".join(clauses)
+    assert "(SOW) executed by authorized representatives of both Parties." in joined
+    assert not any(c.startswith("(SOW)") for c in clauses)
+
+
+def test_signed_by_phrase_does_not_trigger_signature_mode():
+    text = """
+    5. Change Management.
+    5.1 Any material change to scope requires a written change order signed by both Parties.
+    5.2 Service Provider is not obligated to start changed work until the change order is fully executed.
+    6. Intellectual Property. Subject to payment in full, Client owns Deliverables.
+    """
+    sections = split_into_clauses_with_sections(text)
+    clauses = sections["clauses"]
+    assert any("5.1 Any material change" in c for c in clauses)
+    assert any(c.startswith("5.2 Service Provider") for c in clauses)
+    assert any(c.startswith("6. Intellectual Property.") for c in clauses)
+    assert sections["signature_block"] == ""
