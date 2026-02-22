@@ -11,3 +11,4 @@ accelerate
 python-multipart
 pytest
 httpx
+python-dotenv
