@@ -117,8 +117,12 @@ dotnet run
 
 # AI Service
 cd ../ai-service
+py -m venv venv
+venv/script/activate
+source venv/script/activate for linux
 pip install -r requirements.txt
-uvicorn main:app --reload
+python train.py
+python main.py
 
 # Frontend
 cd ../frontend
