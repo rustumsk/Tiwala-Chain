@@ -5,6 +5,7 @@ import uvicorn
 
 from model import load_model, analyze_clauses
 from extractor import extract_text, split_into_clauses
+from llm_suggestions import ask_llm_question
 
 app = FastAPI(
     title="TiwalaChain AI Service",
@@ -24,6 +25,7 @@ class ClauseResult(BaseModel):
     label: str        
     confidence: float
     suggestion: str
+    suggestion_source: str = "rule"
 
 class EvaluationResponse(BaseModel):
     total_clauses: int
@@ -31,6 +33,18 @@ class EvaluationResponse(BaseModel):
     fair_count: int
     fairness_score: float   
     clauses: List[ClauseResult]
+
+
+class LlmQuestionRequest(BaseModel):
+    question: str
+
+
+class LlmQuestionResponse(BaseModel):
+    success: bool
+    provider: str
+    model: str
+    content: str
+    error: str
 
 
 @app.get("/")
@@ -88,6 +102,15 @@ async def evaluate_file(file: UploadFile = File(...)):
     results = analyze_clauses(classifier, clauses)
     return build_response(results)
 
+
+@app.post("/debug/ask-llm", response_model=LlmQuestionResponse)
+def debug_ask_llm(request: LlmQuestionRequest):
+    if not request.question.strip():
+        raise HTTPException(status_code=400, detail="Question cannot be empty.")
+
+    result = ask_llm_question(request.question.strip())
+    return LlmQuestionResponse(**result)
+
 def build_response(results: List[dict]) -> EvaluationResponse:
     total = len(results)
     unfair_count = sum(1 for r in results if r["label"] == "unfair")
@@ -99,7 +122,8 @@ def build_response(results: List[dict]) -> EvaluationResponse:
             clause=r["clause"],
             label=r["label"],
             confidence=r["confidence"],
-            suggestion=r["suggestion"]
+            suggestion=r["suggestion"],
+            suggestion_source=r.get("suggestion_source", "rule")
         )
         for r in results
     ]

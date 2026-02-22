@@ -1,6 +1,13 @@
 import re
+import os
+from typing import Any
 
 from transformers import pipeline
+try:
+    from llm_suggestions import generate_llm_suggestions_batch, is_llm_suggestions_enabled
+except Exception:  # pragma: no cover - optional module fallback
+    generate_llm_suggestions_batch = None
+    is_llm_suggestions_enabled = lambda: False
 
 MODEL_PATH = "./fine_tuned_model"
 
@@ -108,6 +115,87 @@ def get_suggestion(clause: str, label: str, confidence: float) -> str:
     return DEFAULT_UNFAIR_SUGGESTION
 
 
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw.strip())
+    except Exception:
+        return default
+    return max(1, value)
+
+
+def _truncate_for_llm(text: str) -> str:
+    max_chars = _env_int("LLM_SUGGESTIONS_MAX_CLAUSE_CHARS", 1200)
+    cleaned = text.strip()
+    if len(cleaned) <= max_chars:
+        return cleaned
+    return f"{cleaned[:max_chars].rstrip()} ... [truncated for LLM suggestion]"
+
+
+def _needs_llm_suggestion(result: dict) -> bool:
+    if _env_flag("LLM_SUGGESTIONS_FORCE_ALL", default=False):
+        return True
+
+    label = result["label"]
+    confidence = result["confidence"]
+    suggestion = result["suggestion"]
+
+    if label == "unfair" and confidence < MODERATE_CONFIDENCE_THRESHOLD:
+        return True
+    if label == "fair" and confidence < LOW_CONFIDENCE_THRESHOLD:
+        return True
+    return suggestion == DEFAULT_UNFAIR_SUGGESTION
+
+
+def _apply_llm_suggestions(results: list[dict]) -> list[dict]:
+    """
+    Optionally enhance suggestions with LLM output.
+    Safely falls back to rule suggestions on any failure.
+    """
+    if not results:
+        return results
+    if not is_llm_suggestions_enabled():
+        return results
+    if generate_llm_suggestions_batch is None:
+        return results
+
+    candidates: list[dict[str, Any]] = []
+    for idx, result in enumerate(results):
+        if _needs_llm_suggestion(result):
+            candidates.append(
+                {
+                    "index": idx,
+                    "clause": _truncate_for_llm(result["clause"]),
+                    "label": result["label"],
+                    "confidence": result["confidence"],
+                }
+            )
+
+    if not candidates:
+        return results
+
+    llm_suggestions = generate_llm_suggestions_batch(candidates)
+    if not llm_suggestions:
+        return results
+
+    for candidate, llm_suggestion in zip(candidates, llm_suggestions):
+        if llm_suggestion and llm_suggestion.strip():
+            result_idx = candidate["index"]
+            results[result_idx]["suggestion"] = llm_suggestion.strip()
+            results[result_idx]["suggestion_source"] = "llm"
+
+    return results
+
+
 def analyze_clauses(classifier, clauses: list) -> list:
     """Run inference on a list of clauses."""
     results = []
@@ -126,7 +214,8 @@ def analyze_clauses(classifier, clauses: list) -> list:
             "clause": clause,
             "label": label,
             "confidence": confidence,
-            "suggestion": suggestion
+            "suggestion": suggestion,
+            "suggestion_source": "rule",
         })
 
-    return results
+    return _apply_llm_suggestions(results)
