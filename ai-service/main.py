@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 import uvicorn
@@ -11,6 +12,14 @@ app = FastAPI(
     title="TiwalaChain AI Service",
     description="Contract fairness evaluation using fine-tuned LegalBERT",
     version="1.0.0"
+)
+
+# Temporary development setting: allow all browser origins.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 print("Loading fine-tuned model...")
