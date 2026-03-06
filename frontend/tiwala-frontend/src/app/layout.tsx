@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import Web3Provider from "@/components/providers/web3-provider";
 import Navbar from "@/components/layout/navbar";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "TiwalaChain",
@@ -15,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body className="antialiased">
         <Web3Provider>
           <Navbar />
