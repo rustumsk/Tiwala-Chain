@@ -1,0 +1,15 @@
+---
+description: Apply the TiwalaChain interface design system to UI work
+alwaysApply: true
+---
+
+# TiwalaChain Interface Design
+
+- Treat product UI as an escrow operations workspace, not a generic crypto dashboard.
+- Start interface work by asking: what funds are locked, what action blocks release, and which jobs need attention now?
+- Favor lifecycle-driven layouts, action queues, and workflow status over repeated generic metric cards.
+- Keep surfaces in one dark same-hue family with borders-first depth and subtle layering.
+- Use violet for trust and verification, green for released value, amber for pending review, and red for disputes or failures.
+- Prefer dense, operational spacing on a 4px grid.
+- Use tabular numbers for money and counts.
+- Reuse the escrow rail pattern when a screen needs to explain lifecycle state.

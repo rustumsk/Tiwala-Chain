@@ -190,8 +190,8 @@ export default function CreateJobPage() {
 
   if (!isConnected) {
     return (
-      <div className="min-h-[calc(100vh-4.5rem)] bg-[#060a14] px-6 py-12 text-slate-100 md:px-12">
-        <section className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+      <div className="themed-app-page text-slate-100">
+        <section className="workspace-panel mx-auto w-full max-w-3xl p-8">
           <h1 className="text-2xl font-semibold">Create Job</h1>
           <p className="mt-3 text-sm text-slate-300">
             Connect your wallet from the navbar to continue.
@@ -203,18 +203,18 @@ export default function CreateJobPage() {
 
   if (!canCreate) {
     return (
-      <div className="min-h-[calc(100vh-4.5rem)] bg-[#060a14] px-6 py-12 text-slate-100 md:px-12">
-        <section className="mx-auto w-full max-w-3xl rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+      <div className="themed-app-page text-slate-100">
+        <section className="workspace-panel mx-auto w-full max-w-3xl p-8">
           <h1 className="text-2xl font-semibold">Employer Access Required</h1>
           <p className="mt-3 text-sm text-slate-300">
             Your current role is <span className="capitalize">{profile?.role ?? "unknown"}</span>.
-            Update onboarding role to Employer or Both before creating jobs.
+            Update your profile role to Employer or Both before creating jobs.
           </p>
           <Link
-            className="mt-5 inline-flex h-10 items-center rounded-xl border border-slate-700 px-4 text-sm text-slate-200 hover:border-slate-500"
-            href="/onboarding"
+            className="mt-5 inline-flex h-10 items-center rounded-full border border-violet-300/20 bg-violet-500/10 px-4 text-sm text-violet-100 transition hover:border-violet-300/40"
+            href="/settings/profile"
           >
-            Go to Onboarding
+            Open Profile Settings
           </Link>
         </section>
       </div>
@@ -222,9 +222,9 @@ export default function CreateJobPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-[#060a14] px-6 py-12 text-slate-100 md:px-12">
+    <div className="themed-app-page text-slate-100">
       <section className="mx-auto grid w-full max-w-6xl gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+        <article className="workspace-panel p-8">
           <h1 className="text-2xl font-semibold">Create a New Job</h1>
           <p className="mt-2 text-sm text-slate-300">
             Submit contract details, run fairness analysis, then write `createJob()` on-chain.
@@ -352,7 +352,7 @@ export default function CreateJobPage() {
           </form>
         </article>
 
-        <article className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+        <article className="workspace-panel space-y-4 p-8">
           <h2 className="text-lg font-semibold text-slate-100">Fairness Analysis</h2>
           <FairnessScore score={fairnessScore} />
 

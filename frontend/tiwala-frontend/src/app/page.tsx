@@ -96,10 +96,10 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative text-white">
+    <div className="landing-page relative text-white">
       {/* Fixed background — stays in place as sections scroll */}
       <div
-        className="fixed inset-0 -z-10"
+        className="landing-page-bg fixed inset-0 -z-10"
         style={{
           background: [
             "radial-gradient(ellipse 38% 100% at 0% 50%, rgba(110,55,230,0.9) 0%, rgba(70,25,200,0.45) 55%, transparent 100%)",
@@ -165,8 +165,8 @@ export default function Home() {
           <polygon points="1000,130 488,324 488,376 1000,570" fill="url(#lg-right)"  filter="url(#highlight)" opacity="0.46" />
         </svg>
 
-        {/* Upper centre — badge, headline, subtext, buttons */}
-        <div className="relative z-10 flex flex-1 flex-col items-center justify-start pt-14 text-center">
+        {/* Centered hero content */}
+        <div className="relative z-10 flex min-h-full flex-1 flex-col items-center justify-center text-center">
           <div className="reveal mb-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs text-white/60">
               <span className="size-1.5 rounded-full bg-violet-400" />
@@ -177,7 +177,7 @@ export default function Home() {
           <h1 className="reveal reveal-d1 max-w-2xl text-5xl font-bold leading-[1.1] tracking-tight text-white md:text-6xl">
             Trust-first freelancing,
             <br />
-            <span className="text-violet-300">on-chain.</span>
+            <span className="text-black-500">on-chain.</span>
           </h1>
 
           <p className="reveal reveal-d2 mt-5 max-w-md text-sm font-medium leading-relaxed text-white/80 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">
@@ -194,20 +194,20 @@ export default function Home() {
               wrongNetworkClassName="inline-flex items-center gap-2 rounded-full border border-red-400/40 bg-red-500/10 px-6 py-2.5 text-sm font-medium text-red-300 transition-all duration-200 hover:border-red-400/70"
             />
           </div>
-        </div>
 
-        {/* Stats pinned to the bottom */}
-        <div className="reveal reveal-d4 relative z-10 flex justify-center gap-12 pb-10 pt-4">
-          {[
-            { value: "100%", label: "On-Chain Escrow" },
-            { value: "AI", label: "Reviewed Contracts" },
-            { value: "USDT", label: "Instant Payouts" },
-          ].map((stat) => (
-            <div key={stat.value} className="text-center">
-              <p className="text-2xl font-bold text-white">{stat.value}</p>
-              <p className="mt-0.5 text-xs text-white/40">{stat.label}</p>
-            </div>
-          ))}
+          {/* Stats directly under CTA to avoid empty lower space */}
+          <div className="reveal reveal-d4 mt-12 flex flex-wrap justify-center gap-10">
+            {[
+              { value: "100%", label: "On-Chain Escrow" },
+              { value: "AI", label: "Reviewed Contracts" },
+              { value: "USDT", label: "Instant Payouts" },
+            ].map((stat) => (
+              <div key={stat.value} className="text-center">
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
+                <p className="mt-0.5 text-xs text-white/40">{stat.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

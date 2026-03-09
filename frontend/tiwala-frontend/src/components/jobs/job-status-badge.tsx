@@ -17,7 +17,7 @@ type JobStatusBadgeProps = {
 export default function JobStatusBadge({ status }: JobStatusBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses[status]}`}
+      className={`inline-flex items-center border px-2.5 py-1 text-[10px] font-medium tracking-[0.14em] uppercase ${statusClasses[status]}`}
     >
       {JOB_STATUS_LABEL[status]}
     </span>

@@ -115,9 +115,9 @@ export type EscrowJobStatus =
 export const JOB_STATUS_LABEL: Record<EscrowJobStatus, string> = {
   0: "Created",
   1: "Funded",
-  2: "InProgress",
+  2: "In Progress",
   3: "Submitted",
   4: "Disputed",
-  5: "Completed",
+  5: "Released",
   6: "Refunded",
 };

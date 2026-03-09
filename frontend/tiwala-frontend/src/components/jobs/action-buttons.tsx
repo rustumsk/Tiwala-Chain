@@ -19,6 +19,7 @@ type ActionButtonsProps = {
   canActAsEmployer: boolean;
   canActAsFreelancer: boolean;
   chainOk: boolean;
+  mode?: "light" | "dark";
 };
 
 type ActionDef = {
@@ -38,6 +39,7 @@ export default function ActionButtons({
   canActAsEmployer,
   canActAsFreelancer,
   chainOk,
+  mode = "dark",
 }: ActionButtonsProps) {
   const config = useConfig();
   const { address } = useAccount();
@@ -54,6 +56,7 @@ export default function ActionButtons({
   });
   const [localError, setLocalError] = useState("");
   const [localInfo, setLocalInfo] = useState("");
+  const isDarkTheme = mode === "dark";
 
   const allowanceQuery = useReadContract({
     address: USDT_SEPOLIA_ADDRESS,
@@ -126,20 +129,34 @@ export default function ActionButtons({
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-5">
-      <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-300">
+    <div
+      className={`border p-5 ${
+        isDarkTheme
+          ? "border-white/12 bg-black/28"
+          : "border-[#e4e8f2] bg-white shadow-[0_10px_26px_rgba(40,50,90,0.06)]"
+      }`}
+    >
+      <h3
+        className={`text-sm font-semibold uppercase tracking-[0.15em] ${
+          isDarkTheme ? "text-slate-300" : "text-[#6b7185]"
+        }`}
+      >
         Available Actions
       </h3>
 
       {actions.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-400">
+        <p className={`mt-3 text-sm ${isDarkTheme ? "text-slate-400" : "text-[#697086]"}`}>
           No available actions for your role at this status.
         </p>
       ) : (
         <div className="mt-4 flex flex-wrap gap-3">
           {actions.map((action) => (
             <button
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-4 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/60 hover:bg-cyan-400/20 disabled:opacity-60"
+              className={`inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition disabled:opacity-60 ${
+                isDarkTheme
+                  ? "border-violet-300/30 bg-violet-500/10 text-violet-200 hover:border-violet-300/60 hover:bg-violet-500/20"
+                  : "border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100"
+              }`}
               disabled={isPending || receipt.isLoading}
               key={`${action.functionName}-${action.label}`}
               onClick={() => runAction(action.functionName)}
@@ -152,37 +169,73 @@ export default function ActionButtons({
       )}
 
       {localError ? (
-        <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-red-400/30 bg-red-500/10 text-red-200"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
           {localError}
         </p>
       ) : null}
 
       {localInfo ? (
-        <p className="mt-4 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3 text-sm text-cyan-200">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-violet-300/30 bg-violet-500/10 text-violet-200"
+              : "border-violet-200 bg-violet-50 text-violet-700"
+          }`}
+        >
           {localInfo}
         </p>
       ) : null}
 
       {txError ? (
-        <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-red-400/30 bg-red-500/10 text-red-200"
+              : "border-red-200 bg-red-50 text-red-700"
+          }`}
+        >
           Transaction error: {txError.message}
         </p>
       ) : null}
 
       {txHash ? (
-        <p className="mt-4 rounded-lg border border-cyan-400/30 bg-cyan-500/10 p-3 text-sm text-cyan-200">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-violet-300/30 bg-violet-500/10 text-violet-200"
+              : "border-violet-200 bg-violet-50 text-violet-700"
+          }`}
+        >
           Transaction sent: {txHash}
         </p>
       ) : null}
 
       {receipt.isLoading ? (
-        <p className="mt-4 rounded-lg border border-slate-700 bg-slate-900 p-3 text-sm text-slate-300">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-slate-700 bg-slate-900 text-slate-300"
+              : "border-[#d8dceb] bg-[#f8f9fc] text-[#697086]"
+          }`}
+        >
           Waiting for confirmation...
         </p>
       ) : null}
 
       {receipt.isSuccess ? (
-        <p className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <p
+          className={`mt-4 rounded-lg border p-3 text-sm ${
+            isDarkTheme
+              ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+              : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          }`}
+        >
           Transaction confirmed.
         </p>
       ) : null}

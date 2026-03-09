@@ -8,6 +8,7 @@ export type LocalUserProfile = {
 };
 
 const PROFILE_STORAGE_KEY = "tiwala:user-profile";
+export const PROFILE_UPDATED_EVENT = "tiwala:profile-updated";
 
 export function getStoredProfile(): LocalUserProfile | null {
   if (typeof window === "undefined") return null;
@@ -25,4 +26,5 @@ export function getStoredProfile(): LocalUserProfile | null {
 export function saveStoredProfile(profile: LocalUserProfile) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 }

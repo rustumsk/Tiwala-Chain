@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useChainId, useReadContract } from "wagmi";
+import { useAppTheme } from "@/components/layout/theme-context";
 import JobStatusBadge from "@/components/jobs/job-status-badge";
 import JobTimeline from "@/components/jobs/job-timeline";
 import ActionButtons from "@/components/jobs/action-buttons";
@@ -41,6 +42,7 @@ export default function JobDetailPage() {
   const params = useParams<{ id: string }>();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const { theme, isDarkTheme } = useAppTheme();
 
   const jobId = useMemo(() => {
     if (!params?.id) return null;
@@ -127,8 +129,8 @@ export default function JobDetailPage() {
 
   if (jobId === null) {
     return (
-      <div className="min-h-[calc(100vh-4.5rem)] bg-[#060a14] px-6 py-12 text-slate-100 md:px-12">
-        <section className="mx-auto w-full max-w-5xl rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+      <div className="themed-app-page text-slate-100">
+        <section className="mx-auto w-full max-w-5xl rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-[0_24px_80px_rgba(120,70,220,0.14)] backdrop-blur-md">
           <p className="text-sm text-red-300">Invalid job id.</p>
         </section>
       </div>
@@ -144,9 +146,15 @@ export default function JobDetailPage() {
     (profile?.role === "freelancer" || profile?.role === "both");
 
   return (
-    <div className="min-h-[calc(100vh-4.5rem)] bg-[#060a14] px-6 py-12 text-slate-100 md:px-12">
+    <div className="themed-app-page text-slate-100">
       <section className="mx-auto w-full max-w-6xl space-y-6">
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+        <article
+          className={`p-8 ${
+            isDarkTheme
+              ? "border border-white/12 bg-black/28"
+              : "border border-[#e4e8f2] bg-white shadow-[0_10px_30px_rgba(40,50,90,0.07)]"
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold">Job #{jobId.toString()}</h1>
             {parsed ? <JobStatusBadge status={parsed.status} /> : null}
@@ -169,20 +177,20 @@ export default function JobDetailPage() {
           ) : null}
 
           {parsed ? (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className={`p-4 ${isDarkTheme ? "border border-white/12 bg-white/[0.03]" : "border border-[#e8ebf5] bg-[#f9faff]"}`}>
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Employer</p>
                 <p className="mt-1 text-sm text-slate-100">{shortAddress(parsed.employer)}</p>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <div className={`p-4 ${isDarkTheme ? "border border-white/12 bg-white/[0.03]" : "border border-[#e8ebf5] bg-[#f9faff]"}`}>
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Freelancer</p>
                 <p className="mt-1 text-sm text-slate-100">{shortAddress(parsed.freelancer)}</p>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <div className={`p-4 ${isDarkTheme ? "border border-white/12 bg-white/[0.03]" : "border border-[#e8ebf5] bg-[#f9faff]"}`}>
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Escrow Amount</p>
                 <p className="mt-1 text-sm text-slate-100">{formatUsdt(parsed.amount)} USDT</p>
               </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+              <div className={`p-4 ${isDarkTheme ? "border border-white/12 bg-white/[0.03]" : "border border-[#e8ebf5] bg-[#f9faff]"}`}>
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Contract Hash</p>
                 <p className="mt-1 break-all text-xs text-slate-200">{parsed.contractHash}</p>
               </div>
@@ -192,19 +200,26 @@ export default function JobDetailPage() {
 
         {parsed ? (
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-            <JobTimeline status={parsed.status} />
+            <JobTimeline status={parsed.status} mode={theme} />
             <ActionButtons
               canActAsEmployer={canActAsEmployer}
               canActAsFreelancer={canActAsFreelancer}
               chainOk={chainId === 11155111}
               jobAmount={parsed.amount}
               jobId={parsed.id}
+              mode={theme}
               status={parsed.status}
             />
           </div>
         ) : null}
 
-        <article className="rounded-2xl border border-slate-800 bg-slate-950/65 p-8">
+        <article
+          className={`p-8 ${
+            isDarkTheme
+              ? "border border-white/12 bg-black/28"
+              : "border border-[#e4e8f2] bg-white shadow-[0_10px_30px_rgba(40,50,90,0.07)]"
+          }`}
+        >
           <h2 className="text-lg font-semibold text-slate-100">Transaction History</h2>
           <p className="mt-3 text-sm text-slate-300">
             Event-level history from contract logs will be wired once event ABI is finalized.

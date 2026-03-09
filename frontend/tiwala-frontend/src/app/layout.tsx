@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import Web3Provider from "@/components/providers/web3-provider";
-import Navbar from "@/components/layout/navbar";
+import RouteShell from "@/components/layout/route-shell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -25,8 +25,7 @@ export default function RootLayout({
     <html lang="en" className={inter.variable}>
       <body className="antialiased">
         <Web3Provider>
-          <Navbar />
-          {children}
+          <RouteShell>{children}</RouteShell>
         </Web3Provider>
       </body>
     </html>
