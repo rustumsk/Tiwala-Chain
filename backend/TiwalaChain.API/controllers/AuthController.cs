@@ -17,12 +17,17 @@ public sealed partial class AuthController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly IMemoryCache _cache;
     private readonly JwtTokenService _tokenService;
+    private readonly HashSet<string> _adminWallets;
 
-    public AuthController(AppDbContext dbContext, IMemoryCache cache, JwtTokenService tokenService)
+    public AuthController(AppDbContext dbContext, IMemoryCache cache, JwtTokenService tokenService, IConfiguration configuration)
     {
         _dbContext = dbContext;
         _cache = cache;
         _tokenService = tokenService;
+        _adminWallets = (configuration.GetSection("AdminWallets").Get<string[]>() ?? [])
+            .Select(w => w.Trim().ToLowerInvariant())
+            .Where(w => WalletRegex().IsMatch(w))
+            .ToHashSet();
     }
 
     [HttpPost("nonce")]
@@ -95,14 +100,23 @@ public sealed partial class AuthController : ControllerBase
         var user = await _dbContext.Users
             .FirstOrDefaultAsync(u => u.WalletAddress == normalizedWallet);
 
+        var isAdminWallet = _adminWallets.Contains(normalizedWallet);
+
         if (user is null)
         {
             user = new User
             {
                 WalletAddress = normalizedWallet,
-                Role = UserRole.Freelancer,
+                Role = isAdminWallet ? UserRole.Admin : UserRole.Freelancer,
+                IsApproved = isAdminWallet,
             };
             _dbContext.Users.Add(user);
+            await _dbContext.SaveChangesAsync();
+        }
+        else if (isAdminWallet && user.Role != UserRole.Admin)
+        {
+            user.Role = UserRole.Admin;
+            user.IsApproved = true;
             await _dbContext.SaveChangesAsync();
         }
 
@@ -133,6 +147,11 @@ public sealed partial class AuthController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
+        if (!user.IsApproved)
+        {
+            return StatusCode(403, "Your account is pending admin approval.");
+        }
+
         var normalizedName = request.DisplayName?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedName) || normalizedName.Length < 2)
         {
@@ -156,6 +175,79 @@ public sealed partial class AuthController : ControllerBase
     public IActionResult Logout()
     {
         return Ok();
+    }
+
+    [Authorize]
+    [HttpGet("admin/users")]
+    public async Task<ActionResult<List<UserResponse>>> AdminListUsers()
+    {
+        var admin = await ResolveCurrentUser();
+        if (admin is null || admin.Role != UserRole.Admin)
+            return Forbid();
+
+        var users = await _dbContext.Users
+            .OrderByDescending(u => u.CreatedAt)
+            .Select(u => ToUserResponse(u))
+            .ToListAsync();
+
+        return Ok(users);
+    }
+
+    [Authorize]
+    [HttpDelete("admin/users/{id:int}")]
+    public async Task<IActionResult> AdminDeleteUser(int id)
+    {
+        var admin = await ResolveCurrentUser();
+        if (admin is null || admin.Role != UserRole.Admin)
+            return Forbid();
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+            return NotFound("User not found.");
+
+        if (user.Id == admin.Id)
+            return BadRequest("Cannot delete your own admin account.");
+
+        _dbContext.Users.Remove(user);
+        await _dbContext.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPut("admin/users/{id:int}/approve")]
+    public async Task<ActionResult<UserResponse>> AdminApproveUser(int id, [FromBody] ApproveRequest request)
+    {
+        var admin = await ResolveCurrentUser();
+        if (admin is null || admin.Role != UserRole.Admin)
+            return Forbid();
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+            return NotFound("User not found.");
+
+        user.IsApproved = request.Approved;
+        await _dbContext.SaveChangesAsync();
+        return Ok(ToUserResponse(user));
+    }
+
+    [Authorize]
+    [HttpPut("admin/users/{id:int}/role")]
+    public async Task<ActionResult<UserResponse>> AdminUpdateUserRole(int id, [FromBody] UpdateRoleRequest request)
+    {
+        var admin = await ResolveCurrentUser();
+        if (admin is null || admin.Role != UserRole.Admin)
+            return Forbid();
+
+        if (!TryParseRole(request.Role, out var parsedRole))
+            return BadRequest("Role must be freelancer, employer, both, or admin.");
+
+        var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null)
+            return NotFound("User not found.");
+
+        user.Role = parsedRole;
+        await _dbContext.SaveChangesAsync();
+        return Ok(ToUserResponse(user));
     }
 
     private async Task<User?> ResolveCurrentUser()
@@ -195,6 +287,7 @@ public sealed partial class AuthController : ControllerBase
             "freelancer" => (role = UserRole.Freelancer) == UserRole.Freelancer,
             "employer" => (role = UserRole.Employer) == UserRole.Employer,
             "both" => (role = UserRole.Both) == UserRole.Both,
+            "admin" => (role = UserRole.Admin) == UserRole.Admin,
             _ => false,
         };
     }
@@ -206,7 +299,7 @@ public sealed partial class AuthController : ControllerBase
 
     private static UserResponse ToUserResponse(User user)
     {
-        return new UserResponse(user.Id, user.WalletAddress, user.DisplayName, user.Role.ToString().ToLowerInvariant(), user.CreatedAt);
+        return new UserResponse(user.Id, user.WalletAddress, user.DisplayName, user.Role.ToString().ToLowerInvariant(), user.IsApproved, user.CreatedAt);
     }
 
     private static string GetNonceCacheKey(string walletAddress) => $"{NonceCacheKeyPrefix}{walletAddress}";
@@ -219,6 +312,8 @@ public sealed record NonceRequest(string WalletAddress, int ChainId = 0);
 public sealed record NonceResponse(string Message, string Nonce, DateTime ExpiresAtUtc, string Domain, string Uri, int ChainId);
 public sealed record VerifyRequest(string WalletAddress, string Message, string Signature);
 public sealed record AuthResponse(string AccessToken, DateTime ExpiresAtUtc, UserResponse User);
-public sealed record UserResponse(int Id, string WalletAddress, string? DisplayName, string Role, DateTime CreatedAt);
+public sealed record UserResponse(int Id, string WalletAddress, string? DisplayName, string Role, bool IsApproved, DateTime CreatedAt);
 public sealed record UpdateProfileRequest(string DisplayName, string Role);
+public sealed record UpdateRoleRequest(string Role);
+public sealed record ApproveRequest(bool Approved);
 public sealed record PendingNonce(string Message, string Nonce);

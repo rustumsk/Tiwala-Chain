@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -15,6 +15,7 @@ public class User
 
     public string? DisplayName { get; set; }
     public UserRole Role { get; set; }
+    public bool IsApproved { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
@@ -23,5 +24,6 @@ public enum UserRole
 {
     Freelancer,
     Employer,
-    Both
+    Both,
+    Admin
 }
