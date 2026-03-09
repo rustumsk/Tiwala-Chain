@@ -10,7 +10,7 @@ Freelancer is not entitled to payment for work done before a signed contract.,1
 Any third-party integrations not mentioned in the original scope will be quoted separately.,0
 All revision requests must be completed within 24 hours regardless of complexity.,1
 Client retains the right to expand project scope indefinitely at no additional cost.,1
-"Client owns all drafts, concepts, and rejected work even if payment has not been made.",1
+Client owns all drafts, concepts, and rejected work even if payment has not been made.,1
 Client may claim authorship of all deliverables publicly without crediting the freelancer.,1
 Freelancer is liable for all client revenue losses during any project delay.,1
 Client reserves right to offset freelancer payments against unrelated prior disputes.,1
@@ -48,7 +48,7 @@ Both parties agree to a 30-day wind-down period for long-term engagements.,0
 Freelancer retains moral rights to work as permitted by applicable law.,0
 Client's liability to freelancer is limited to zero regardless of circumstances.,1
 Client receives rights only to the specific deliverables described in this agreement.,0
-"Freelancer retains rights to tools, frameworks, and methodologies developed independently.",0
+Freelancer retains rights to tools, frameworks, and methodologies developed independently.,0
 Client receives full ownership of final deliverables upon complete payment.,0
 Client will provide a purchase order number before work begins for invoice processing.,0
 Client may reject all work and request full redo without additional payment.,1
@@ -98,7 +98,7 @@ Client may use freelancer's name and likeness in marketing without consent.,1
 Both parties agree to maintain reasonable cybersecurity practices to protect shared data.,0
 Scope limitations do not apply when client requests are deemed urgent.,1
 All intellectual property created during the engagement belongs to the client retroactively.,1
-"Freelancer must be available 24 hours a day, 7 days a week without additional pay.",1
+Freelancer must be available 24 hours a day, 7 days a week without additional pay.,1
 Minor text or color corrections are included in the project price without limit.,0
 Client may unilaterally modify contract terms during an ongoing dispute.,1
 Freelancer may use anonymized work samples for promotional purposes with client consent.,0
@@ -108,7 +108,7 @@ Revisions are only applicable to the original scope and not new additions.,0
 Both parties agree to a weekly check-in to ensure project stays within scope.,0
 Freelancer must respond to all messages within 30 minutes at all times including weekends.,1
 Either party may terminate if the other becomes insolvent or ceases business operations.,0
-"Freelancer will issue invoices at each project milestone, payable within 10 business days.",0
+Freelancer will issue invoices at each project milestone, payable within 10 business days.,0
 Freelancer may not terminate the contract under any circumstances.,1
 Client may delay payment without penalty for up to 6 months.,1
 Client is not liable for any damages caused to freelancer during the engagement.,1
@@ -118,7 +118,7 @@ Freelancer's liability is limited to the total amount paid under this agreement.
 Confidentiality obligations do not apply to information already in the public domain.,0
 Client will provide timely feedback within agreed timeframes to avoid project delays.,0
 Any perceived quality issue results in automatic 30% payment deduction.,1
-"Disputes involving amounts under PHP 50,000 will be resolved through small claims court.",0
+Disputes involving amounts under PHP 50,000 will be resolved through small claims court.,0
 Freelancer agrees to cover all legal costs regardless of dispute outcome.,1
 Freelancer permanently waives all moral rights to delivered work.,1
 Revisions requested more than 30 days after delivery will be treated as a new project.,0
@@ -139,7 +139,7 @@ Structural revisions beyond the second round will be billed at the freelancer's 
 Freelancer will notify client of planned absences exceeding 3 consecutive business days.,0
 Freelancer agrees to be available for communication during agreed working hours.,0
 Freelancer forfeits all earned payments if the project is cancelled for any reason.,1
-"Freelancer is liable for all direct, indirect, and consequential damages without limit.",1
+Freelancer is liable for all direct, indirect, and consequential damages without limit.,1
 No penalties apply if deadlines are missed due to client delays in providing feedback.,0
 Client may not sublicense deliverables to third parties without written freelancer consent.,0
 Client may redefine project deliverables at any point without notice.,1
@@ -167,7 +167,7 @@ Freelancer assigns all future improvements to project deliverables to the client
 Freelancer assumes full legal responsibility for all business outcomes of the project.,1
 All invoices must be approved by three levels of client management before payment.,1
 Freelancer must attend all client meetings regardless of time zone at no extra charge.,1
-"Client may modify, resell, or sublicense deliverables without restriction or compensation.",1
+Client may modify, resell, or sublicense deliverables without restriction or compensation.,1
 Penalties for missed deadlines are capped at 10% of the total project value.,0
 Project scope is clearly defined in Exhibit A and may only be changed through written agreement.,0
 Payment will be released within 7 days of client approval of final deliverables.,0
@@ -190,7 +190,7 @@ Payment disputes must be raised within 5 business days of invoice receipt.,0
 Both parties agree on a fixed project rate before work commences.,0
 Client may terminate with zero notice and owe nothing regardless of work completed.,1
 Dispute resolution costs will be shared equally unless otherwise determined by arbitration.,0
-"Freelancer must shoulder all currency conversion, transfer, and platform fees.",1
+Freelancer must shoulder all currency conversion, transfer, and platform fees.,1
 Confidential information will be returned or destroyed upon request after project completion.,0
 Client may impose retroactive penalties not agreed upon in the original contract.,1
 Freelancer is required to work overtime during deadlines without additional compensation.,1
@@ -204,3 +204,644 @@ Freelancer is responsible for all regulatory compliance costs related to the del
 Client is responsible for all international wire transfer fees exceeding standard rates.,0
 Freelancer must work for free for the first month as a trial period.,1
 Freelancer will respond to client messages within 1 business day during working hours.,0
+Freelancer must complete all client requests within the deadline.,0
+Freelancer shall perform all tasks as requested by client until the project is deemed complete by client.,1
+Client may terminate this agreement at any time for any reason without further obligation to freelancer.,1
+Freelancer shall not work for any company for two years following the termination of this agreement.,1
+Deadlines shall be extended by 1 business day for every day of delay in client providing requested feedback.,0
+Freelancer payment depends on the client first obtaining funding from external investors.,1
+Payment will only be issued if the client successfully secures financial backing from a third party.,1
+The freelancer will be paid only after the client obtains funding from outside sources.,1
+Both parties agree that payments will be processed through a chosen platform with transaction fees shared equally.,0
+Payments shall be sent through the agreed payment service, with platform fees divided between client and freelancer.,0
+The freelancer and client will use a mutually agreed platform for payment and split any transaction costs.,0
+The freelancer may incur unlimited monetary penalties for project delays regardless of the reason.,1
+Any delay in delivery may result in unrestricted financial penalties imposed on the freelancer.,1
+The client may apply unlimited financial penalties to the freelancer for delays regardless of fault.,1
+The freelancer agrees to notify the client when a request should be treated as a new deliverable instead of a revision.,0
+Freelancer will inform the client whenever a request falls outside revision scope and counts as new work.,0
+The freelancer will clearly indicate whether a client request is a revision or a new deliverable.,0
+The freelancer is required to complete tasks requested verbally even if they are not written in the contract.,1
+Any verbal instruction from the client must be completed by the freelancer regardless of written documentation.,1
+Freelancer must perform work requested through verbal communication even without written confirmation.,1
+Payments made after the 7-day grace period will accumulate a 2% monthly interest charge.,0
+A 2% monthly interest fee will apply to invoices that remain unpaid after a 7-day grace period.,0
+If payment is delayed beyond 7 days, a 2% monthly interest penalty will be added.,0
+The freelancer is required to implement extra features requested by the client even if they were not included in the original project brief.,1
+Client may request additional functionality beyond the original scope and the freelancer must provide it without limitation.,1
+Freelancer must complete new feature requests from the client even if they fall outside the agreed project scope.,1
+Any work performed before the contract is formally signed will not be compensated.,1
+The freelancer will receive no payment for services completed prior to signing the agreement.,1
+Work completed before the official contract signature is not eligible for payment.,1
+Third-party services not listed in the original scope will require a separate quotation.,0
+Integrations with external tools outside the initial scope will be priced separately.,0
+Any additional third-party integrations not included in the initial agreement will require a new quote.,0
+The freelancer must complete every revision request within 24 hours regardless of how complex it is.,1
+All requested revisions must be finished within a strict 24-hour timeframe regardless of difficulty.,1
+Client revisions must be delivered within 24 hours no matter the scope or complexity of the changes.,1
+The client may increase the project scope at any time without paying additional fees.,1
+The freelancer must accept unlimited scope expansion from the client without extra compensation.,1
+The agreement allows the client to add unlimited work while paying nothing beyond the original price.,1
+All drafts, ideas, and unused work automatically belong to the client even if the freelancer has not been paid.,1
+The client retains ownership of all creative materials produced during the project regardless of payment status.,1
+Even unpaid work such as drafts and rejected concepts will still be owned by the client.,1
+The client can publicly present the deliverables as their own work without acknowledging the freelancer.,1
+Freelancer credit is not required when the client publishes or presents the completed work.,1
+The agreement allows the client to take full public authorship of the work without giving attribution.,1
+The client can publicly present the deliverables as their own work without acknowledging the freelancer.,1
+Freelancer credit is not required when the client publishes or presents the completed work.,1
+The agreement allows the client to take full public authorship of the work without giving attribution.,1
+The freelancer will be responsible for any revenue the client loses due to project delays.,1
+All financial losses experienced by the client during delays must be covered by the freelancer.,1
+If the project is delayed, the freelancer must compensate the client for any resulting revenue loss.,1
+The client may deduct payments owed to the freelancer because of previous unrelated disputes.,1
+Payments to the freelancer can be reduced by the client to settle earlier disagreements.,1
+The agreement allows the client to subtract freelancer compensation to resolve past disputes.,1
+The client can require the freelancer to remain exclusively available without offering a retainer payment.,1
+Freelancer must prioritize the client and avoid other work even though no retainer is provided.,1
+The agreement allows the client to require exclusive availability from the freelancer without compensation for it.,1
+The freelancer is required to keep working for 90 days even after submitting a termination notice.,1
+After giving notice to terminate the contract, the freelancer must still provide services for 90 additional days.,1
+Even if the freelancer ends the contract, they must continue working for another 90 days.,1
+The client may request small scope changes up to 10% of the original work without extra cost.,0
+Minor modifications within 10% of the agreed scope may be requested by the client without additional fees.,0
+The agreement allows limited scope adjustments up to 10% of the project without increasing the price.,0
+If exchange rate losses go beyond 3%, the client will cover the difference.,0
+The client agrees to reimburse the freelancer for currency exchange losses greater than 3%,0
+Any exchange rate loss above 3% will be paid for by the client.,0
+The client is required to notify the freelancer in writing before deducting any penalties.,0
+Penalty deductions cannot be applied unless the client first provides written notice.,0
+The agreement requires the client to issue written notice prior to imposing penalties.,0
+The client must settle invoices within 14 days after receiving them.,0
+Payment for invoices is due within fourteen days of delivery.,0
+All invoices must be paid within a 14-day period after receipt.,0
+The freelancer agrees not to share the client's business information with outside parties without permission.,0
+Confidential client information cannot be disclosed to third parties by the freelancer without consent.,0
+The agreement requires the freelancer to keep client business information private unless authorized.,0
+Any dispute must be handled in another country and the freelancer must cover their own travel costs.,1
+The freelancer is required to travel abroad at their own expense to resolve disputes.,1
+The contract requires disputes to be settled in a foreign jurisdiction with travel costs paid by the freelancer.,1
+Work outside the agreed scope must go through a formal change order approved by both parties.,0
+Any additional work beyond the original agreement requires a mutually approved change order.,0
+The agreement requires both parties to follow a change order procedure for out-of-scope tasks.,0
+A revision cycle must be finished before moving on to the next milestone.,0
+The next milestone cannot start until the current revision round is completed.,0
+Milestone progress requires that revisions for the previous stage are finalized first.,0
+The freelancer is not responsible for delays that occur when the client does not provide required materials.,0
+Any delay caused by the client failing to supply necessary materials will not be the freelancer’s responsibility.,0
+If the client does not provide the required materials, the freelancer cannot be held liable for resulting delays.,0
+Both parties are not responsible for indirect or consequential damages related to this agreement.,0
+The agreement states that neither side will be liable for indirect or consequential losses.,0
+No party involved in the agreement will be held accountable for indirect or consequential damages.,0
+The freelancer will face penalties if delays are caused by the client’s internal team.,1
+Even when the client’s own team causes delays, the freelancer will still be penalized.,1
+If the client's internal staff delay the project, the freelancer will receive a penalty.,1
+The client can ask for revisions for up to one year after the project is delivered without paying extra.,1
+Revisions requested within one year after delivery must be completed without additional charges.,1
+The freelancer must provide free revisions if the client requests them within a year of delivery.,1
+The client understands that the freelancer may take on work from other clients at the same time.,0
+The agreement allows the freelancer to handle projects for multiple clients simultaneously.,0
+The client accepts that the freelancer can work with other clients during the project.,0
+Both parties must agree on a clear payment schedule before the project begins.,0
+The payment timeline must be finalized by both the client and freelancer prior to starting the project.,0
+Before the project starts, both sides will confirm the payment schedule.,0
+After receiving final payment, the freelancer will deliver a document transferring intellectual property rights.,0
+A full intellectual property transfer document will be provided once the final payment is made.,0
+The freelancer will issue a complete IP transfer agreement after the client finishes paying.,0
+Both the client and freelancer must keep project information confidential for two years.,0
+The agreement requires both parties to maintain confidentiality of project details for two years.,0
+Project-related information must remain confidential between both parties for a two-year period.,0
+Any intellectual property that existed before the project will remain with its original owner.,0
+Both parties keep ownership of their pre-existing intellectual property after the project ends.,0
+Intellectual property owned before the project will not transfer after completion.,0
+If the contract is terminated, the freelancer must be paid for the work already completed.,0
+The freelancer has the right to receive payment for any work done before termination.,0
+Upon termination, the freelancer will be compensated for work that was already in progress.,0
+Any disputes will be settled by an arbitrator selected only by the client.,1
+The client alone will choose the third-party arbitrator responsible for resolving disputes.,1
+Disagreements will be handled by an arbitrator appointed solely by the client.,1
+New intellectual property created together will be owned by both parties.,0
+If both parties collaborate on creating intellectual property, they will share ownership.,0
+Intellectual property produced jointly during the project will belong to both sides.,0
+The freelancer is required to be available by phone at all times, even during holidays.,1
+The agreement requires the freelancer to answer phone calls at any time, including personal holidays.,1
+The freelancer must remain reachable by phone continuously, regardless of holidays.,1
+At the beginning of the project, both sides will set a communication schedule.,0
+The client and freelancer will agree on a communication timeline when the project begins.,0
+A communication plan will be established by both parties at the start of the project.,0
+Completed milestones must be fully paid even if the project is later cancelled.,0
+The freelancer will still receive payment for finished milestones if the project ends early.,0
+Payment for completed milestones cannot be withheld due to project cancellation.,0
+Hourly payments will be calculated using time-tracking logs accepted by both sides.,0
+Billing for hourly work will rely on time records approved by the client and freelancer.,0
+Both parties must approve the time-tracking logs used to calculate hourly billing.,0
+The freelancer must pay a subscription fee on the platform to access their earnings.,1
+Receiving payment requires the freelancer to pay a platform subscription fee.,1
+The freelancer cannot access their earnings unless they pay the platform’s subscription fee.,1
+The project scope will be reviewed and confirmed by both parties at every milestone.,0
+At each milestone, both the client and freelancer must verify the project scope.,0
+Milestone checkpoints will include scope confirmation by both sides.,0
+Major additions to the scope will require a new statement of work.,0
+If the scope expands significantly, a separate statement of work will be prepared.,0
+Any major scope changes must be documented in a new statement of work.,0
+The freelancer is permanently prohibited from showing the work in their portfolio.,1
+Any work completed for the client cannot ever be used in the freelancer’s portfolio.,1
+The freelancer is not allowed to display the client’s project in their portfolio at any time.,1
+Long-term contracts will include a 30-day transition period when ending the agreement.,0
+A 30-day wind-down phase is required for long-term engagements between both parties.,0
+When ending long-term work, both sides must follow a 30-day wind-down period.,0
+The freelancer keeps moral rights to the work according to applicable laws.,0
+Legal moral rights related to the work remain with the freelancer where permitted by law.,0
+The freelancer maintains their moral rights to the work under applicable regulations.,0
+The client will have no liability toward the freelancer under any circumstances.,1
+The agreement states that the client cannot be held financially responsible in any situation.,1
+The client’s liability to the freelancer is completely eliminated regardless of the situation.,1
+The client only receives rights to the deliverables listed in the agreement.,0
+Rights granted to the client apply only to the deliverables explicitly described.,0
+The agreement limits the client’s rights to the specified deliverables.,0
+The freelancer keeps ownership of any tools, frameworks, or methods created independently.,0
+Any tools or frameworks developed independently by the freelancer remain their property.,0
+The freelancer maintains rights to methodologies and tools created outside the client project.,0
+Once full payment is made, the client obtains complete ownership of the final deliverables.,0
+Full ownership of the deliverables will transfer to the client after the final payment is completed.,0
+The client gains full rights to the final deliverables once payment has been fully settled.,0
+The client must supply a purchase order number before the project begins for invoicing purposes.,0
+A purchase order number will be provided by the client before work starts to allow invoice processing.,0
+Before work begins, the client will issue a purchase order number for billing and invoices.,0
+The client can reject the entire work and require a complete redo without paying extra.,1
+All delivered work may be rejected by the client and redone by the freelancer at no additional cost.,1
+The freelancer may be required to redo all work if the client rejects it, without receiving extra payment.,1
+A seven-day cure period will be given to resolve breaches before contract termination.,0
+Both parties must allow seven days to fix any breach before ending the contract.,0
+The agreement provides a 7-day period to correct contract violations before termination.,0
+The client will pay half of the total fee before the project starts and the remaining half after completion.,0
+A payment structure of 50% upfront and 50% after project delivery is agreed upon by the client.,0
+The client must provide a 50% advance payment and the remaining 50% once the project is finished.,0
+The freelancer will not receive any kill fee if the project is terminated early for any reason.,1
+Early termination removes the freelancer’s entitlement to a kill fee under all circumstances.,1
+The freelancer loses the right to a termination fee even if the contract ends early.,1
+The client will repay any approved expenses within 14 days after they are submitted.,0
+Pre-approved project expenses must be reimbursed by the client within fourteen days.,0
+The client commits to paying back authorized expenses within 14 days of submission.,0
+The freelancer must cover all losses the client experiences due to contract termination.,1
+Any losses suffered by the client after termination will be the freelancer’s responsibility.,1
+The freelancer will be held financially responsible for all client losses caused by termination.,1
+If disclosure is legally required, either party may release the information after notifying the other party.,0
+Both parties may disclose information when required by law, provided they give prior notice.,0
+Information may be disclosed by either party if legally required, as long as the other party is notified first.,0
+The client can cancel the agreement and require the freelancer to refund all payments already made.,1
+Upon termination, the client may request the return of every amount previously paid.,1
+The client has the right to end the contract and recover all payments made to the freelancer.,1
+The client may delay the final payment indefinitely while waiting for internal approvals.,1
+Final payment can be held by the client for an unlimited time due to internal approval procedures.,1
+The client may postpone the final payment without a deadline until internal approval is granted.,1
+The freelancer may mention the existence of the project but cannot reveal details without written consent.,0
+Project details cannot be shared by the freelancer unless written permission is given, though the project may be acknowledged.,0
+The freelancer can state that the project exists but must not disclose specifics without written authorization.,0
+The freelancer will receive penalties even when delays are caused by the client's slow feedback.,1
+Delays due to the client's slow responses or approvals may still result in penalties for the freelancer.,1
+The freelancer can be penalized if the project is delayed because the client takes too long to respond.,1
+The client can cancel the contract and keep all completed work without paying the outstanding balance.,1
+Upon termination, the client may keep the delivered work without paying the remaining amount owed.,1
+The client may end the agreement and retain all work without settling the remaining payment.,1
+Disputes between the parties will be governed by the laws of the Philippines.,0
+Both parties agree that any legal disputes will follow Philippine law.,0
+The agreement states that all disputes will be resolved according to Philippine legal jurisdiction.,0
+The freelancer is prohibited from working with other clients while this agreement is active.,1
+During the contract period, the freelancer cannot accept projects from other clients.,1
+The freelancer must not engage with additional clients while the agreement is in effect.,1
+The freelancer will not receive extra payment even if the client increases the project scope.,1
+Scope expansions requested by the client will not result in additional compensation.,1
+The freelancer must handle scope increases without receiving extra payment.,1
+The freelancer gives up the right to take legal action against the client in any situation.,1
+Under this agreement, the freelancer cannot file legal claims against the client.,1
+The freelancer relinquishes all rights to pursue legal remedies against the client.,1
+The client can request revisions at any time without paying additional fees.,1
+Revision requests from the client may continue indefinitely without extra payment.,1
+The freelancer must accept unlimited revision requests from the client at no added cost.,1
+The freelancer is required to keep revising the work until the client is fully satisfied.,1
+Unlimited revisions must be provided by the freelancer until the client approves the work.,1
+The freelancer must continue making changes without limit until the client is satisfied.,1
+Both parties agree to attempt good-faith negotiations before escalating any dispute.,0
+Disputes will initially be addressed through mutual negotiation between the parties.,0
+The parties will first try to resolve disagreements through good-faith discussion.,0
+The client can end the agreement at any time without giving notice or paying compensation.,1
+Termination may occur at the client's discretion without advance warning or payment.,1
+The client is allowed to cancel the contract immediately without notice or compensation.,1
+Any tools or frameworks created by the freelancer during the project will belong to the client.,1
+Ownership of all tools and frameworks developed during the project transfers to the client.,1
+The client will retain ownership of all frameworks and tools created by the freelancer during the work.,1
+If the client changes their mind, the freelancer must restart the entire project from the beginning.,1
+The freelancer is required to redo the entire project if the client decides to change direction.,1
+A complete project restart must be performed by the freelancer whenever the client changes their mind.,1
+If the project scope expands by over 20%, both parties will renegotiate the payment terms.,0
+Payment conditions must be reconsidered if the scope grows beyond twenty percent.,0
+The agreement allows both parties to renegotiate payment when the project scope increases significantly.,0
+The freelancer may stop working if payment is delayed for more than fourteen days.,0
+Work may be paused by the freelancer when payment is overdue beyond 14 days.,0
+If payment has not been received within 14 days of the due date, the freelancer can pause the project.,0
+The client is responsible for ensuring that provided content complies with applicable laws.,0
+Legal compliance of materials given to the freelancer is the client's responsibility.,0
+The client must ensure that all content supplied to the freelancer follows legal requirements.,0
+If the freelancer violates confidentiality, they lose the right to receive any unpaid compensation.,1
+A confidentiality breach by the freelancer will cause all outstanding payments to be forfeited.,1
+The freelancer will lose any unpaid earnings if they break the confidentiality agreement.,1
+The client must not share the freelancer’s proprietary processes with competing businesses.,0
+Freelancer’s internal methods and processes cannot be disclosed by the client to competitors.,0
+The client agrees to keep the freelancer’s proprietary workflows confidential from competitors.,0
+The freelancer keeps ownership of the work until the client completes full payment.,0
+All work remains the property of the freelancer until the final payment is made.,0
+Ownership of the project deliverables stays with the freelancer until payment is fully settled.,0
+If the client ends the project early, a kill fee equal to 25% of the remaining value will apply.,0
+Client-initiated early termination requires payment of a 25% kill fee based on the remaining project value.,0
+A termination fee of 25% of the outstanding project value will be charged if the client cancels early.,0
+The client is given seven business days to review deliverables and request revisions.,0
+After each delivery, the client may submit revision requests within a 7-business-day review period.,0
+A review window of seven business days is provided for the client to evaluate deliverables and request changes.,0
+Any scope expansion beyond the agreed limits will be charged at the freelancer’s normal hourly rate.,0
+Additional work caused by scope creep will be billed using the freelancer’s standard hourly pricing.,0
+If the project scope grows beyond the agreed limits, the extra work will be billed hourly.,0
+The client can cancel the project and demand a full refund if they personally consider the output unsatisfactory.,1
+If the client subjectively dislikes the final result, they may terminate the agreement and recover all payments.,1
+The client may reclaim all previously paid amounts if they decide the final deliverable is unsatisfactory.,1
+The freelancer is allowed to take personal leave by informing the client at least three days in advance.,0
+Personal leave may be taken by the freelancer provided that a three-day notice is given.,0
+The freelancer may take time off after notifying the client three days beforehand.,0
+The client understands that modifying the project scope can affect the original deadline.,0
+Any scope adjustments may result in changes to the project timeline, as acknowledged by the client.,0
+The client accepts that scope changes may require updates to the agreed delivery schedule.,0
+The client is allowed to share the freelancer’s methods and processes with any third party.,1
+Freelancer workflows and techniques may be freely disclosed by the client to others.,1
+The client can distribute the freelancer’s processes and work methods without restriction.,1
+If disputes remain unresolved, both parties will submit the matter to a mediator they both approve.,0
+Before taking legal action, unresolved disagreements will go to mediation chosen by both parties.,0
+Any dispute not settled directly will first be handled through mediation agreed upon by both sides.,0
+Any unresolved disputes will first be submitted to a mediator agreed upon by both parties before legal action is taken.,0
+Before pursuing legal proceedings, both parties will refer unresolved conflicts to a mutually selected mediator.,0
+Disagreements that cannot be settled directly will be handled through mediation agreed upon by both parties prior to litigation.,0
+The freelancer is required to complete revision requests even if they are given verbally without written confirmation.,1
+All verbal revision instructions from the client must be implemented by the freelancer without requiring documentation.,1
+The freelancer must carry out revision requests communicated verbally without needing formal written records.,1
+The freelancer and client will define what constitutes acceptable deliverable quality before the project starts.,0
+Before beginning the work, both parties will agree on clear standards for deliverable quality.,0
+A mutual understanding of acceptable output quality will be established by both parties prior to project commencement.,0
+A 30-day negotiation period will occur between both parties before any formal legal action begins.,0
+Before filing legal claims, both parties commit to negotiating for a period of thirty days.,0
+Both sides agree to attempt negotiation for thirty days prior to starting formal legal proceedings.,0
+The client is allowed to distribute the freelancer’s personal information to partners without permission.,1
+Freelancer personal details may be shared by the client with partners even without consent.,1
+The client may disclose the freelancer’s personal information to affiliated partners freely.,1
+The freelancer must return all received payments if the client chooses not to use the final deliverables.,1
+If the client decides not to utilize the work provided, the freelancer is required to issue a full refund.,1
+All payments must be refunded by the freelancer if the client elects not to use the delivered work.,1
+The freelancer is not responsible for any business decisions the client makes using the delivered work.,0
+Any business outcomes resulting from the client’s decisions based on the deliverables are not the freelancer’s liability.,0
+The freelancer cannot be held accountable for the client’s business actions taken after receiving the work.,0
+Failures from third-party services beyond the freelancer’s control are not the freelancer’s responsibility.,0
+The freelancer is not liable for disruptions caused by external services they do not control.,0
+Any issues caused by third-party providers will not be the responsibility of the freelancer.,0
+The client is permitted to use the freelancer’s name or likeness in promotional materials without approval.,1
+Freelancer identity or image may be used in the client’s marketing activities without obtaining consent.,1
+The client can include the freelancer’s name or likeness in advertising or promotion freely.,1
+The freelancer and client agree to follow reasonable cybersecurity measures to safeguard shared information.,0
+Both parties commit to maintaining appropriate digital security practices for protecting shared data.,0
+Each party agrees to implement reasonable cybersecurity protections for exchanged data.,0
+If the client considers a request urgent, scope limitations will not apply to the work required.,1
+Urgent requests from the client are exempt from the previously agreed scope restrictions.,1
+When a request is marked urgent by the client, the freelancer must ignore scope limits.,1
+All IP generated during the project is owned by the client from the start.,1
+Any intellectual property made in the engagement automatically transfers to the client retroactively.,1
+The client retains retroactive rights to all intellectual property produced during the project.,1
+The freelancer is required to be on-call all day, every day without extra compensation.,1
+Continuous 24/7 availability is expected from the freelancer without additional pay.,1
+The freelancer must remain reachable at all times without extra payment.,1
+All small edits to text or colors are covered under the original project fee.,0
+Minor adjustments to text or color do not incur extra charges.,0
+Corrections to wording or colors are included in the agreed price without restriction.,0
+The client can change contract terms on their own during any active dispute.,1
+Contract terms may be altered by the client alone while a dispute is ongoing.,1
+During a dispute, the client has the authority to modify terms without the freelancer's consent.,1
+With client approval, the freelancer can share anonymized examples of work for promotion.,0
+The freelancer is allowed to display anonymized work samples if the client agrees.,0
+Promotional use of anonymized work samples is permitted with client consent.,0
+The client has full authority to decide on any payment disputes.,1
+Payment conflicts are resolved exclusively by the client’s decision.,1
+The client alone determines the outcome of any payment-related disputes.,1
+Any penalties are paused when force majeure events occur.,0
+Force majeure events temporarily remove all penalty obligations.,0
+Penalty terms do not apply while force majeure situations are in effect.,0
+Only changes within the initial project scope qualify as revisions.,0
+Revisions do not include any work outside the original project scope.,0
+Modifications are limited to the defined original scope, excluding extra additions.,0
+A weekly meeting is scheduled to confirm the project remains within scope.,0
+Both sides will check in weekly to track adherence to the original project scope.,0
+Weekly check-ins are conducted to make sure the project aligns with its defined scope.,0
+The freelancer is required to reply to any messages within half an hour, including weekends.,1
+All messages must be answered by the freelancer within 30 minutes at any time.,1
+Response time of 30 minutes is mandatory for the freelancer, even on weekends.,1
+The agreement can end if one party goes bankrupt or stops operating.,0
+If a party ceases business or becomes insolvent, the other may terminate the contract.,0
+Insolvency or business closure by one party allows the other to terminate.,0
+Invoices are sent at each milestone and must be paid within ten business days.,0
+The freelancer provides milestone-based invoices due within 10 business days.,0
+Payment is due within ten business days for invoices issued at project milestones.,0
+The freelancer is prohibited from ending the contract for any reason.,1
+Under no condition can the freelancer terminate the agreement.,1
+Termination by the freelancer is not permitted under any circumstances.,1
+The client can postpone payment for up to six months without incurring penalties.,1
+Payment may be deferred by the client for six months without extra charges.,1
+The client has up to half a year to delay payment without penalties.,1
+The client bears no responsibility for any harm to the freelancer during the project.,1
+Any damages incurred by the freelancer are not the client’s liability.,1
+The client is exempt from liability for freelancer losses during the engagement.,1
+Ending the contract does not remove any previously earned rights or obligations.,0
+Rights and obligations accrued before termination remain valid.,0
+Termination leaves all prior rights and duties intact for both parties.,0
+All project files must be delivered by the freelancer within five days after termination.,0
+The freelancer is required to submit all files within five days of ending the contract.,0
+Upon termination, the freelancer must provide all project files within a five-day period.,0
+The freelancer can only be held responsible up to the amount already paid.,0
+Liability of the freelancer does not exceed the total compensation received.,0
+Any claims against the freelancer are capped at the total payment under the contract.,0
+Information already public is exempt from confidentiality requirements.,0
+Publicly available information is not subject to confidentiality rules.,0
+Confidentiality does not cover information that is already known publicly.,0
+The client must give feedback on schedule to prevent delays.,0
+Timely responses from the client are required to maintain project deadlines.,0
+To avoid project delays, the client should provide feedback within the agreed timeframe.,0
+Any quality issues identified by the client lead to an automatic 30% reduction in pay.,1
+The client may deduct 30% from the total payment based on their personal assessment of quality.,1
+A 30% payment penalty is automatically applied if the client is dissatisfied with the deliverable quality.,1
+Legal disputes for amounts less than PHP 50,000 shall be handled in small claims court.,0
+Claims under PHP 50,000 are subject to resolution through the small claims court system.,0
+The parties agree to use small claims court for any disputes involving less than PHP 50,000.,0
+The freelancer is responsible for all legal fees even if they win a dispute.,1
+All costs associated with legal proceedings must be paid by the freelancer regardless of the result.,1
+The freelancer agrees to pay for all legal expenses for both parties no matter the outcome.,1
+The freelancer gives up all moral rights to the work they deliver permanently.,1
+All moral rights to the project deliverables are waived by the freelancer forever.,1
+The freelancer agrees to never claim moral rights or authorship of the work at any point.,1
+Revision requests made 30 days after the project is delivered are considered new projects.,0
+Any changes requested more than a month after delivery will require a new project agreement.,0
+The client acknowledges that revisions after a 30-day window will be billed as new work.,0
+The client is permitted to charge back payments at any time for any reason.,1
+Payments may be reversed by the client without providing any explanation or justification.,1
+The agreement allows the client to initiate chargebacks whenever they choose without notice.,1
+The freelancer is not required to start new work until a formal amendment is signed.,0
+Additional tasks will not begin until a revised contract has been officially executed.,0
+The freelancer can wait for a signed revised agreement before starting any extra scope.,0
+The freelancer is strictly forbidden from ever disclosing that they worked for this client.,1
+Mentioning this project or the client's name in public is permanently prohibited for the freelancer.,1
+The freelancer may never include this project in their public work history or list of clients.,1
+If the parties cannot agree, arbitration will take place in the country where the freelancer lives.,0
+Dispute arbitration will be held in the freelancer's country of residence by default.,0
+The freelancer's home country will serve as the location for arbitration if no agreement is reached.,0
+The project price will be reduced by 50% for every day the delivery is late.,1
+A daily penalty of 50% of the total project value applies to any delivery delays.,1
+The client may subtract half of the project fee for each day the deadline is missed.,1
+Quotes for new scope additions will be provided by the freelancer within two business days.,0
+The freelancer agrees to send a price estimate for extra work within 2 business days.,0
+Any requests for scope changes will receive a revised quote within a 2-business-day window.,0
+The freelancer will issue a payment receipt within two business days of receiving funds.,0
+A receipt for every payment will be sent to the client by the freelancer within 2 days.,0
+The freelancer must provide proof of payment to the client within 2 business days of receipt.,0
+Concepts that are rejected by the client remain the intellectual property of the freelancer.,0
+The freelancer keeps ownership of all ideas and drafts that the client does not accept.,0
+Unused or rejected project concepts do not transfer to the client and stay with the freelancer.,0
+The freelancer must inform the client immediately if scope changes will change the deadline.,0
+If scope adjustments impact the timeline, the freelancer will notify the client at once.,0
+The client will be alerted immediately if changes to the work will result in a delay.,0
+Any process or methodology used by the freelancer becomes the client's property.,1
+The client gains ownership of the freelancer's internal methods and working processes.,1
+The freelancer's proprietary methodologies used during the project transfer to the client.,1
+The freelancer can end the contract immediately if payment is late by more than 30 days.,0
+If payment is overdue by 30 days, the freelancer has the right to terminate the agreement.,0
+The freelancer may quit the project instantly if the client fails to pay within a month.,0
+Every scope change must be documented and priced before the extra work starts.,0
+No additional work will begin until the scope change is recorded and the price is agreed.,0
+The parties must document and price any new requirements before they are implemented.,0
+The client is required to pay for all work finished up to the date of termination.,0
+If the project ends early, the freelancer must be compensated for all completed tasks.,0
+Payment for all work performed until the termination notice is mandatory for the client.,0
+Structural revisions requested after the second round will be billed at an hourly rate.,0
+The freelancer will charge their hourly rate for any major revisions after the first two rounds.,0
+After two rounds of structural changes, any further revisions will incur hourly fees.,0
+The freelancer will notify the client of any planned absence lasting more than 3 days.,0
+If the freelancer plans to be away for over 3 business days, they must inform the client.,0
+The client must be notified if the freelancer will be unavailable for 3 consecutive days.,0
+The freelancer commits to being reachable for communication during the set working hours.,0
+Both parties agree the freelancer will be available for discussion during agreed business hours.,0
+The freelancer will maintain availability for the client throughout the specified working window.,0
+If the project is cancelled for any reason, the freelancer loses the right to all earned pay.,1
+The freelancer will not be paid for any completed work if the project is terminated.,1
+Cancellation of the project results in the immediate forfeiture of all the freelancer's earnings.,1
+The freelancer is responsible for all direct and indirect damages without any financial limit.,1
+Unlimited liability for all consequential or direct losses is assumed by the freelancer.,1
+The freelancer accepts full liability for all damages of any kind without a maximum cap.,1
+No penalties will be charged if deadlines are missed because the client delayed their feedback.,0
+If the client fails to provide feedback on time, the freelancer is not penalized for late delivery.,0
+The freelancer is exempt from late penalties if the delay is caused by the client's slow responses.,0
+The client is not allowed to sublicense the work to others without the freelancer's written permission.,0
+Sublicensing the project deliverables to third parties requires the freelancer's formal consent.,0
+The client must obtain written approval from the freelancer before sublicensing any deliverables.,0
+The client has the right to change the project deliverables at any time without giving notice.,1
+Project requirements can be redefined by the client whenever they wish without prior warning.,1
+The freelancer must accept changes to the project's final deliverables at the client's sole discretion.,1
+All decisions made by the client regarding disputes are final and cannot be appealed.,1
+The client’s ruling on any disagreement is binding and not subject to further legal review.,1
+The freelancer waives the right to appeal any decision the client makes during a dispute.,1
+Partial payments for the project are allowed if both parties agree to them in writing.,0
+The parties may arrange for partial payments provided there is a written agreement.,0
+If documented in writing, the freelancer and client can settle the project through partial payments.,0
+The project is strictly limited to the deliverables that are explicitly listed in the brief.,0
+Only the items specifically mentioned in the project brief are considered part of the scope.,0
+The freelancer is only responsible for the deliverables defined within the original project brief.,0
+The contract can be ended by either party as long as they provide a 14-day written notice.,0
+Either the client or the freelancer may terminate the agreement with two weeks' notice.,0
+A 14-day written notice period is required for either party to end the contractual relationship.,0
+Both parties commit to disclosing any AI-generated assets that are used in the project.,0
+If AI tools are used to create project assets, the freelancer and client must inform each other.,0
+The use of AI-generated content must be openly declared by both parties during the project.,0
+The freelancer is strictly forbidden from ever talking about the project in any situation.,1
+Discussing the project in any context is permanently prohibited for the freelancer.,1
+The freelancer may never disclose or talk about the details of this engagement publicly or privately.,1
+The client is not required to pay if they are unhappy with the work at any time for any reason.,1
+Payment is completely optional if the client decides they are dissatisfied with the results.,1
+The freelancer will receive no compensation if the client is not fully satisfied with the output.,1
+Either party can terminate the contract immediately if there is a valid cause and written notice.,0
+The agreement may be ended instantly for breach of contract with a formal written notice.,0
+Immediate termination for cause is permitted for both parties upon delivery of written notice.,0
+The client may cut the agreed fee by 50% if the work doesn't meet their subjective standards.,1
+If the deliverables do not meet the client's personal expectations, they can deduct half the pay.,1
+The client has the right to reduce payment by up to 50% based on their own opinion of the work.,1
+Confidentiality rules remain in effect even after the contract has been terminated.,0
+Both parties agree that the duty to keep information private survives the end of the project.,0
+The obligation to maintain confidentiality does not expire when the agreement ends.,0
+The client is required to group all revision requests into one single document for each round.,0
+All changes for a revision round must be consolidated by the client into a single file.,0
+To request revisions, the client must provide one comprehensive document per feedback cycle.,0
+A 50% kill fee of the remaining balance applies if the client ends the project mid-way.,0
+The client agrees to pay half of the remaining project value if they cancel during production.,0
+If the project is cancelled before completion, the freelancer is entitled to a 50% termination fee.,0
+The freelancer maintains the right to show the finished work in their professional portfolio.,0
+Displaying the completed project in a portfolio is a right retained by the freelancer.,0
+The freelancer is allowed to use the project deliverables for their own portfolio and promotion.,0
+Force majeure events allow both parties to pause their performance obligations temporarily.,0
+Obligations under the contract are suspended for both sides during an act of god or emergency.,0
+Neither party is held to their deadlines while a force majeure event is occurring.,0
+The freelancer gives up all rights to the work as soon as they sign, even if they aren't paid.,1
+Ownership of all deliverables transfers to the client upon signature regardless of payment.,1
+Signing this agreement means the freelancer surrenders all work rights before receiving funds.,1
+The freelancer is prohibited from using any skills or knowledge from this project for future work.,1
+Any expertise gained during this engagement cannot be applied to projects for other clients.,1
+The freelancer agrees not to utilize techniques or knowledge learned here in future endeavors.,1
+The client can demand a full refund for up to 90 days after the project is finished.,1
+A 90-day window exists after completion where the client can request all their money back.,1
+The freelancer must provide a total refund if requested by the client within 3 months of delivery.,1
+If the contract ends, the client gets the work finished so far in exchange for payment.,0
+Upon termination, the client receives all current deliverables provided the freelancer is paid.,0
+The freelancer will hand over work-in-progress to the client if the project stops and payment is made.,0
+The freelancer is personally responsible for any legal claims from third parties about the work.,1
+All third-party legal claims related to the deliverables are the freelancer's personal liability.,1
+The freelancer assumes all personal legal risk for any third-party disputes regarding the project.,1
+If the project scope grows significantly, both sides will agree on new deadlines.,0
+The freelancer and client will renegotiate the delivery schedule if the scope changes.,0
+Significant changes to the project scope will lead to a mutual review of the original deadlines.,0
+The freelancer must give the client all future upgrades to the deliverables for free.,1
+Any future improvements made to the project output by the freelancer belong to the client for free.,1
+The client is entitled to receive all future enhancements to the deliverables at no extra cost.,1
+The freelancer is legally responsible for the business success or failure of the project.,1
+All business outcomes resulting from the project are the full legal responsibility of the freelancer.,1
+The freelancer takes full legal accountability for the commercial results of the deliverables.,1
+Payment is only made after three different levels of client management approve the invoice.,1
+Every invoice requires approval from three separate management tiers before being released.,1
+The freelancer must wait for three levels of internal client sign-off before receiving payment.,1
+The freelancer must attend all meetings regardless of the time zone without extra pay.,1
+All client meetings must be attended by the freelancer at no cost, no matter the time of day.,1
+Meetings in any time zone are mandatory for the freelancer and do not incur additional fees.,1
+The client can change, sell, or license the deliverables however they want without paying more.,1
+No restrictions apply to the client's right to resell or modify the work without compensation.,1
+The client may sublicense or alter the deliverables freely without any extra payments.,1
+Late delivery penalties cannot exceed 10% of the total project cost.,0
+Fines for missing deadlines are limited to a maximum of 10% of the project's value.,0
+The total penalty for late work is capped at 10% of the agreed-upon project price.,0
+The project scope is set in Exhibit A and requires a written agreement to change.,0
+Modifications to the scope defined in Exhibit A must be made through a formal written document.,0
+The freelancer and client agree that the scope in Exhibit A can only be updated in writing.,0
+Payment will be sent within 7 days after the client approves the final deliverables.,0
+Once the final work is approved, the client has 7 days to release the funds.,0
+The client agrees to pay the freelancer within a week of approving the finished project.,0
+All source files will be given to the client only after the final payment is received.,0
+The freelancer will transfer the project source files once the client settles the final invoice.,0
+Receipt of full payment triggers the transfer of all source files to the client.,0
+In urgent cases, either party can go to court for an injunction without waiting for mediation.,0
+Either side may seek immediate court relief for emergencies without prior mediation efforts.,0
+The parties can bypass mediation and head to court if an urgent legal matter arises.,0
+Each deliverable is limited to 3 rounds of revisions as specified in the project brief.,0
+The freelancer provides up to three revision rounds per item as defined in the brief.,0
+Revisions are capped at 3 rounds for each deliverable according to the project description.,0
+The client can add as many features as they want without paying the freelancer extra.,1
+Unlimited feature requests are allowed by the client without any increase in the project fee.,1
+The freelancer must implement all additional features requested by the client for free.,1
+If the freelancer ends the contract, they lose the right to all unpaid money they earned.,1
+The freelancer gives up all outstanding pay if they choose to terminate the agreement.,1
+Quitting the project results in the freelancer forfeiting all their unpaid compensation.,1
+Late penalties only apply if the freelancer is the sole reason for the delay.,0
+The freelancer is only fined for late delivery if they are entirely responsible for the holdup.,0
+Fines for missing deadlines do not apply unless the delay is caused entirely by the freelancer.,0
+A weekly status meeting of 30 minutes or less is agreed upon by both parties.,0
+The freelancer and client will meet once a week for no more than 30 minutes.,0
+Both sides commit to a weekly 30-minute check-in to discuss project progress.,0
+The client must supply all necessary assets within 5 business days to prevent delays.,0
+To keep the project on schedule, the client will provide required materials within 5 days.,0
+Required project assets must be delivered by the client within a 5-business-day window.,0
+The freelancer is required to sign a lifetime NDA for all past and future work with the client.,1
+A permanent non-disclosure agreement covering every project ever done is mandatory.,1
+The freelancer must agree to a lifetime NDA that applies to all previous and future engagements.,1
+A daily penalty must be paid by the freelancer even when the project is paused by agreement.,1
+Even during mutually agreed project halts, the freelancer is subject to a daily fine.,1
+The freelancer is required to pay daily penalties during project pauses, regardless of consent.,1
+All legal disputes must be settled in a location chosen only by the client.,1
+The client has the sole right to pick the jurisdiction where all disputes are resolved.,1
+The agreement forces all legal resolutions into a jurisdiction selected exclusively by the client.,1
+Revision requests may be expanded by the client to include brand new features for free.,1
+The client can include entirely new functionality in their revision requests at no cost.,1
+Free revisions can include any new features the client decides to add during the process.,1
+The freelancer must accept all last-minute changes without changing the deadline.,1
+Last-minute project modifications must be handled without any adjustments to the timeline.,1
+The freelancer is obligated to implement late changes without extending the delivery date.,1
+The client can change the project scope at any time without increasing the pay.,1
+Scope adjustments can be made at the client's discretion with no change in compensation.,1
+The freelancer must accept any scope changes the client demands without extra payment.,1
+Payment is only released after the entire project is finished, ignoring all milestones.,1
+No payments will be made until the full project is complete, regardless of the timeline.,1
+The client will only pay the freelancer once every single deliverable is finalized.,1
+Any disputes regarding an invoice must be brought up within 5 business days of receiving it.,0
+The client has five business days to raise concerns about a payment after getting the invoice.,0
+Payment disagreements must be formally initiated within 5 days of invoice receipt.,0
+Both parties will agree on a set, fixed price for the project before any work starts.,0
+A fixed rate for the entire project will be established by both sides before commencement.,0
+The freelancer and client agree to a predetermined fixed fee prior to starting the work.,0
+The client can terminate the contract with no notice and pay nothing for work already done.,1
+Zero notice is required for the client to end the agreement and withhold all payments.,1
+The client may cancel instantly and owe the freelancer nothing, even for completed tasks.,1
+Unless an arbitrator decides otherwise, dispute resolution costs will be split 50/50.,0
+Both sides agree to share the costs of resolving disputes equally.,0
+The expenses for dispute resolution will be divided evenly between the freelancer and client.,0
+All costs for currency conversion and platform fees are the freelancer's responsibility.,1
+The freelancer must pay for all transfer fees and currency exchange costs themselves.,1
+Platform and conversion fees will be deducted solely from the freelancer's earnings.,1
+Confidential data must be returned or deleted upon request once the project is over.,0
+The freelancer agrees to destroy or return all private information after the work is done.,0
+Upon project completion, all confidential materials will be handled according to client request.,0
+The client can add new penalties to the contract that weren't in the original deal.,1
+Retroactive penalties not mentioned in the initial agreement may be applied by the client.,1
+The agreement allows the client to impose new fines for past actions at their discretion.,1
+The freelancer is required to work extra hours during deadlines without getting paid more.,1
+Unpaid overtime is mandatory for the freelancer to meet project deadlines.,1
+The freelancer must perform additional work during crunch periods without extra compensation.,1
+The client can deduct any amount for quality issues without giving an explanation.,1
+Payments may be reduced by the client for perceived quality problems without justification.,1
+The client has the right to subtract funds for quality concerns without providing details.,1
+The freelancer covers all client losses, even those the client caused themselves.,1
+The client is indemnified by the freelancer for all losses, including the client's own errors.,1
+The freelancer assumes responsibility for all client losses regardless of who caused them.,1
+All financial risks from changing currency rates are handled by the freelancer.,1
+The freelancer is responsible for any money lost due to currency fluctuations.,1
+Risk associated with exchange rate changes is assumed entirely by the freelancer.,1
+The freelancer must do everything the client asks, even if it's not in the original scope.,1
+All client requests must be completed by the freelancer whether they are in the brief or not.,1
+The freelancer is obligated to perform any task requested by the client, regardless of scope.,1
+The client can change the whole project direction without paying for the work already done.,1
+A complete change in project direction by the client does not require payment for prior work.,1
+The client may pivot the project entirely and refuse to pay for previously finished tasks.,1
+The client gets a permanent license to use the work for agreed goals once they pay.,0
+Upon payment, the client receives a perpetual license for the specified use of the work.,0
+The freelancer grants a lasting license for the deliverables after the final invoice is settled.,0
+The freelancer must pay for all legal and regulatory compliance related to the work.,1
+All costs for meeting regulatory requirements are the responsibility of the freelancer.,1
+The freelancer is liable for any fees associated with deliverable legal compliance.,1
+The client pays for all international wire fees that are higher than standard rates.,0
+Any international bank transfer costs above the normal rate are covered by the client.,0
+The client is responsible for extra wire transfer fees for international payments.,0
+The freelancer is required to work for free during a one-month trial period.,1
+The first month of the engagement is a trial phase where the freelancer is not paid.,1
+Free labor is mandatory for the freelancer for the duration of a 30-day trial.,1
+The freelancer will respond to client messages within one business day during working hours.,0
+Response to client communication will be provided within 24 hours on business days.,0
+The freelancer agrees to a one-business-day turnaround for all client messages.,0
+The freelancer is obligated to finish every client request before the deadline.,0
+All tasks requested by the client must be completed by the agreed delivery date.,0
+The freelancer must ensure all work is finalized within the specified timeframe.,0
+The freelancer must work until the client personally decides the project is finished.,1
+Work continues until the client subjectively determines the project is complete.,1
+The freelancer is required to perform tasks until the client is satisfied and ends the project.,1
+The client can end the deal for any reason without any further duty to pay the freelancer.,1
+Termination by the client at any time removes all future payment obligations.,1
+The client may cancel for any reason and stop all payments to the freelancer immediately.,1
+The freelancer cannot work for any other company for two years after the contract ends.,1
+A two-year non-compete period applies to the freelancer after termination.,1
+The freelancer is barred from working in the industry for 24 months after leaving the client.,1
+Deadlines move back by one day for every day the client delays their feedback.,0
+Each day of client delay in providing feedback extends the project deadline by one day.,0
+The timeline is automatically adjusted for any days lost waiting for client responses.,0
