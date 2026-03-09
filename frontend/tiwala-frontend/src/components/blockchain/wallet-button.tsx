@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { useAccount, useDisconnect, useSignMessage } from "wagmi";
+import { usePathname, useRouter } from "next/navigation";
+import { useAccount, useSignMessage } from "wagmi";
 import {
   AUTH_UPDATED_EVENT,
   clearAuthSession,
@@ -12,7 +19,11 @@ import {
   saveAuthSession,
   syncProfileFromBackendUser,
   verifyWalletSignature,
+  type BackendUser,
 } from "@/lib/auth";
+
+let sharedSignInWallet: string | null = null;
+let sharedSignInPromise: Promise<boolean> | null = null;
 
 type WalletButtonProps = {
   label?: string;
@@ -27,11 +38,15 @@ export default function WalletButton({
   connectedClassName,
   wrongNetworkClassName,
 }: WalletButtonProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { address, chainId } = useAccount();
-  const { disconnect } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [autoAttemptedWallet, setAutoAttemptedWallet] = useState<string | null>(
+    null
+  );
 
   const authSnapshot = useSyncExternalStore(
     (onStoreChange) => {
@@ -71,38 +86,104 @@ export default function WalletButton({
   const defaultWrongNetworkClass =
     "inline-flex h-11 items-center justify-center rounded-xl border border-red-400/40 bg-red-500/10 px-5 text-sm font-semibold text-red-300 transition-all duration-200 hover:bg-red-500/20";
 
-  const handleWalletSignIn = async () => {
+  const redirectAfterAuth = useCallback(
+    (user: BackendUser) => {
+      const shouldRedirect =
+        pathname === "/" ||
+        pathname === "/unauthorized" ||
+        pathname === "/pending-approval" ||
+        pathname === "/onboarding";
+      if (!shouldRedirect) return;
+
+      if (!user.isApproved) {
+        router.replace("/pending-approval");
+        return;
+      }
+
+      if (user.role === "admin") {
+        router.replace("/admin");
+        return;
+      }
+
+      if (user.displayName) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      router.replace("/onboarding");
+    },
+    [pathname, router]
+  );
+
+  const handleWalletSignIn = useCallback(async (silent = false) => {
     if (!address) return;
-    setAuthError("");
-    setIsSigningIn(true);
-
-    try {
-      const challenge = await requestAuthNonce(address, chainId ?? 11155111);
-      const signature = await signMessageAsync({ message: challenge.message });
-      const result = await verifyWalletSignature({
-        walletAddress: address,
-        message: challenge.message,
-        signature,
-      });
-
-      saveAuthSession({
-        accessToken: result.accessToken,
-        walletAddress: result.user.walletAddress.toLowerCase(),
-        expiresAtUtc: result.expiresAtUtc,
-      });
-      syncProfileFromBackendUser(result.user);
-    } catch {
-      clearAuthSession();
-      setAuthError("Unable to sign in. Please try again.");
-    } finally {
-      setIsSigningIn(false);
+    const normalizedAddress = address.toLowerCase();
+    if (!silent) {
+      setAuthError("");
     }
-  };
 
-  const handleDisconnect = () => {
-    clearAuthSession();
-    disconnect();
-  };
+    if (
+      sharedSignInPromise &&
+      sharedSignInWallet &&
+      sharedSignInWallet === normalizedAddress
+    ) {
+      await sharedSignInPromise;
+      return;
+    }
+
+    sharedSignInWallet = normalizedAddress;
+    const signInAttempt = (async () => {
+      setIsSigningIn(true);
+      try {
+        const challenge = await requestAuthNonce(address, chainId ?? 11155111);
+        const signature = await signMessageAsync({ message: challenge.message });
+        const result = await verifyWalletSignature({
+          walletAddress: address,
+          message: challenge.message,
+          signature,
+        });
+
+        saveAuthSession({
+          accessToken: result.accessToken,
+          walletAddress: result.user.walletAddress.toLowerCase(),
+          expiresAtUtc: result.expiresAtUtc,
+        });
+        syncProfileFromBackendUser(result.user);
+        redirectAfterAuth(result.user);
+        return true;
+      } catch {
+        clearAuthSession();
+        if (!silent) {
+          setAuthError("Unable to sign in. Please try again.");
+        }
+        return false;
+      } finally {
+        setIsSigningIn(false);
+      }
+    })();
+
+    sharedSignInPromise = signInAttempt;
+    await signInAttempt;
+    if (sharedSignInWallet === normalizedAddress) {
+      sharedSignInWallet = null;
+      sharedSignInPromise = null;
+    }
+  }, [address, chainId, redirectAfterAuth, signMessageAsync]);
+
+  useEffect(() => {
+    if (!address) {
+      setAutoAttemptedWallet(null);
+      return;
+    }
+
+    const normalizedAddress = address.toLowerCase();
+    if (isAuthenticatedForWallet || autoAttemptedWallet === normalizedAddress) {
+      return;
+    }
+
+    setAutoAttemptedWallet(normalizedAddress);
+    void handleWalletSignIn(true);
+  }, [address, autoAttemptedWallet, handleWalletSignIn, isAuthenticatedForWallet]);
 
   return (
     <div className="flex flex-col items-end gap-2">
@@ -144,23 +225,14 @@ export default function WalletButton({
 
           if (!isAuthenticatedForWallet) {
             return (
-              <div className="flex items-center gap-2">
-                <button
-                  className={connectedClassName ?? defaultConnectedClass}
-                  disabled={isSigningIn}
-                  onClick={handleWalletSignIn}
-                  type="button"
-                >
-                  {isSigningIn ? "Signing In..." : "Sign In"}
-                </button>
-                <button
-                  className={buttonClassName ?? defaultButtonClass}
-                  onClick={handleDisconnect}
-                  type="button"
-                >
-                  Disconnect
-                </button>
-              </div>
+              <button
+                className={connectedClassName ?? defaultConnectedClass}
+                disabled={isSigningIn}
+                onClick={() => void handleWalletSignIn(false)}
+                type="button"
+              >
+                {isSigningIn ? "Signing..." : "Sign to continue"}
+              </button>
             );
           }
 

@@ -5,11 +5,17 @@ import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { CheckCircle2, UserRound, Wallet } from "lucide-react";
 import {
+  clearStoredProfile,
   getStoredProfile,
   saveStoredProfile,
   type UserRole,
 } from "@/lib/profile";
-import { getStoredAuthSession, updateCurrentUserProfile } from "@/lib/auth";
+import {
+  fetchCurrentUser,
+  getStoredAuthSession,
+  syncProfileFromBackendUser,
+  updateCurrentUserProfile,
+} from "@/lib/auth";
 
 const roleOptions: Array<{ label: string; value: UserRole }> = [
   { label: "Freelancer", value: "freelancer" },
@@ -29,11 +35,51 @@ export default function OnboardingForm() {
   useEffect(() => {
     if (!isConnected || !address) return;
 
-    const existing = getStoredProfile();
-    if (existing?.wallet?.toLowerCase() === address.toLowerCase()) {
-      router.replace("/dashboard");
+    const authSession = getStoredAuthSession();
+    if (
+      !authSession ||
+      authSession.walletAddress.toLowerCase() !== address.toLowerCase()
+    ) {
       return;
     }
+
+    let active = true;
+    fetchCurrentUser(authSession.accessToken)
+      .then((user) => {
+        if (!active) return;
+        if (user.walletAddress.toLowerCase() !== address.toLowerCase()) {
+          return;
+        }
+
+        if (!user.isApproved) {
+          router.replace("/pending-approval");
+          return;
+        }
+
+        if (user.role === "admin") {
+          syncProfileFromBackendUser(user);
+          router.replace("/admin");
+          return;
+        }
+
+        if (user.displayName) {
+          syncProfileFromBackendUser(user);
+          router.replace(user.role === "admin" ? "/admin" : "/dashboard");
+          return;
+        }
+
+        const existing = getStoredProfile();
+        if (existing?.wallet?.toLowerCase() === address.toLowerCase()) {
+          clearStoredProfile();
+        }
+      })
+      .catch(() => {
+        // keep user on onboarding when auth check fails
+      });
+
+    return () => {
+      active = false;
+    };
   }, [address, isConnected, router]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {

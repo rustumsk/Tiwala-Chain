@@ -12,6 +12,20 @@ import {
   HeadingLevel,
   AlignmentType,
 } from "docx";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ClipboardCopy,
+  Download,
+  FileText,
+  Loader2,
+  Plus,
+  Search,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useAppTheme } from "@/components/layout/theme-context";
 import { getStoredProfile } from "@/lib/profile";
 
 type EvaluatedClause = {
@@ -609,63 +623,105 @@ export default function CreateContractPage() {
     setCopiedHash(true);
   };
 
+  const { theme } = useAppTheme();
+  const isDarkTheme = theme === "dark";
+
+  const panelClass = isDarkTheme
+    ? "border border-white/12 bg-black/32"
+    : "border border-[#e6e8f1] bg-white";
+  const subtlePanelClass = isDarkTheme
+    ? "border border-white/12 bg-white/[0.03]"
+    : "border border-[#eaecf4] bg-[#fafbff]";
+  const mutedTextClass = isDarkTheme ? "text-white/62" : "text-[#5c6172]";
+  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#73788b]";
+  const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
+  const chipClass = isDarkTheme
+    ? "border border-white/14 bg-white/[0.04] text-white/82"
+    : "border border-[#e1e4f0] bg-white text-[#2a3040]";
+  const actionChipClass = isDarkTheme
+    ? "border border-violet-300/30 bg-violet-500/14 text-violet-100"
+    : "border border-violet-200 bg-violet-50 text-violet-700";
+
+  const inputClass = isDarkTheme
+    ? "h-11 w-full rounded-xl border border-white/10 bg-black/40 px-4 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-violet-400/50 focus:bg-black/50"
+    : "h-11 w-full rounded-xl border border-[#dce0ec] bg-[#f8f9fc] px-4 text-sm text-[#1a1f30] outline-none transition placeholder:text-[#a0a6b8] focus:border-violet-400 focus:bg-white";
+  const textareaClass = isDarkTheme
+    ? "w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/35 focus:border-violet-400/50 focus:bg-black/50"
+    : "w-full rounded-xl border border-[#dce0ec] bg-[#f8f9fc] px-4 py-3 text-sm text-[#1a1f30] outline-none transition placeholder:text-[#a0a6b8] focus:border-violet-400 focus:bg-white";
+  const labelClass = isDarkTheme
+    ? "mb-2 block text-xs font-medium text-white/70"
+    : "mb-2 block text-xs font-medium text-[#4a506a]";
+
   if (!canUseContractBuilder) {
     return (
-      <div className="themed-app-page text-slate-100 contract-builder-page">
-        <section className="mx-auto w-full max-w-4xl space-y-6">
-          <article className="workspace-panel p-8">
-            <h1 className="text-2xl font-semibold">Employer Access Required</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Contract Builder is only available for Employer or Both roles.
+      <div className={isDarkTheme ? "text-white" : "text-[#141621]"}>
+        <section className={`mx-auto w-full max-w-[1580px] space-y-5`}>
+          <section className={`${panelClass} px-6 py-6 lg:px-8 lg:py-7`}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+              Contract Builder
+            </p>
+            <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
+              Employer Access Required
+            </h1>
+            <p className={`mt-2 max-w-xl text-sm leading-6 ${mutedTextClass}`}>
+              The Contract Builder is only available for users with an Employer or Both role.
             </p>
             <Link
               href="/settings/profile"
-              className="mt-5 inline-flex h-10 items-center rounded-full border border-violet-300/20 bg-violet-500/10 px-4 text-sm text-violet-100 transition hover:border-violet-300/40"
+              className={`${actionChipClass} mt-5 inline-flex items-center gap-2 px-4 py-2 text-sm transition hover:border-violet-300/50 hover:bg-violet-500/20`}
             >
               Update Profile Settings
             </Link>
-          </article>
+          </section>
         </section>
       </div>
     );
   }
 
   return (
-    <div className="themed-app-page text-slate-100 contract-builder-page">
-      <section className="mx-auto w-full max-w-[1080px] space-y-5">
-        <article className="workspace-panel space-y-5 p-8">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Contract Builder</h1>
-            <p className="mt-2 text-sm text-slate-300">
-              Draft a clean agreement, validate fairness, then export a professional contract file for your escrow job.
-            </p>
+    <div className={isDarkTheme ? "text-white" : "text-[#141621]"}>
+      <section className="mx-auto w-full max-w-[1580px] space-y-5">
+        <section className={`${panelClass} px-6 py-6 lg:px-8 lg:py-7`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+                Contract Builder
+              </p>
+              <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
+                Draft your agreement
+              </h1>
+              <p className={`mt-2 max-w-3xl text-sm leading-6 ${mutedTextClass}`}>
+                Compose terms, run AI fairness checks, then export a professional contract file for your escrow job.
+              </p>
+            </div>
           </div>
-          <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.02] p-2 md:grid-cols-3">
+
+          <div className="mt-5 grid gap-2 sm:grid-cols-3">
             {stepRail.map((item) => (
-              <div
-                className="rounded-lg border border-white/10 bg-black/20 px-3 py-3"
-                key={item.step}
-              >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-200/90">
-                  Step {item.step}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-slate-100">{item.title}</p>
-                <p className="mt-1 text-xs text-slate-400">{item.subtitle}</p>
+              <div className={`${subtlePanelClass} rounded-xl px-4 py-3`} key={item.step}>
+                <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Step {item.step}</p>
+                <p className={`mt-2 text-lg font-semibold ${titleClass}`}>{item.title}</p>
+                <p className={`mt-1 text-xs ${mutedTextClass}`}>{item.subtitle}</p>
               </div>
             ))}
           </div>
-        </article>
+        </section>
 
-        <article className="workspace-panel p-8">
-          <h2 className="text-lg font-semibold">Step 1 — Fill Contract Form</h2>
-          <p className="mt-2 text-xs text-slate-400">
-            Date inputs are currently native date fields to keep dependencies minimal.
-          </p>
+        <section className={`${panelClass} p-6 lg:p-7`}>
+          <div>
+            <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Contract Details</p>
+            <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+              Parties, dates, and scope
+            </h2>
+          </div>
 
           {formErrors.length > 0 ? (
-            <div className="mt-4 rounded-xl border border-red-400/30 bg-red-500/10 p-4">
-              <p className="text-sm font-semibold text-red-200">Please fix the following:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-100">
+            <div className={`mt-5 rounded-xl border p-4 ${isDarkTheme ? "border-red-300/25 bg-red-500/10" : "border-red-200 bg-red-50"}`}>
+              <p className={`flex items-center gap-2 text-sm font-semibold ${isDarkTheme ? "text-red-200" : "text-red-700"}`}>
+                <AlertTriangle size={15} />
+                Please fix the following
+              </p>
+              <ul className={`mt-2 list-disc space-y-1 pl-5 text-sm ${isDarkTheme ? "text-red-100/80" : "text-red-600"}`}>
                 {formErrors.map((error) => (
                   <li key={error}>{error}</li>
                 ))}
@@ -673,346 +729,349 @@ export default function CreateContractPage() {
             </div>
           ) : null}
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Job Title</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                onChange={(event) => setJobTitle(event.target.value)}
-                value={jobTitle}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Employer Name or Company</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                onChange={(event) => setEmployerName(event.target.value)}
-                value={employerName}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Freelancer Name</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                onChange={(event) => setFreelancerName(event.target.value)}
-                value={freelancerName}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Freelancer Wallet Address</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 font-mono outline-none focus:border-violet-300"
-                onChange={(event) => setFreelancerWallet(event.target.value)}
-                placeholder="0x..."
-                value={freelancerWallet}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Start Date</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                onChange={(event) => setStartDate(event.target.value)}
-                type="date"
-                value={startDate}
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">End Date</label>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                onChange={(event) => setEndDate(event.target.value)}
-                type="date"
-                value={endDate}
-              />
-            </div>
+        <div className="mt-6 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Job Title</label>
+            <input className={inputClass} onChange={(e) => setJobTitle(e.target.value)} value={jobTitle} />
+          </div>
+          <div>
+            <label className={labelClass}>Employer Name / Company</label>
+            <input className={inputClass} onChange={(e) => setEmployerName(e.target.value)} value={employerName} />
+          </div>
+          <div>
+            <label className={labelClass}>Freelancer Name</label>
+            <input className={inputClass} onChange={(e) => setFreelancerName(e.target.value)} value={freelancerName} />
+          </div>
+          <div>
+            <label className={labelClass}>Freelancer Wallet</label>
+            <input className={`${inputClass} font-mono`} onChange={(e) => setFreelancerWallet(e.target.value)} placeholder="0x..." value={freelancerWallet} />
+          </div>
+          <div>
+            <label className={labelClass}>Start Date</label>
+            <input className={inputClass} onChange={(e) => setStartDate(e.target.value)} type="date" value={startDate} />
+          </div>
+          <div>
+            <label className={labelClass}>End Date</label>
+            <input className={inputClass} onChange={(e) => setEndDate(e.target.value)} type="date" value={endDate} />
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <label className={labelClass}>Project Description</label>
+          <textarea className={`${textareaClass} min-h-28`} onChange={(e) => setProjectDescription(e.target.value)} value={projectDescription} />
+        </div>
+
+        <div className={`mt-5 ${subtlePanelClass} rounded-xl p-4`}>
+          <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Confidentiality Clause</p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                confidentialityEnabled
+                  ? isDarkTheme ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200" : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : isDarkTheme ? "border-white/10 text-white/40" : "border-[#dce0ec] text-[#8b90a6]"
+              }`}
+              onClick={() => setConfidentialityEnabled(true)}
+              type="button"
+            >
+              Included
+            </button>
+            <button
+              className={`rounded-lg border px-3 py-1.5 text-sm transition ${
+                !confidentialityEnabled
+                  ? isDarkTheme ? "border-white/15 bg-white/[0.06] text-white/70" : "border-[#c8ccdb] bg-white text-[#3d4460]"
+                  : isDarkTheme ? "border-white/10 text-white/40" : "border-[#dce0ec] text-[#8b90a6]"
+              }`}
+              onClick={() => setConfidentialityEnabled(false)}
+              type="button"
+            >
+              Excluded
+            </button>
+          </div>
+          {confidentialityEnabled ? (
+            <p className={`mt-3 rounded-lg border border-white/10 bg-black/30 p-3 text-sm leading-relaxed ${mutedTextClass}`}>
+              {STANDARD_CONFIDENTIALITY}
+            </p>
+          ) : null}
+        </div>
+        </section>
+
+        <section className={`${panelClass} p-6 lg:p-7`}>
+          <div>
+            <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Compensation & Deliverables</p>
+            <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+              Payment, milestones, and outputs
+            </h2>
           </div>
 
-          <div className="mt-4">
-            <label className="mb-2 block text-sm text-slate-200">Project Description</label>
-            <textarea
-              className="min-h-28 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 outline-none focus:border-violet-300"
-              onChange={(event) => setProjectDescription(event.target.value)}
-              value={projectDescription}
-            />
+        <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+          <div>
+            <label className={labelClass}>Total Amount (USDT)</label>
+            <input className={inputClass} min="0" onChange={(e) => setTotalAmountUsdt(e.target.value)} step="0.01" type="number" value={totalAmountUsdt} />
           </div>
-
-          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-            <p className="text-sm font-medium text-slate-200">Confidentiality Clause</p>
-            <div className="mt-3 flex items-center gap-2">
-              <button
-                className={`rounded-lg border px-3 py-1.5 text-sm ${
-                  confidentialityEnabled
-                    ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
-                    : "border-slate-700 text-slate-300"
-                }`}
-                onClick={() => setConfidentialityEnabled(true)}
-                type="button"
-              >
-                Yes
-              </button>
-              <button
-                className={`rounded-lg border px-3 py-1.5 text-sm ${
-                  !confidentialityEnabled
-                    ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
-                    : "border-slate-700 text-slate-300"
-                }`}
-                onClick={() => setConfidentialityEnabled(false)}
-                type="button"
-              >
-                No
-              </button>
-            </div>
-            {confidentialityEnabled ? (
-              <p className="mt-3 rounded-lg border border-slate-700 bg-slate-900/70 p-3 text-sm text-slate-300">
-                {STANDARD_CONFIDENTIALITY}
-              </p>
-            ) : null}
+          <div>
+            <label className={labelClass}>Revision Rounds</label>
+            <input className={inputClass} min="0" onChange={(e) => setRevisionRounds(e.target.value)} type="number" value={revisionRounds} />
           </div>
+        </div>
 
-          <div className="mt-5 space-y-4 rounded-xl border border-violet-400/20 bg-violet-500/5 p-4">
-            <h3 className="font-semibold text-violet-100">Compensation and Deliverables</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm text-slate-200">Total Amount in USDT</label>
-                <input
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                  min="0"
-                  onChange={(event) => setTotalAmountUsdt(event.target.value)}
-                  step="0.01"
-                  type="number"
-                  value={totalAmountUsdt}
-                />
-              </div>
-              <div>
-                <label className="mb-2 block text-sm text-slate-200">Number of Revision Rounds</label>
-                <input
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900/70 px-4 outline-none focus:border-violet-300"
-                  min="0"
-                  onChange={(event) => setRevisionRounds(event.target.value)}
-                  type="number"
-                  value={revisionRounds}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm text-slate-200">Payment Terms</label>
-              <p className="rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
-                100% on completion
-              </p>
-            </div>
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm text-slate-200">Deliverables</label>
+        <div className="mt-4">
+          <label className={labelClass}>Payment Terms</label>
+          <p className={`${actionChipClass} inline-block rounded-xl px-4 py-2.5 text-sm`}>
+            100% on completion
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between">
+            <label className={labelClass + " mb-0"}>Deliverables</label>
+            <button
+              className={`${chipClass} inline-flex items-center gap-2 px-3 py-2 text-sm transition hover:border-violet-300/50 hover:bg-violet-500/10`}
+              onClick={() => setDeliverables((prev) => [...prev, ""])}
+              type="button"
+            >
+              <Plus size={14} />
+              Add Deliverable
+            </button>
+          </div>
+          <div className="space-y-2">
+            {deliverables.map((item, index) => (
+              <div className="flex items-start gap-2" key={`deliverable-${index}`}>
+                <span className={`mt-3 min-w-8 text-sm ${tinyLabelClass}`}>{index + 1}.</span>
+                <textarea className={`${textareaClass} min-h-[72px] flex-1`} onChange={(e) => updateArrayValue(setDeliverables, index, e.target.value)} value={item} />
                 <button
-                  className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-200"
-                  onClick={() => setDeliverables((prev) => [...prev, ""])}
+                  className={`mt-2 inline-flex size-8 items-center justify-center rounded-lg text-white/30 transition hover:bg-red-500/10 hover:text-red-300 ${!isDarkTheme ? "text-[#b0b4c4] hover:bg-red-50 hover:text-red-600" : ""}`}
+                  onClick={() => removeArrayValue(setDeliverables, index)}
                   type="button"
                 >
-                  Add Deliverable
+                  <Trash2 size={14} />
                 </button>
               </div>
-              <div className="space-y-2">
-                {deliverables.map((item, index) => (
-                  <div className="flex items-start gap-2" key={`deliverable-${index}`}>
-                    <span className="mt-3 min-w-8 text-sm text-slate-400">{index + 1}.</span>
-                    <textarea
-                      className="min-h-20 flex-1 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 outline-none focus:border-violet-300"
-                      onChange={(event) =>
-                        updateArrayValue(setDeliverables, index, event.target.value)
-                      }
-                      value={item}
-                    />
-                    <button
-                      className="mt-2 rounded-lg border border-red-400/30 px-3 py-1 text-xs text-red-200"
-                      onClick={() => removeArrayValue(setDeliverables, index)}
-                      type="button"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+            ))}
+          </div>
+        </div>
+        </section>
+
+        <section className={`${panelClass} p-6 lg:p-7`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Custom Clauses</p>
+              <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+                Additional terms
+              </h2>
+            </div>
+            <button
+              className={`${chipClass} inline-flex items-center gap-2 px-3 py-2 text-sm transition hover:border-violet-300/50 hover:bg-violet-500/10`}
+              onClick={() => setCustomClauses((prev) => [...prev, ""])}
+              type="button"
+            >
+              <Plus size={14} />
+              Add Clause
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-2">
+            {customClauses.map((clause, index) => (
+              <div className="flex items-start gap-2" key={`custom-clause-${index}`}>
+                <span className={`mt-3 min-w-8 text-sm ${tinyLabelClass}`}>{index + 1}.</span>
+                <textarea className={`${textareaClass} min-h-[80px] flex-1`} onChange={(e) => updateArrayValue(setCustomClauses, index, e.target.value)} value={clause} />
+                <button
+                  className={`mt-2 inline-flex size-8 items-center justify-center rounded-lg text-white/30 transition hover:bg-red-500/10 hover:text-red-300 ${!isDarkTheme ? "text-[#b0b4c4] hover:bg-red-50 hover:text-red-600" : ""}`}
+                  onClick={() => removeArrayValue(setCustomClauses, index)}
+                  type="button"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={`${panelClass} p-6 lg:p-7`}>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>AI Fairness Review</p>
+              <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+                Evaluate clauses for fairness
+              </h2>
             </div>
+            <span className={`${actionChipClass} inline-flex size-10 shrink-0 items-center justify-center`}>
+              <Search size={17} />
+            </span>
           </div>
 
-          <div className="mt-5">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="font-semibold text-slate-100">Dynamic Clauses</h3>
-              <button
-                className="rounded-lg border border-violet-400/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-200"
-                onClick={() => setCustomClauses((prev) => [...prev, ""])}
-                type="button"
-              >
-                Add Clause
-              </button>
-            </div>
-            <div className="space-y-3">
-              {customClauses.map((clause, index) => (
-                <div className="flex items-start gap-2" key={`custom-clause-${index}`}>
-                  <span className="mt-3 min-w-8 text-sm text-slate-400">{index + 1}.</span>
-                  <textarea
-                    className="min-h-24 flex-1 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 outline-none focus:border-violet-300"
-                    onChange={(event) => updateArrayValue(setCustomClauses, index, event.target.value)}
-                    value={clause}
-                  />
-                  <button
-                    className="mt-2 rounded-lg border border-red-400/30 px-3 py-1 text-xs text-red-200"
-                    onClick={() => removeArrayValue(setCustomClauses, index)}
-                    type="button"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </article>
+          <p className={`mt-3 text-sm leading-6 ${mutedTextClass}`}>
+            Run an AI check on your contract to flag potentially unfair clauses and get suggested improvements.
+          </p>
 
-        <article className="workspace-panel p-8">
-          <h2 className="text-lg font-semibold">Step 2 — AI Fairness Evaluation</h2>
           <button
-            className="mt-4 inline-flex h-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-500/10 px-5 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className={`mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${actionChipClass} hover:border-violet-300/50 hover:bg-violet-500/20`}
             disabled={isEvaluating}
             onClick={evaluateFairness}
             type="button"
           >
             {isEvaluating ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="size-4 animate-spin rounded-full border-2 border-violet-300 border-t-transparent" />
+              <>
+                <Loader2 size={15} className="animate-spin" />
                 Evaluating...
-              </span>
+              </>
             ) : (
-              "Evaluate Contract Fairness"
+              <>
+                <Search size={15} />
+                Evaluate Contract Fairness
+              </>
             )}
           </button>
 
           {evaluationError ? (
-            <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
-              {evaluationError}
-            </p>
+            <div className={`mt-4 flex items-start gap-2.5 rounded-xl border p-4 ${isDarkTheme ? "border-red-300/25 bg-red-500/10" : "border-red-200 bg-red-50"}`}>
+              <X size={15} className={`mt-0.5 shrink-0 ${isDarkTheme ? "text-red-400" : "text-red-500"}`} />
+              <p className={`text-sm ${isDarkTheme ? "text-red-200/80" : "text-red-600"}`}>{evaluationError}</p>
+            </div>
           ) : null}
 
           {fairnessScore !== null ? (
-            <div className="mt-5 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-              <p className="text-sm font-semibold text-slate-100">
-                Overall Fairness Score: {fairnessScore.toFixed(1)}%
-              </p>
-              <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className={`h-full ${renderProgressColor()}`}
-                  style={{ width: `${Math.max(0, Math.min(100, fairnessScore))}%` }}
-                />
+            <div className={`${subtlePanelClass} mt-5 rounded-xl p-5`}>
+              <div className="flex items-center justify-between">
+                <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Overall Fairness Score</p>
+                <span className={`text-2xl font-semibold tabular-nums ${
+                  fairnessScore > 70
+                    ? isDarkTheme ? "text-emerald-400" : "text-emerald-600"
+                    : fairnessScore >= 50
+                      ? isDarkTheme ? "text-amber-400" : "text-amber-600"
+                      : isDarkTheme ? "text-red-400" : "text-red-600"
+                }`}>
+                  {fairnessScore.toFixed(1)}%
+                </span>
+              </div>
+              <div className={`mt-2 h-2 overflow-hidden rounded-full ${isDarkTheme ? "bg-white/10" : "bg-[#e4e7f1]"}`}>
+                <div className={`h-full rounded-full transition-all duration-500 ${renderProgressColor()}`} style={{ width: `${Math.max(0, Math.min(100, fairnessScore))}%` }} />
               </div>
             </div>
           ) : null}
 
           {hasUnfairClause ? (
-            <div className="mt-4 rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">
-              Warning: One or more clauses were flagged as potentially unfair.
+            <div className={`mt-4 rounded-xl border px-4 py-3 ${isDarkTheme ? "border-amber-300/25 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+              One or more clauses were flagged as potentially unfair. Review the suggestions below.
             </div>
           ) : null}
 
-          <div className="mt-5 space-y-3">
-            {evaluatedClauses.map((item) => (
-              <div
-                className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"
-                key={item.id}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-slate-100">{item.clauseNumber}.</p>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
+          {evaluatedClauses.length > 0 ? (
+            <div className={`${subtlePanelClass} mt-5 divide-y rounded-xl ${isDarkTheme ? "divide-white/10" : "divide-[#eceef5]"}`}>
+              {evaluatedClauses.map((item) => (
+                <div className="px-4 py-4 first:pt-4 last:pb-4" key={item.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Clause {item.clauseNumber}</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                         item.isFair
-                          ? "border border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                          : "border border-red-400/40 bg-red-500/10 text-red-200"
-                      }`}
-                    >
-                      {item.isFair ? "Fair" : "Unfair"}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Confidence: {item.confidence !== null ? `${item.confidence.toFixed(1)}%` : "N/A"}
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-2 whitespace-pre-line text-sm text-slate-300">{item.text}</p>
-
-                {!item.isFair && item.suggestion && !item.dismissed ? (
-                  <div className="mt-3 rounded-lg border border-violet-400/40 bg-violet-500/10 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-violet-200">
-                      Suggested safer wording
-                    </p>
-                    <p className="mt-1 whitespace-pre-line text-sm text-violet-100">{item.suggestion}</p>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <button
-                        className={`rounded-lg border px-3 py-1.5 text-xs ${
-                          item.applied
-                            ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
-                            : "border-violet-400/40 bg-violet-500/10 text-violet-100"
-                        }`}
-                        onClick={() => applySuggestion(item)}
-                        type="button"
-                      >
-                        {item.applied ? "Suggestion Applied ✓" : "Apply Suggestion"}
-                      </button>
-                      <button
-                        className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-300"
-                        onClick={() => keepOriginal(item.id)}
-                        type="button"
-                      >
-                        Keep Original
-                      </button>
+                          ? isDarkTheme ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-700"
+                          : isDarkTheme ? "border-red-400/40 bg-red-500/10 text-red-200" : "border-red-200 bg-red-50 text-red-700"
+                      }`}>
+                        {item.isFair ? <CheckCircle2 size={11} /> : <AlertTriangle size={11} />}
+                        {item.isFair ? "Fair" : "Unfair"}
+                      </span>
+                      {item.confidence !== null ? (
+                        <span className={`text-[11px] ${mutedTextClass}`}>{item.confidence.toFixed(0)}% confidence</span>
+                      ) : null}
                     </div>
                   </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </article>
+                  <p className={`mt-2 whitespace-pre-line text-sm leading-relaxed ${mutedTextClass}`}>{item.text}</p>
 
-        <article className="workspace-panel p-8">
-          <h2 className="text-lg font-semibold">Step 3 — Download Contract</h2>
-          <div className="mt-4 flex flex-wrap gap-3">
+                  {!item.isFair && item.suggestion && !item.dismissed ? (
+                    <div className={`mt-3 rounded-lg border p-3 ${isDarkTheme ? "border-violet-400/20 bg-violet-500/8" : "border-violet-200 bg-violet-50"}`}>
+                      <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Suggested safer wording</p>
+                      <p className={`mt-1.5 whitespace-pre-line text-sm leading-relaxed ${isDarkTheme ? "text-violet-100/80" : "text-violet-800"}`}>{item.suggestion}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                            item.applied ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-violet-400/25 bg-violet-500/10 text-violet-200"
+                          }`}
+                          onClick={() => applySuggestion(item)}
+                          type="button"
+                        >
+                          {item.applied ? <><CheckCircle2 size={12} /> Applied</> : "Apply Suggestion"}
+                        </button>
+                        <button
+                          className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${isDarkTheme ? "border-white/10 text-white/40 hover:text-white/60" : "border-[#dce0ec] text-[#8b90a6] hover:text-[#4a506a]"}`}
+                          onClick={() => keepOriginal(item.id)}
+                          type="button"
+                        >
+                          Keep Original
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+
+        <section className={`${panelClass} p-6 lg:p-7`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Export Contract</p>
+              <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+                Download signature-ready file
+              </h2>
+            </div>
+            <span className={`${chipClass} inline-flex size-10 shrink-0 items-center justify-center`}>
+              <Download size={16} />
+            </span>
+          </div>
+
+          <p className={`mt-3 text-sm leading-6 ${mutedTextClass}`}>
+            Generate a PDF or DOCX with your contract terms. Save the SHA-256 hash for job creation.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
             <button
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-400/10 px-5 text-sm font-semibold text-violet-300 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`${actionChipClass} inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition hover:border-violet-300/50 hover:bg-violet-500/20 disabled:cursor-not-allowed disabled:opacity-50`}
               disabled={isExportingPdf}
               onClick={exportPdf}
               type="button"
             >
-              {isExportingPdf ? "Generating PDF..." : "Download as PDF"}
+              {isExportingPdf ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+              {isExportingPdf ? "Generating..." : "Download PDF"}
             </button>
             <button
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-violet-400/30 bg-violet-400/10 px-5 text-sm font-semibold text-violet-300 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+              className={`${chipClass} inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition hover:border-violet-300/50 hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50`}
               disabled={isExportingDocx}
               onClick={exportDocx}
               type="button"
             >
-              {isExportingDocx ? "Generating DOCX..." : "Download as DOCX"}
+              {isExportingDocx ? <Loader2 size={15} className="animate-spin" /> : <FileText size={15} />}
+              {isExportingDocx ? "Generating..." : "Download DOCX"}
             </button>
           </div>
 
           {lastFileHash ? (
-            <div className="mt-5 rounded-xl border border-slate-700 bg-slate-900/60 p-4">
-              <p className="text-sm font-semibold text-slate-100">SHA-256 File Hash</p>
-              <p className="mt-2 break-all rounded-lg border border-slate-700 bg-slate-950/80 p-3 font-mono text-xs text-slate-200">
+            <div className={`${subtlePanelClass} mt-5 rounded-xl p-5`}>
+              <div className="flex items-center gap-2">
+                <span className={`${chipClass} inline-flex size-9 items-center justify-center`}>
+                  <ShieldCheck size={15} />
+                </span>
+                <p className={`text-sm font-semibold ${titleClass}`}>SHA-256 File Hash</p>
+              </div>
+              <p className={`mt-3 break-all rounded-lg border p-3 font-mono text-xs leading-relaxed ${isDarkTheme ? "border-white/10 bg-black/40 text-white/70" : "border-[#e4e7f1] bg-[#f3f5fa] text-[#3d4460]"}`}>
                 {lastFileHash}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <button
-                  className="rounded-lg border border-slate-600 px-3 py-1.5 text-xs text-slate-200"
+                  className={`${chipClass} inline-flex items-center gap-2 px-3 py-2 text-sm transition hover:border-violet-300/50 hover:bg-violet-500/10`}
                   onClick={copyHash}
                   type="button"
                 >
-                  {copiedHash ? "Copied ✓" : "Copy Hash"}
+                  <ClipboardCopy size={14} />
+                  {copiedHash ? "Copied" : "Copy Hash"}
                 </button>
-                <p className="text-xs text-amber-200">
+                <p className={`text-xs ${isDarkTheme ? "text-amber-200/80" : "text-amber-700"}`}>
                   Save this hash — you will need it when creating a job on TiwalaChain.
                 </p>
               </div>
             </div>
           ) : null}
-        </article>
+        </section>
       </section>
     </div>
   );

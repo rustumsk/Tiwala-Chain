@@ -12,6 +12,7 @@ export type BackendUser = {
   walletAddress: string;
   displayName: string | null;
   role: UserRole;
+  isApproved: boolean;
   createdAt: string;
 };
 
@@ -145,11 +146,63 @@ export async function updateCurrentUserProfile(
 }
 
 export function syncProfileFromBackendUser(user: BackendUser) {
-  if (!user.displayName) return;
+  const displayName =
+    user.displayName ?? (user.role === "admin" ? "Admin" : null);
+  if (!displayName) return;
   saveStoredProfile({
     wallet: user.walletAddress.toLowerCase(),
-    displayName: user.displayName,
+    displayName,
     role: user.role,
     updatedAt: new Date().toISOString(),
   } satisfies LocalUserProfile);
+}
+
+export async function adminListUsers(accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/admin/users`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as BackendUser[];
+}
+
+export async function adminDeleteUser(accessToken: string, userId: number) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/admin/users/${userId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) throw new Error(await response.text());
+}
+
+export async function adminApproveUser(
+  accessToken: string,
+  userId: number,
+  approved: boolean
+) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/admin/users/${userId}/approve`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ approved }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as BackendUser;
+}
+
+export async function adminUpdateUserRole(
+  accessToken: string,
+  userId: number,
+  role: string
+) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/admin/users/${userId}/role`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ role }),
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as BackendUser;
 }

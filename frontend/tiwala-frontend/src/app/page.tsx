@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Shield,
@@ -12,6 +13,7 @@ import {
   Users,
   ChevronRight,
 } from "lucide-react";
+import AppIcon from "@/resource/icon.png";
 import WalletRouteGate from "@/components/blockchain/wallet-route-gate";
 import WalletButton from "@/components/blockchain/wallet-button";
 
@@ -378,7 +380,11 @@ export default function Home() {
               className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 transition-colors duration-200 hover:text-white"
             >
               <span className="inline-flex size-6 items-center justify-center rounded-md bg-violet-500/20 text-violet-300">
-                <ChevronRight size={12} strokeWidth={3} />
+                <Image
+                  src={AppIcon}
+                  alt="TiwalaChain icon"
+                  className="h-4 w-4"
+                />
               </span>
               TiwalaChain
             </Link>

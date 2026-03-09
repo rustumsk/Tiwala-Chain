@@ -101,6 +101,20 @@ export const tiwalaEscrowAbi = [
       },
     ],
   },
+  {
+    type: "function",
+    name: "jobCounter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "moderator",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
 ] as const;
 
 export type EscrowJobStatus =

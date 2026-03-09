@@ -1,11 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { useAccount } from "wagmi";
+import { clearStoredProfile } from "@/lib/profile";
 import {
+  AUTH_UPDATED_EVENT,
   clearAuthSession,
   fetchCurrentUser,
+  getAuthStorageRaw,
   getStoredAuthSession,
   syncProfileFromBackendUser,
 } from "@/lib/auth";
@@ -13,11 +16,28 @@ import {
 export default function WalletRouteGate() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const authSnapshot = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => undefined;
+      window.addEventListener(AUTH_UPDATED_EVENT, onStoreChange);
+      window.addEventListener("storage", onStoreChange);
+      return () => {
+        window.removeEventListener(AUTH_UPDATED_EVENT, onStoreChange);
+        window.removeEventListener("storage", onStoreChange);
+      };
+    },
+    getAuthStorageRaw,
+    () => null
+  );
+
+  const session = useMemo(() => {
+    if (!authSnapshot) return null;
+    return getStoredAuthSession();
+  }, [authSnapshot]);
 
   useEffect(() => {
     if (!isConnected || !address) return;
 
-    const session = getStoredAuthSession();
     if (
       !session ||
       session.walletAddress.toLowerCase() !== address.toLowerCase()
@@ -35,12 +55,24 @@ export default function WalletRouteGate() {
           return;
         }
 
-        if (user.displayName) {
-          syncProfileFromBackendUser(user);
-          router.replace("/dashboard");
+        if (!user.isApproved) {
+          router.replace("/pending-approval");
           return;
         }
 
+        if (user.role === "admin") {
+          syncProfileFromBackendUser(user);
+          router.replace("/admin");
+          return;
+        }
+
+        if (user.displayName) {
+          syncProfileFromBackendUser(user);
+          router.replace(user.role === "admin" ? "/admin" : "/dashboard");
+          return;
+        }
+
+        clearStoredProfile();
         router.replace("/onboarding");
       })
       .catch(() => {
@@ -51,7 +83,7 @@ export default function WalletRouteGate() {
     return () => {
       active = false;
     };
-  }, [address, isConnected, router]);
+  }, [address, isConnected, router, session]);
 
   return null;
 }

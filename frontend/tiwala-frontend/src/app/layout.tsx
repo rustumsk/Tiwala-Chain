@@ -14,6 +14,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TiwalaChain",
   description: "Blockchain-native freelancing with escrow trust.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({

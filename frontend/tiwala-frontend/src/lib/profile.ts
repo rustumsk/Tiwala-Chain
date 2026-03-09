@@ -1,4 +1,4 @@
-export type UserRole = "freelancer" | "employer" | "both";
+export type UserRole = "freelancer" | "employer" | "both" | "admin";
 
 export type LocalUserProfile = {
   wallet: string;
@@ -26,5 +26,11 @@ export function getStoredProfile(): LocalUserProfile | null {
 export function saveStoredProfile(profile: LocalUserProfile) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile));
+  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+}
+
+export function clearStoredProfile() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(PROFILE_STORAGE_KEY);
   window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 }

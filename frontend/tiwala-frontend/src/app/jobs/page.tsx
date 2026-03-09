@@ -30,51 +30,60 @@ export default function JobsPage() {
     walletAddress: address,
     enabled: Boolean(isConnected && address && showFreelancerList),
   });
+
   const isDarkTheme = theme === "dark";
+  const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
+  const panelClass = isDarkTheme
+    ? "border border-white/12 bg-black/32"
+    : "border border-[#e6e8f1] bg-white";
+  const mutedTextClass = isDarkTheme ? "text-white/62" : "text-[#5c6172]";
+  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#73788b]";
+  const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
+  const tableBorderClass = isDarkTheme ? "border-b border-white/10" : "border-b border-[#eceef5]";
 
   return (
-    <div className="themed-app-page text-slate-100">
-      <section className="mx-auto w-full max-w-6xl space-y-6">
-        <article
-          className={`p-8 ${
-            isDarkTheme
-              ? "border border-white/12 bg-black/28"
-              : "border border-[#e4e8f2] bg-white shadow-[0_10px_30px_rgba(40,50,90,0.07)]"
-          }`}
-        >
-          <h1 className="text-2xl font-semibold text-slate-100">Job Workspace</h1>
-          <p className="mt-2 text-sm text-slate-300">
+    <div className={pageClass}>
+      <section className="mx-auto w-full max-w-[1580px] space-y-5">
+        <article className={`${panelClass} rounded-xl px-6 py-6 lg:px-8 lg:py-7`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+            Job workspace
+          </p>
+          <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
+            Escrow jobs by role
+          </h1>
+          <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
             Review your escrow jobs by role and open each one for full on-chain details.
           </p>
         </article>
 
         {showEmployerList ? (
-          <article
-            className={`p-8 ${
-              isDarkTheme
-                ? "border border-white/12 bg-black/28"
-                : "border border-[#e4e8f2] bg-white shadow-[0_10px_30px_rgba(40,50,90,0.07)]"
-            }`}
-          >
+          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-100">Employer Jobs</h2>
-              <span className="text-xs text-slate-400">{employerJobs.jobIds.length} total</span>
+              <div>
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Employer queue</p>
+                <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+                  Employer jobs
+                </h2>
+              </div>
+              <span className={`text-xs ${mutedTextClass}`}>{employerJobs.jobIds.length} total</span>
             </div>
 
             {employerJobs.isLoading ? (
-              <p className="text-sm text-slate-400">Loading employer jobs...</p>
+              <p className={`text-sm ${mutedTextClass}`}>Loading employer jobs...</p>
             ) : employerJobs.isError ? (
-              <p className="text-sm text-red-300">Could not load employer jobs from contract.</p>
+              <p className={`text-sm ${isDarkTheme ? "text-red-300" : "text-red-600"}`}>
+                Could not load employer jobs from contract.
+              </p>
             ) : employerJobs.jobs.length === 0 ? (
-              <p className="text-sm text-slate-400">No employer jobs found.</p>
+              <p className={`text-sm ${mutedTextClass}`}>No employer jobs found.</p>
             ) : (
               <div className="space-y-3">
-                <div className="hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 border-b border-white/8 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] text-slate-500 lg:grid">
-                  <span>Job</span>
-                  <span>Freelancer</span>
-                  <span>Escrow Amount</span>
-                  <span>Status</span>
-                  <span className="text-right">Action</span>
+                <div className={`hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] lg:grid ${tableBorderClass}`}>
+                  <span className={tinyLabelClass}>Job</span>
+                  <span className={tinyLabelClass}>Freelancer</span>
+                  <span className={tinyLabelClass}>Escrow amount</span>
+                  <span className={tinyLabelClass}>Status</span>
+                  <span className={`text-right ${tinyLabelClass}`}>Action</span>
                 </div>
                 {employerJobs.jobs.map((job) => (
                   <JobCard
@@ -91,32 +100,33 @@ export default function JobsPage() {
         ) : null}
 
         {showFreelancerList ? (
-          <article
-            className={`p-8 ${
-              isDarkTheme
-                ? "border border-white/12 bg-black/28"
-                : "border border-[#e4e8f2] bg-white shadow-[0_10px_30px_rgba(40,50,90,0.07)]"
-            }`}
-          >
+          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-100">Freelancer Jobs</h2>
-              <span className="text-xs text-slate-400">{freelancerJobs.jobIds.length} total</span>
+              <div>
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Freelancer queue</p>
+                <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
+                  Freelancer jobs
+                </h2>
+              </div>
+              <span className={`text-xs ${mutedTextClass}`}>{freelancerJobs.jobIds.length} total</span>
             </div>
 
             {freelancerJobs.isLoading ? (
-              <p className="text-sm text-slate-400">Loading freelancer jobs...</p>
+              <p className={`text-sm ${mutedTextClass}`}>Loading freelancer jobs...</p>
             ) : freelancerJobs.isError ? (
-              <p className="text-sm text-red-300">Could not load freelancer jobs from contract.</p>
+              <p className={`text-sm ${isDarkTheme ? "text-red-300" : "text-red-600"}`}>
+                Could not load freelancer jobs from contract.
+              </p>
             ) : freelancerJobs.jobs.length === 0 ? (
-              <p className="text-sm text-slate-400">No freelancer jobs found.</p>
+              <p className={`text-sm ${mutedTextClass}`}>No freelancer jobs found.</p>
             ) : (
               <div className="space-y-3">
-                <div className="hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 border-b border-white/8 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] text-slate-500 lg:grid">
-                  <span>Job</span>
-                  <span>Employer</span>
-                  <span>Escrow Amount</span>
-                  <span>Status</span>
-                  <span className="text-right">Action</span>
+                <div className={`hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] lg:grid ${tableBorderClass}`}>
+                  <span className={tinyLabelClass}>Job</span>
+                  <span className={tinyLabelClass}>Employer</span>
+                  <span className={tinyLabelClass}>Escrow amount</span>
+                  <span className={tinyLabelClass}>Status</span>
+                  <span className={`text-right ${tinyLabelClass}`}>Action</span>
                 </div>
                 {freelancerJobs.jobs.map((job) => (
                   <JobCard
