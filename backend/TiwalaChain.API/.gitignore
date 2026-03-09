@@ -1,0 +1,36 @@
+Since you are working with ASP.NET Core, Entity Framework Core, and PostgreSQL, your .gitignore needs to cover standard .NET build artifacts, IDE-specific files, and sensitive local settings.
+
+Here is a robust .gitignore content tailored for your project. You can copy and paste this into a file named .gitignore in your root directory (D:\Tiwala-Chain\).
+Code snippet
+
+## .NET / Visual Studio
+bin/
+obj/
+out/
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.doccache
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+*.db
+*.db-shm
+*.db-wal
+
+.env
+.env.local
+
+secrets.json
+appsettings.Development.json
+
+.DS_Store
+Thumbs.db
+
+node_modules/
+npm-debug.log*
