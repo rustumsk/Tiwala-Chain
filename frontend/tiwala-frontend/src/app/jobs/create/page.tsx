@@ -2,19 +2,18 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import Link from "next/link";
-import { parseUnits, isAddress, type Address } from "viem";
+import { isAddress } from "viem";
 import {
   useAccount,
-  useChainId,
-  useWaitForTransactionReceipt,
-  useWriteContract,
 } from "wagmi";
 import ClauseAnalysis, {
   type ClauseItem,
 } from "@/components/ai/clause-analysis";
 import FairnessScore from "@/components/ai/fairness-score";
 import { useAppTheme } from "@/components/layout/theme-context";
-import { tiwalaEscrowAbi, TIWALA_ESCROW_ADDRESS } from "@/lib/contract";
+import { getStoredAuthSession } from "@/lib/auth";
+import { createJobOffer, uploadJobContract } from "@/lib/jobs";
+import { notifyError, notifySuccess } from "@/lib/notify";
 import { getStoredProfile } from "@/lib/profile";
 
 type AIResponse = Record<string, unknown>;
@@ -70,13 +69,7 @@ async function sha256ToBytes32(file: File): Promise<`0x${string}`> {
 
 export default function CreateJobPage() {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
   const { theme } = useAppTheme();
-  const { data: txHash, error: txError, isPending, writeContract } = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({
-    hash: txHash,
-    query: { enabled: Boolean(txHash) },
-  });
 
   const isDarkTheme = theme === "dark";
   const panelClass = isDarkTheme
@@ -110,6 +103,7 @@ export default function CreateJobPage() {
   const [analysisError, setAnalysisError] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [submitSuccess, setSubmitSuccess] = useState("");
 
   const profile = useMemo(() => {
     if (!address || typeof window === "undefined") return null;
@@ -166,13 +160,10 @@ export default function CreateJobPage() {
   const handleCreateJob = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitError("");
+    setSubmitSuccess("");
 
     if (!isConnected || !address) {
       setSubmitError("Connect your wallet first.");
-      return;
-    }
-    if (chainId !== 11155111) {
-      setSubmitError("Switch to Sepolia before creating a job.");
       return;
     }
     if (!canCreate) {
@@ -197,19 +188,38 @@ export default function CreateJobPage() {
     }
 
     try {
-      const amount = parseUnits(amountInput, 6);
-      const contractHash = await sha256ToBytes32(contractFile);
+      const session = getStoredAuthSession();
+      if (
+        !session ||
+        session.walletAddress.toLowerCase() !== address.toLowerCase()
+      ) {
+        setSubmitError("Please sign in with your wallet first.");
+        return;
+      }
 
-      writeContract({
-        address: TIWALA_ESCROW_ADDRESS,
-        abi: tiwalaEscrowAbi,
-        functionName: "createJob",
-        args: [freelancerWallet as Address, amount, contractHash],
+      const upload = await uploadJobContract(session, contractFile);
+
+      await createJobOffer(session, {
+        freelancerWallet: freelancerWallet.toLowerCase(),
+        title: jobTitle.trim(),
+        description: jobDescription.trim(),
+        amountUsdt: amountInput.trim(),
+        contractKey: upload.key,
+        contractHash: upload.hash,
       });
+
+      setSubmitSuccess("Job offer created and sent to the freelancer.");
+      notifySuccess("Job offer created and sent to the freelancer.");
+      setJobTitle("");
+      setJobDescription("");
+      setFreelancerWallet("");
+      setAmountInput("");
+      setContractFile(null);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Unable to submit transaction.";
+        error instanceof Error ? error.message : "Unable to create job offer.";
       setSubmitError(message);
+      notifyError(message);
     }
   };
 
@@ -271,14 +281,8 @@ export default function CreateJobPage() {
             New escrow job
           </h1>
           <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
-            Submit contract details, run fairness analysis, then write <code className="text-violet-400/80">createJob()</code> on-chain.
+            Submit contract details, run fairness analysis, then send a job offer to your freelancer. Escrow and on-chain signing happen after they accept.
           </p>
-
-          {chainId !== 11155111 ? (
-            <p className={`mt-4 rounded-xl border p-4 text-sm ${isDarkTheme ? "border-amber-400/30 bg-amber-500/10 text-amber-200" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
-              You are on chain {chainId}. Switch to Sepolia before submitting.
-            </p>
-          ) : null}
 
           <form className="mt-6 space-y-5" onSubmit={handleCreateJob}>
             <section className={`${subtlePanelClass} rounded-xl p-4`}>
@@ -376,37 +380,19 @@ export default function CreateJobPage() {
               </p>
             ) : null}
 
-            {txError ? (
-              <p className={`rounded-xl border p-4 text-sm ${isDarkTheme ? "border-red-400/30 bg-red-500/10 text-red-200" : "border-red-200 bg-red-50 text-red-800"}`}>
-                Transaction error: {txError.message}
-              </p>
-            ) : null}
-
-            {txHash ? (
-              <p className={`rounded-xl border p-4 text-sm ${isDarkTheme ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-200" : "border-cyan-200 bg-cyan-50 text-cyan-800"}`}>
-                Transaction sent: {txHash}
-              </p>
-            ) : null}
-
-            {receipt.isLoading ? (
-              <p className={`rounded-xl border p-4 text-sm ${subtlePanelClass} ${mutedTextClass}`}>
-                Waiting for on-chain confirmation...
-              </p>
-            ) : null}
-
-            {receipt.isSuccess ? (
+            {submitSuccess ? (
               <p className={`rounded-xl border p-4 text-sm ${isDarkTheme ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}>
-                Job created successfully on-chain.
+                {submitSuccess}
               </p>
             ) : null}
 
             <div className="flex flex-wrap items-center gap-3">
               <button
                 className={`inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${actionChipClass} hover:border-violet-300/50 hover:bg-violet-500/20`}
-                disabled={isPending || receipt.isLoading}
+                disabled={false}
                 type="submit"
               >
-                {isPending ? "Confirm in wallet..." : "Create job on-chain"}
+                Send job offer
               </button>
               <button
                 className={`inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${chipClass} hover:border-violet-300/50 hover:bg-violet-500/10`}

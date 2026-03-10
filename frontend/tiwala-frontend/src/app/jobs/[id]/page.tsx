@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useChainId, useReadContract } from "wagmi";
@@ -8,11 +8,16 @@ import { useAppTheme } from "@/components/layout/theme-context";
 import JobStatusBadge from "@/components/jobs/job-status-badge";
 import JobTimeline from "@/components/jobs/job-timeline";
 import ActionButtons from "@/components/jobs/action-buttons";
+import DeliverablesPanel from "@/components/jobs/deliverables-panel";
+import { getStoredAuthSession } from "@/lib/auth";
 import {
   tiwalaEscrowAbi,
   TIWALA_ESCROW_ADDRESS,
   type EscrowJobStatus,
 } from "@/lib/contract";
+import { downloadJobContractByHashBlob } from "@/lib/jobs";
+import { notifyError } from "@/lib/notify";
+import { listDeliverablesByHash, type Deliverable } from "@/lib/deliverables";
 import { getStoredProfile } from "@/lib/profile";
 
 function formatUsdt(amount: bigint) {
@@ -43,6 +48,12 @@ export default function JobDetailPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { theme, isDarkTheme } = useAppTheme();
+  const [contractError, setContractError] = useState("");
+  const [isOpeningContract, setIsOpeningContract] = useState(false);
+  const [deliverablesMeta, setDeliverablesMeta] = useState<{
+    hasAny: boolean;
+    allApproved: boolean;
+  } | null>(null);
 
   const jobId = useMemo(() => {
     if (!params?.id) return null;
@@ -127,6 +138,33 @@ export default function JobDetailPage() {
     };
   }, [jobId, jobQuery.data]);
 
+  useEffect(() => {
+    async function loadDeliverables() {
+      const parsedJob = parsed;
+      if (!parsedJob) {
+        setDeliverablesMeta(null);
+        return;
+      }
+      try {
+        const session = getStoredAuthSession();
+        if (!session) {
+          setDeliverablesMeta(null);
+          return;
+        }
+        const data: Deliverable[] = await listDeliverablesByHash(
+          session,
+          parsedJob.contractHash
+        );
+        const hasAny = data.length > 0;
+        const allApproved = hasAny && data.every((d) => d.status === "Approved");
+        setDeliverablesMeta({ hasAny, allApproved });
+      } catch {
+        setDeliverablesMeta(null);
+      }
+    }
+    void loadDeliverables();
+  }, [parsed]);
+
   if (jobId === null) {
     return (
       <div className="themed-app-page text-slate-100">
@@ -144,6 +182,16 @@ export default function JobDetailPage() {
   const canActAsFreelancer =
     Boolean(address && parsed?.freelancer.toLowerCase() === address.toLowerCase()) &&
     (profile?.role === "freelancer" || profile?.role === "both");
+
+  const canSubmitDeliverables =
+    chainId === 11155111 &&
+    canActAsFreelancer &&
+    (parsed?.status === 2 || parsed?.status === 3); // Work or Review
+
+  const canSubmitWorkOnChain =
+    canActAsFreelancer &&
+    parsed?.status === 2 &&
+    Boolean(deliverablesMeta && deliverablesMeta.hasAny && deliverablesMeta.allApproved);
 
   return (
     <div className="themed-app-page text-slate-100">
@@ -177,7 +225,7 @@ export default function JobDetailPage() {
           ) : null}
 
           {parsed ? (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className={`p-4 ${isDarkTheme ? "border border-white/12 bg-white/[0.03]" : "border border-[#e8ebf5] bg-[#f9faff]"}`}>
                 <p className="text-xs uppercase tracking-[0.12em] text-slate-400">Employer</p>
                 <p className="mt-1 text-sm text-slate-100">{shortAddress(parsed.employer)}</p>
@@ -196,6 +244,55 @@ export default function JobDetailPage() {
               </div>
             </div>
           ) : null}
+
+          {parsed ? (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+              <button
+                type="button"
+                disabled={isOpeningContract}
+                onClick={async () => {
+                  if (!address) return;
+                  setContractError("");
+                  setIsOpeningContract(true);
+                  try {
+                    const session = getStoredAuthSession();
+                    if (
+                      !session ||
+                      session.walletAddress.toLowerCase() !== address.toLowerCase()
+                    ) {
+                      throw new Error("Please sign in with your wallet first.");
+                    }
+
+                    const blob = await downloadJobContractByHashBlob(
+                      session,
+                      parsed.contractHash
+                    );
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, "_blank");
+                  } catch (err) {
+                    const msg =
+                      err instanceof Error ? err.message : "Unable to open contract.";
+                    setContractError(msg);
+                    notifyError(msg);
+                  } finally {
+                    setIsOpeningContract(false);
+                  }
+                }}
+                className={`inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium transition ${
+                  isDarkTheme
+                    ? "border-white/14 bg-white/[0.04] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
+                    : "border-[#d8dced] bg-white text-[#242838] hover:border-violet-300 hover:bg-violet-50"
+                }`}
+              >
+                {isOpeningContract ? "Opening contract..." : "View contract"}
+              </button>
+              {contractError ? (
+                <p className={`text-sm ${isDarkTheme ? "text-red-200" : "text-red-700"}`}>
+                  {contractError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </article>
 
         {parsed ? (
@@ -209,8 +306,18 @@ export default function JobDetailPage() {
               jobId={parsed.id}
               mode={theme}
               status={parsed.status}
+              canSubmitWorkOnChain={canSubmitWorkOnChain}
             />
           </div>
+        ) : null}
+
+        {parsed ? (
+          <DeliverablesPanel
+            contractHash={parsed.contractHash}
+            canActAsEmployer={canActAsEmployer}
+            canActAsFreelancer={canActAsFreelancer}
+            canSubmit={canSubmitDeliverables}
+          />
         ) : null}
 
         <article

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAccount } from "wagmi";
 import { useAppTheme } from "@/components/layout/theme-context";
 import JobCard from "@/components/jobs/job-card";
@@ -41,6 +41,16 @@ export default function JobsPage() {
   const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
   const tableBorderClass = isDarkTheme ? "border-b border-white/10" : "border-b border-[#eceef5]";
 
+  const [employerFilter, setEmployerFilter] = useState<"all" | "ongoing" | "done" | "disputed">("all");
+  const [freelancerFilter, setFreelancerFilter] = useState<"all" | "ongoing" | "done" | "disputed">("all");
+
+  const categorizeStatus = (status: number) => {
+    // EscrowJobStatus: 0 Created, 1 Funded, 2 Work, 3 Review, 4 Disputed, 5 Released, 6 Refunded
+    if (status === 4) return "disputed" as const;
+    if (status === 5 || status === 6) return "done" as const;
+    return "ongoing" as const;
+  };
+
   return (
     <div className={pageClass}>
       <section className="mx-auto w-full max-w-[1580px] space-y-5">
@@ -78,6 +88,36 @@ export default function JobsPage() {
               <p className={`text-sm ${mutedTextClass}`}>No employer jobs found.</p>
             ) : (
               <div className="space-y-3">
+                <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                  {[
+                    { key: "all", label: "All" },
+                    { key: "ongoing", label: "Ongoing" },
+                    { key: "done", label: "Done" },
+                    { key: "disputed", label: "Disputed" },
+                  ].map((opt) => {
+                    const active = employerFilter === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() =>
+                          setEmployerFilter(opt.key as "all" | "ongoing" | "done" | "disputed")
+                        }
+                        className={`rounded-full px-3 py-1 font-medium transition ${
+                          active
+                            ? isDarkTheme
+                              ? "border border-violet-300/60 bg-violet-500/25 text-violet-50"
+                              : "border border-violet-400 bg-violet-100 text-violet-800"
+                            : isDarkTheme
+                            ? "border border-white/12 bg-white/[0.02] text-white/70 hover:border-violet-300/40 hover:bg-violet-500/15"
+                            : "border border-[#e1e4f0] bg-white text-[#555a6b] hover:border-violet-300 hover:bg-violet-50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className={`hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] lg:grid ${tableBorderClass}`}>
                   <span className={tinyLabelClass}>Job</span>
                   <span className={tinyLabelClass}>Freelancer</span>
@@ -85,7 +125,13 @@ export default function JobsPage() {
                   <span className={tinyLabelClass}>Status</span>
                   <span className={`text-right ${tinyLabelClass}`}>Action</span>
                 </div>
-                {employerJobs.jobs.map((job) => (
+                {employerJobs.jobs
+                  .filter((job) => {
+                    if (employerFilter === "all") return true;
+                    const cat = categorizeStatus(job.status);
+                    return cat === employerFilter;
+                  })
+                  .map((job) => (
                   <JobCard
                     key={`employer-${job.id.toString()}`}
                     job={job}
@@ -121,6 +167,36 @@ export default function JobsPage() {
               <p className={`text-sm ${mutedTextClass}`}>No freelancer jobs found.</p>
             ) : (
               <div className="space-y-3">
+                <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                  {[
+                    { key: "all", label: "All" },
+                    { key: "ongoing", label: "Ongoing" },
+                    { key: "done", label: "Done" },
+                    { key: "disputed", label: "Disputed" },
+                  ].map((opt) => {
+                    const active = freelancerFilter === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() =>
+                          setFreelancerFilter(opt.key as "all" | "ongoing" | "done" | "disputed")
+                        }
+                        className={`rounded-full px-3 py-1 font-medium transition ${
+                          active
+                            ? isDarkTheme
+                              ? "border border-violet-300/60 bg-violet-500/25 text-violet-50"
+                              : "border border-violet-400 bg-violet-100 text-violet-800"
+                            : isDarkTheme
+                            ? "border border-white/12 bg-white/[0.02] text-white/70 hover:border-violet-300/40 hover:bg-violet-500/15"
+                            : "border border-[#e1e4f0] bg-white text-[#555a6b] hover:border-violet-300 hover:bg-violet-50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className={`hidden grid-cols-[0.9fr_1.2fr_1fr_0.9fr_auto] gap-4 px-4 pb-3 text-[11px] uppercase tracking-[0.16em] lg:grid ${tableBorderClass}`}>
                   <span className={tinyLabelClass}>Job</span>
                   <span className={tinyLabelClass}>Employer</span>
@@ -128,7 +204,13 @@ export default function JobsPage() {
                   <span className={tinyLabelClass}>Status</span>
                   <span className={`text-right ${tinyLabelClass}`}>Action</span>
                 </div>
-                {freelancerJobs.jobs.map((job) => (
+                {freelancerJobs.jobs
+                  .filter((job) => {
+                    if (freelancerFilter === "all") return true;
+                    const cat = categorizeStatus(job.status);
+                    return cat === freelancerFilter;
+                  })
+                  .map((job) => (
                   <JobCard
                     key={`freelancer-${job.id.toString()}`}
                     job={job}
