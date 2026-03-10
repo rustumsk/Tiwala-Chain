@@ -62,6 +62,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddSingleton<S3StorageService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

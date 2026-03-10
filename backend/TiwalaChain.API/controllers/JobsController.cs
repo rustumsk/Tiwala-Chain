@@ -1,0 +1,293 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class JobsController : ControllerBase
+{
+    private readonly AppDbContext _dbContext;
+    private readonly S3StorageService _storage;
+
+    public JobsController(AppDbContext dbContext, S3StorageService storage)
+    {
+        _dbContext = dbContext;
+        _storage = storage;
+    }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<ActionResult<JobResponse>> CreateJob([FromBody] CreateJobRequest request)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        if (!user.IsApproved)
+        {
+            return StatusCode(403, "Your account is pending admin approval.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FreelancerWallet))
+        {
+            return BadRequest("Freelancer wallet is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest("Title is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ContractKey) || string.IsNullOrWhiteSpace(request.ContractHash))
+        {
+            return BadRequest("Contract key and hash are required.");
+        }
+
+        if (request.AmountUsdt <= 0)
+        {
+            return BadRequest("Amount must be greater than 0.");
+        }
+
+        var employerWallet = user.WalletAddress;
+        var freelancerWallet = request.FreelancerWallet.Trim().ToLowerInvariant();
+
+        var job = new Job
+        {
+            EmployerWallet = employerWallet,
+            FreelancerWallet = freelancerWallet,
+            Title = request.Title.Trim(),
+            Description = request.Description?.Trim(),
+            ContractKey = request.ContractKey.Trim(),
+            ContractHash = request.ContractHash.Trim().ToLowerInvariant(),
+            AmountUsdt = request.AmountUsdt,
+            Status = JobStatus.PendingOffer,
+        };
+
+        _dbContext.Jobs.Add(job);
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(ToJobResponse(job));
+    }
+
+    [Authorize]
+    [HttpGet("offers/incoming")]
+    public async Task<ActionResult<List<JobResponse>>> GetIncomingOffers()
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var wallet = user.WalletAddress;
+
+        var jobs = await _dbContext.Jobs
+            .Where(j =>
+                j.FreelancerWallet == wallet &&
+                (j.Status == JobStatus.PendingOffer || j.Status == JobStatus.Accepted))
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync();
+
+        return Ok(jobs.Select(ToJobResponse).ToList());
+    }
+
+    [Authorize]
+    [HttpGet("offers/sent")]
+    public async Task<ActionResult<List<JobResponse>>> GetSentOffers()
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var wallet = user.WalletAddress;
+
+        var jobs = await _dbContext.Jobs
+            .Where(j => j.EmployerWallet == wallet)
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync();
+
+        return Ok(jobs.Select(ToJobResponse).ToList());
+    }
+
+    [Authorize]
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<JobResponse>> GetJob(int id)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id);
+        if (job is null)
+        {
+            return NotFound("Job not found.");
+        }
+
+        if (!IsParticipant(job, user.WalletAddress))
+        {
+            return Forbid();
+        }
+
+        return Ok(ToJobResponse(job));
+    }
+
+    [Authorize]
+    [HttpGet("{id:int}/contract")]
+    public async Task<IActionResult> GetJobContract(int id, CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id);
+        if (job is null)
+        {
+            return NotFound("Job not found.");
+        }
+
+        if (!IsParticipant(job, user.WalletAddress))
+        {
+            return Forbid();
+        }
+
+        var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
+        var downloadFileName = $"job-{job.Id}-contract";
+        return File(stream, contentType, downloadFileName);
+    }
+
+    [Authorize]
+    [HttpPost("{id:int}/accept")]
+    public async Task<ActionResult<JobResponse>> AcceptJob(int id)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id);
+        if (job is null)
+        {
+            return NotFound("Job not found.");
+        }
+
+        if (!string.Equals(job.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        if (job.Status != JobStatus.PendingOffer)
+        {
+            return BadRequest("Job is not in a pending offer state.");
+        }
+
+        job.Status = JobStatus.Accepted;
+        job.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(ToJobResponse(job));
+    }
+
+    [Authorize]
+    [HttpPost("{id:int}/decline")]
+    public async Task<ActionResult<JobResponse>> DeclineJob(int id)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id);
+        if (job is null)
+        {
+            return NotFound("Job not found.");
+        }
+
+        if (!string.Equals(job.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        if (job.Status != JobStatus.PendingOffer)
+        {
+            return BadRequest("Job is not in a pending offer state.");
+        }
+
+        job.Status = JobStatus.Declined;
+        job.UpdatedAt = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync();
+
+        return Ok(ToJobResponse(job));
+    }
+
+    private async Task<User?> ResolveCurrentUser()
+    {
+        var subjectClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (!int.TryParse(subjectClaim, out var userId))
+        {
+            return null;
+        }
+
+        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    }
+
+    private static bool IsParticipant(Job job, string wallet)
+    {
+        var w = wallet.ToLowerInvariant();
+        return job.EmployerWallet == w || job.FreelancerWallet == w;
+    }
+
+    private static JobResponse ToJobResponse(Job job)
+    {
+        return new JobResponse(
+            job.Id,
+            job.EmployerWallet,
+            job.FreelancerWallet,
+            job.Title,
+            job.Description,
+            job.Status.ToString(),
+            job.AmountUsdt,
+            job.ContractKey,
+            job.ContractHash,
+            job.CreatedAt,
+            job.UpdatedAt
+        );
+    }
+}
+
+public sealed record CreateJobRequest(
+    string FreelancerWallet,
+    string Title,
+    string? Description,
+    decimal AmountUsdt,
+    string ContractKey,
+    string ContractHash
+);
+
+public sealed record JobResponse(
+    int Id,
+    string EmployerWallet,
+    string FreelancerWallet,
+    string Title,
+    string? Description,
+    string Status,
+    decimal AmountUsdt,
+    string ContractKey,
+    string ContractHash,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt
+);
+
