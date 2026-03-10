@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -131,7 +132,7 @@ public sealed class JobsController : ControllerBase
             return NotFound("Job not found.");
         }
 
-        if (!IsParticipant(job, user.WalletAddress))
+        if (user.Role != UserRole.Admin && !IsParticipant(job, user.WalletAddress))
         {
             return Forbid();
         }
@@ -155,7 +156,7 @@ public sealed class JobsController : ControllerBase
             return NotFound("Job not found.");
         }
 
-        if (!IsParticipant(job, user.WalletAddress))
+        if (user.Role != UserRole.Admin && !IsParticipant(job, user.WalletAddress))
         {
             return Forbid();
         }
@@ -163,6 +164,86 @@ public sealed class JobsController : ControllerBase
         var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
         var downloadFileName = $"job-{job.Id}-contract";
         return File(stream, contentType, downloadFileName);
+    }
+
+    [Authorize]
+    [HttpGet("contract/by-hash/{hash}")]
+    public async Task<IActionResult> GetJobContractByHash(string hash, CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var normalized = NormalizeHash(hash);
+        if (normalized is null)
+        {
+            return BadRequest("Invalid contract hash.");
+        }
+        
+        IQueryable<Job> query = _dbContext.Jobs.OrderByDescending(j => j.CreatedAt);
+        Job? job;
+        if (user.Role == UserRole.Admin)
+        {
+            job = await query.FirstOrDefaultAsync(j => j.ContractHash == normalized, cancellationToken);
+        }
+        else
+        {
+            var wallet = user.WalletAddress;
+            job = await query.FirstOrDefaultAsync(
+                j => j.ContractHash == normalized &&
+                     (j.EmployerWallet == wallet || j.FreelancerWallet == wallet),
+                cancellationToken);
+        }
+
+        if (job is null)
+        {
+            return NotFound("Contract not found.");
+        }
+
+        var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
+        var downloadFileName = $"job-{job.Id}-contract";
+        return File(stream, contentType, downloadFileName);
+    }
+
+    [Authorize]
+    [HttpGet("by-hash/{hash}")]
+    public async Task<ActionResult<JobResponse>> GetJobByHash(string hash, CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var normalized = NormalizeHash(hash);
+        if (normalized is null)
+        {
+            return BadRequest("Invalid contract hash.");
+        }
+
+        IQueryable<Job> query = _dbContext.Jobs.OrderByDescending(j => j.CreatedAt);
+        Job? job;
+        if (user.Role == UserRole.Admin)
+        {
+            job = await query.FirstOrDefaultAsync(j => j.ContractHash == normalized, cancellationToken);
+        }
+        else
+        {
+            var wallet = user.WalletAddress;
+            job = await query.FirstOrDefaultAsync(
+                j => j.ContractHash == normalized &&
+                     (j.EmployerWallet == wallet || j.FreelancerWallet == wallet),
+                cancellationToken);
+        }
+
+        if (job is null)
+        {
+            return NotFound("Job not found for this contract hash.");
+        }
+
+        return Ok(ToJobResponse(job));
     }
 
     [Authorize]
@@ -265,6 +346,18 @@ public sealed class JobsController : ControllerBase
             job.CreatedAt,
             job.UpdatedAt
         );
+    }
+
+    private static string? NormalizeHash(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        var trimmed = value.Trim().ToLowerInvariant();
+        if (trimmed.StartsWith("0x", StringComparison.Ordinal))
+        {
+            trimmed = trimmed[2..];
+        }
+
+        return Regex.IsMatch(trimmed, "^[a-f0-9]{64}$") ? trimmed : null;
     }
 }
 
