@@ -13,6 +13,7 @@ import {
   getStoredAuthSession,
   type BackendUser,
 } from "@/lib/auth";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -56,7 +57,10 @@ export default function AdminUsersPage() {
       const result = await adminListUsers(session.accessToken);
       setUsers(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users.");
+      const msg =
+        err instanceof Error ? err.message : "Failed to load users.";
+      setError(msg);
+      notifyError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -73,8 +77,12 @@ export default function AdminUsersPage() {
     try {
       const updated = await adminApproveUser(session.accessToken, userId, approved);
       setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      notifySuccess(approved ? "User approved." : "User approval revoked.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update approval.");
+      const msg =
+        err instanceof Error ? err.message : "Failed to update approval.";
+      setError(msg);
+      notifyError(msg);
     } finally {
       setActionLoading(null);
     }
@@ -87,8 +95,12 @@ export default function AdminUsersPage() {
     try {
       const updated = await adminUpdateUserRole(session.accessToken, userId, newRole);
       setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      notifySuccess("User role updated.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update role.");
+      const msg =
+        err instanceof Error ? err.message : "Failed to update role.";
+      setError(msg);
+      notifyError(msg);
     } finally {
       setActionLoading(null);
     }
@@ -102,8 +114,12 @@ export default function AdminUsersPage() {
       await adminDeleteUser(session.accessToken, userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       setDeleteConfirmId(null);
+      notifySuccess("User deleted.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete user.");
+      const msg =
+        err instanceof Error ? err.message : "Failed to delete user.";
+      setError(msg);
+      notifyError(msg);
     } finally {
       setActionLoading(null);
     }
