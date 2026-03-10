@@ -3,7 +3,7 @@ import { saveStoredProfile, type LocalUserProfile, type UserRole } from "@/lib/p
 const AUTH_STORAGE_KEY = "tiwala:auth-session";
 export const AUTH_UPDATED_EVENT = "tiwala:auth-updated";
 
-const API_BASE_URL =
+export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ??
   "http://localhost:5067";
 

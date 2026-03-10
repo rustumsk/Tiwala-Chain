@@ -16,6 +16,7 @@ import {
   syncProfileFromBackendUser,
   updateCurrentUserProfile,
 } from "@/lib/auth";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 const roleOptions: Array<{ label: string; value: UserRole }> = [
   { label: "Freelancer", value: "freelancer" },
@@ -87,13 +88,17 @@ export default function OnboardingForm() {
     setError("");
 
     if (!isConnected || !address) {
-      setError("Please connect your wallet first.");
+      const msg = "Please connect your wallet first.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
     const normalizedName = displayName.trim();
     if (normalizedName.length < 2) {
-      setError("Display name must be at least 2 characters.");
+      const msg = "Display name must be at least 2 characters.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
@@ -102,7 +107,9 @@ export default function OnboardingForm() {
       !authSession ||
       authSession.walletAddress.toLowerCase() !== address.toLowerCase()
     ) {
-      setError("Please sign in with your wallet first.");
+      const msg = "Please sign in with your wallet first.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
@@ -114,7 +121,9 @@ export default function OnboardingForm() {
         role,
       });
     } catch {
-      setError("Unable to save profile to the server.");
+      const msg = "Unable to save profile to the server.";
+      setError(msg);
+      notifyError(msg);
       setIsSubmitting(false);
       return;
     }
@@ -127,6 +136,7 @@ export default function OnboardingForm() {
     });
 
     setIsSubmitting(false);
+    notifySuccess("Onboarding complete.");
     router.replace("/dashboard");
   };
 

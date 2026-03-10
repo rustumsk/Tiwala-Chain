@@ -89,6 +89,13 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
       matches: (pathname: string) => pathname === "/dashboard",
     },
     {
+      href: "/offers",
+      label: "Job Offers",
+      icon: BriefcaseBusiness,
+      matches: (pathname: string) =>
+        pathname === "/offers" || pathname.startsWith("/offers/"),
+    },
+    {
       href: "/jobs",
       label: "Jobs",
       icon: BriefcaseBusiness,
@@ -138,6 +145,8 @@ function formatTitleFromPath(pathname: string) {
   if (pathname === "/jobs") return "Jobs";
   if (pathname === "/jobs/create") return "Create Job";
   if (pathname.startsWith("/jobs/")) return `Job ${pathname.split("/").at(-1)}`;
+  if (pathname === "/offers") return "Job Offers";
+  if (pathname.startsWith("/offers/")) return "Offer Detail";
   if (pathname === "/contracts/create") return "Contract Builder";
   if (pathname === "/settings/profile") return "Profile Settings";
   if (pathname === "/onboarding") return "Onboarding";

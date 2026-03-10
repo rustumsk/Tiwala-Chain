@@ -4,6 +4,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
 import Web3Provider from "@/components/providers/web3-provider";
 import RouteShell from "@/components/layout/route-shell";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,6 +30,7 @@ export default function RootLayout({
       <body className="antialiased">
         <Web3Provider>
           <RouteShell>{children}</RouteShell>
+          <Toaster richColors closeButton position="top-right" />
         </Web3Provider>
       </body>
     </html>

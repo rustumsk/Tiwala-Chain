@@ -11,6 +11,7 @@ import {
   type UserRole,
 } from "@/lib/profile";
 import { getStoredAuthSession, updateCurrentUserProfile } from "@/lib/auth";
+import { notifyError, notifySuccess } from "@/lib/notify";
 
 const roleOptions: Array<{ label: string; value: UserRole }> = [
   { label: "Freelancer", value: "freelancer" },
@@ -81,13 +82,17 @@ export default function ProfileSettingsPage() {
     setIsConfirmOpen(false);
 
     if (!isConnected || !address) {
-      setError("Connect your wallet first.");
+      const msg = "Connect your wallet first.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
     const normalizedName = displayNameValue.trim();
     if (normalizedName.length < 2) {
-      setError("Display name must be at least 2 characters.");
+      const msg = "Display name must be at least 2 characters.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
@@ -106,13 +111,17 @@ export default function ProfileSettingsPage() {
     setSuccess("");
 
     if (!isConnected || !address) {
-      setError("Connect your wallet first.");
+      const msg = "Connect your wallet first.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
     const normalizedName = pendingDisplayName.trim();
     if (normalizedName.length < 2) {
-      setError("Display name must be at least 2 characters.");
+      const msg = "Display name must be at least 2 characters.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
@@ -121,7 +130,9 @@ export default function ProfileSettingsPage() {
       !authSession ||
       authSession.walletAddress.toLowerCase() !== address.toLowerCase()
     ) {
-      setError("Please sign in with your wallet first.");
+      const msg = "Please sign in with your wallet first.";
+      setError(msg);
+      notifyError(msg);
       return;
     }
 
@@ -133,7 +144,9 @@ export default function ProfileSettingsPage() {
         role: pendingRole,
       });
     } catch {
-      setError("Unable to update profile on the server.");
+      const msg = "Unable to update profile on the server.";
+      setError(msg);
+      notifyError(msg);
       setIsSaving(false);
       return;
     }
@@ -148,6 +161,7 @@ export default function ProfileSettingsPage() {
     setIsSaving(false);
     setIsConfirmOpen(false);
     setSuccess("Profile updated successfully.");
+    notifySuccess("Profile updated successfully.");
     setNameTouched(true);
     setRoleTouched(true);
     setDisplayName(normalizedName);

@@ -9,6 +9,7 @@ import {
   useWriteContract,
   useConfig,
 } from "wagmi";
+import { notifyError } from "@/lib/notify";
 import { tiwalaEscrowAbi, TIWALA_ESCROW_ADDRESS, type EscrowJobStatus } from "@/lib/contract";
 import { usdtAbi, USDT_SEPOLIA_ADDRESS } from "@/lib/usdt";
 
@@ -20,6 +21,9 @@ type ActionButtonsProps = {
   canActAsFreelancer: boolean;
   chainOk: boolean;
   mode?: "light" | "dark";
+  // When provided, controls whether the freelancer can actually submit work on-chain.
+  // Defaults to true so existing callers are unaffected.
+  canSubmitWorkOnChain?: boolean;
 };
 
 type ActionDef = {
@@ -40,6 +44,7 @@ export default function ActionButtons({
   canActAsFreelancer,
   chainOk,
   mode = "dark",
+  canSubmitWorkOnChain = true,
 }: ActionButtonsProps) {
   const config = useConfig();
   const { address } = useAccount();
@@ -88,14 +93,14 @@ export default function ActionButtons({
     setLocalError("");
     setLocalInfo("");
     if (!chainOk) {
-      setLocalError("Switch to Sepolia before sending transactions.");
+      notifyError("Switch to Sepolia before sending transactions.");
       return;
     }
 
     try {
       if (functionName === "depositFunds") {
         if (!address) {
-          setLocalError("Wallet not connected.");
+          notifyError("Wallet not connected.");
           return;
         }
 
@@ -122,7 +127,7 @@ export default function ActionButtons({
         args: [jobId],
       });
     } catch (error) {
-      setLocalError(
+      notifyError(
         error instanceof Error ? error.message : "Unable to send transaction."
       );
     }
@@ -150,21 +155,27 @@ export default function ActionButtons({
         </p>
       ) : (
         <div className="mt-4 flex flex-wrap gap-3">
-          {actions.map((action) => (
+          {actions.map((action) => {
+            const disabled =
+              isPending ||
+              receipt.isLoading ||
+              (action.functionName === "submitWork" && !canSubmitWorkOnChain);
+            return (
             <button
               className={`inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition disabled:opacity-60 ${
                 isDarkTheme
                   ? "border-violet-300/30 bg-violet-500/10 text-violet-200 hover:border-violet-300/60 hover:bg-violet-500/20"
                   : "border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100"
               }`}
-              disabled={isPending || receipt.isLoading}
+              disabled={disabled}
               key={`${action.functionName}-${action.label}`}
               onClick={() => runAction(action.functionName)}
               type="button"
             >
               {action.label}
             </button>
-          ))}
+          );
+          })}
         </div>
       )}
 

@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { notifyError } from "@/lib/notify";
 import { usePathname, useRouter } from "next/navigation";
 import { useAccount, useSignMessage } from "wagmi";
 import {
@@ -154,7 +155,9 @@ export default function WalletButton({
       } catch {
         clearAuthSession();
         if (!silent) {
-          setAuthError("Unable to sign in. Please try again.");
+          const msg = "Unable to sign in. Please try again.";
+          setAuthError(msg);
+          notifyError(msg);
         }
         return false;
       } finally {
