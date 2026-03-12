@@ -247,6 +247,101 @@ public sealed class JobsController : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("sync-from-chain")]
+    public async Task<ActionResult<JobResponse>> SyncJobFromChain(
+        [FromBody] SyncJobFromChainRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var normalizedEmployerWallet = NormalizeWalletAddress(request.EmployerWallet);
+        var normalizedFreelancerWallet = NormalizeWalletAddress(request.FreelancerWallet);
+        var normalizedHash = NormalizeHash(request.ContractHash);
+        if (normalizedEmployerWallet is null || normalizedFreelancerWallet is null)
+        {
+            return BadRequest("Employer and freelancer wallets are required.");
+        }
+
+        if (normalizedHash is null)
+        {
+            return BadRequest("Invalid contract hash.");
+        }
+
+        if (request.AmountUsdt <= 0)
+        {
+            return BadRequest("Amount must be greater than 0.");
+        }
+
+        if (user.Role != UserRole.Admin &&
+            !string.Equals(user.WalletAddress, normalizedEmployerWallet, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(user.WalletAddress, normalizedFreelancerWallet, StringComparison.OrdinalIgnoreCase))
+        {
+            return Forbid();
+        }
+
+        IQueryable<Job> query = _dbContext.Jobs
+            .Where(j => j.ContractHash == normalizedHash)
+            .OrderByDescending(j => j.CreatedAt);
+
+        Job? job;
+        if (user.Role == UserRole.Admin)
+        {
+            job = await query.FirstOrDefaultAsync(cancellationToken);
+        }
+        else
+        {
+            var wallet = user.WalletAddress;
+            job = await query.FirstOrDefaultAsync(
+                j => j.EmployerWallet == wallet || j.FreelancerWallet == wallet,
+                cancellationToken);
+        }
+
+        var normalizedTitle = string.IsNullOrWhiteSpace(request.Title)
+            ? $"On-chain job #{request.OnChainJobId}"
+            : request.Title.Trim();
+        var normalizedDescription = string.IsNullOrWhiteSpace(request.Description)
+            ? null
+            : request.Description.Trim();
+
+        if (job is null)
+        {
+            job = new Job
+            {
+                EmployerWallet = normalizedEmployerWallet,
+                FreelancerWallet = normalizedFreelancerWallet,
+                Title = normalizedTitle,
+                Description = normalizedDescription,
+                ContractKey = string.Empty,
+                ContractHash = normalizedHash,
+                AmountUsdt = request.AmountUsdt,
+                Status = JobStatus.Accepted,
+            };
+
+            _dbContext.Jobs.Add(job);
+        }
+        else
+        {
+            job.EmployerWallet = normalizedEmployerWallet;
+            job.FreelancerWallet = normalizedFreelancerWallet;
+            job.Title = string.IsNullOrWhiteSpace(job.Title) ? normalizedTitle : job.Title;
+            if (string.IsNullOrWhiteSpace(job.Description) && normalizedDescription is not null)
+            {
+                job.Description = normalizedDescription;
+            }
+            job.AmountUsdt = request.AmountUsdt;
+            job.Status = JobStatus.Accepted;
+            job.UpdatedAt = DateTime.UtcNow;
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(ToJobResponse(job));
+    }
+
+    [Authorize]
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<JobResponse>> AcceptJob(int id)
     {
@@ -359,6 +454,13 @@ public sealed class JobsController : ControllerBase
 
         return Regex.IsMatch(trimmed, "^[a-f0-9]{64}$") ? trimmed : null;
     }
+
+    private static string? NormalizeWalletAddress(string? walletAddress)
+    {
+        if (string.IsNullOrWhiteSpace(walletAddress)) return null;
+        var normalized = walletAddress.Trim().ToLowerInvariant();
+        return Regex.IsMatch(normalized, "^0x[a-f0-9]{40}$") ? normalized : null;
+    }
 }
 
 public sealed record CreateJobRequest(
@@ -368,6 +470,16 @@ public sealed record CreateJobRequest(
     decimal AmountUsdt,
     string ContractKey,
     string ContractHash
+);
+
+public sealed record SyncJobFromChainRequest(
+    string OnChainJobId,
+    string EmployerWallet,
+    string FreelancerWallet,
+    decimal AmountUsdt,
+    string ContractHash,
+    string? Title,
+    string? Description
 );
 
 public sealed record JobResponse(

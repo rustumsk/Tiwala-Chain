@@ -147,11 +147,6 @@ public sealed partial class AuthController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        if (!user.IsApproved)
-        {
-            return StatusCode(403, "Your account is pending admin approval.");
-        }
-
         var normalizedName = request.DisplayName?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedName) || normalizedName.Length < 2)
         {
