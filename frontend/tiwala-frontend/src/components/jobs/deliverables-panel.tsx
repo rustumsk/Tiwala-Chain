@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAccount } from "wagmi";
 import { ExternalLink, FileUp, Link2, ShieldCheck, RotateCcw, Download } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
 import { getStoredAuthSession } from "@/lib/auth";
@@ -20,6 +21,7 @@ type DeliverablesPanelProps = {
   canActAsEmployer: boolean;
   canActAsFreelancer: boolean;
   canSubmit: boolean;
+  submitLockReason?: string | null;
 };
 
 function statusTone(isDark: boolean, status: string) {
@@ -51,7 +53,9 @@ export default function DeliverablesPanel({
   canActAsEmployer,
   canActAsFreelancer,
   canSubmit,
+  submitLockReason = null,
 }: DeliverablesPanelProps) {
+  const { address } = useAccount();
   const { isDarkTheme } = useAppTheme();
 
   const panelClass = isDarkTheme
@@ -98,8 +102,18 @@ export default function DeliverablesPanel({
   }, [items]);
 
   const refresh = async () => {
-    const session = getStoredAuthSession();
-    if (!session) return;
+    if (!address) {
+      setItems([]);
+      setError("");
+      return;
+    }
+
+    const session = getActiveSession();
+    if (!session) {
+      setItems([]);
+      setError("Please sign in with your wallet first.");
+      return;
+    }
     setIsLoading(true);
     setError("");
     try {
@@ -116,7 +130,7 @@ export default function DeliverablesPanel({
 
   useEffect(() => {
     void refresh();
-  }, [contractHash]);
+  }, [address, contractHash]);
 
   // freelancer submission state
   const [note, setNote] = useState("");
@@ -131,6 +145,12 @@ export default function DeliverablesPanel({
     | { kind: "approve" | "revision"; deliverableId: number; title: string }
   >(null);
   const [isReviewing, setIsReviewing] = useState(false);
+
+  const getActiveSession = () => {
+    const session = getStoredAuthSession();
+    if (!session || !address) return null;
+    return session.walletAddress.toLowerCase() === address.toLowerCase() ? session : null;
+  };
 
   return (
     <article className={`${panelClass} rounded-3xl p-6 lg:p-7`}>
@@ -398,7 +418,7 @@ export default function DeliverablesPanel({
                     className={buttonClass}
                     disabled={!effectiveCanSubmit || isSubmitting}
                     onClick={async () => {
-                      const session = getStoredAuthSession();
+                      const session = getActiveSession();
                       if (!session) {
                         setError("Please sign in with your wallet first.");
                         notifyError("Please sign in with your wallet first.");
@@ -472,6 +492,26 @@ export default function DeliverablesPanel({
                     </button>
                   ) : null}
                 </div>
+              </div>
+            </div>
+          ) : canActAsFreelancer ? (
+            <div className={`${subtlePanelClass} rounded-2xl p-4`}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className={`text-xs font-semibold ${titleClass}`}>Submit deliverables</p>
+                  <p className={`mt-1 text-xs ${mutedTextClass}`}>
+                    {submitLockReason ?? "Deliverables are locked for this job right now."}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                    isDarkTheme
+                      ? "border-amber-400/40 bg-amber-500/10 text-amber-200"
+                      : "border-amber-200 bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  Locked
+                </span>
               </div>
             </div>
           ) : null}
@@ -559,7 +599,7 @@ export default function DeliverablesPanel({
                           <button
                             type="button"
                             onClick={async () => {
-                              const session = getStoredAuthSession();
+                              const session = getActiveSession();
                               if (!session) {
                                 setError("Please sign in with your wallet first.");
                                 return;
@@ -694,7 +734,7 @@ export default function DeliverablesPanel({
                 type="button"
                 disabled={isReviewing}
                 onClick={async () => {
-                  const session = getStoredAuthSession();
+                  const session = getActiveSession();
                   if (!session) {
                     setError("Please sign in with your wallet first.");
                     setConfirmAction(null);

@@ -55,14 +55,21 @@ export default function WalletRouteGate() {
           return;
         }
 
-        if (!user.isApproved) {
-          router.replace("/pending-approval");
-          return;
-        }
-
         if (user.role === "admin") {
           syncProfileFromBackendUser(user);
           router.replace("/admin");
+          return;
+        }
+
+        if (!user.displayName) {
+          clearStoredProfile();
+          router.replace("/onboarding");
+          return;
+        }
+
+        if (!user.isApproved) {
+          syncProfileFromBackendUser(user);
+          router.replace("/pending-approval");
           return;
         }
 
@@ -71,9 +78,6 @@ export default function WalletRouteGate() {
           router.replace(user.role === "admin" ? "/admin" : "/dashboard");
           return;
         }
-
-        clearStoredProfile();
-        router.replace("/onboarding");
       })
       .catch(() => {
         if (!active) return;

@@ -275,10 +275,6 @@ export default function RouteShell({ children }: RouteShellProps) {
       return;
     }
 
-    if (profile) {
-      return;
-    }
-
     if (!authSession) return;
 
     let active = true;
@@ -291,23 +287,21 @@ export default function RouteShell({ children }: RouteShellProps) {
           return;
         }
 
-        if (!user.isApproved) {
-          router.replace("/pending-approval");
-          return;
-        }
-
         if (user.role === "admin") {
           syncProfileFromBackendUser(user);
           return;
         }
 
-        if (user.displayName) {
-          syncProfileFromBackendUser(user);
+        if (!user.displayName) {
+          clearStoredProfile();
+          router.replace("/onboarding");
           return;
         }
 
-        clearStoredProfile();
-        router.replace("/onboarding");
+        syncProfileFromBackendUser(user);
+        if (!user.isApproved) {
+          router.replace("/pending-approval");
+        }
       })
       .catch(() => {
         if (!active) return;
@@ -324,17 +318,11 @@ export default function RouteShell({ children }: RouteShellProps) {
     isAppRoute,
     isAuthenticated,
     isConnected,
-    profile,
     router,
   ]);
 
   useEffect(() => {
     if (!isUnauthorized || !isConnected || !address || !isAuthenticated) {
-      return;
-    }
-
-    if (profile) {
-      router.replace(profile.role === "admin" ? "/admin" : "/dashboard");
       return;
     }
 
@@ -344,7 +332,13 @@ export default function RouteShell({ children }: RouteShellProps) {
     fetchCurrentUser(authSession.accessToken)
       .then((user) => {
         if (!active) return;
+        if (!user.displayName) {
+          clearStoredProfile();
+          router.replace("/onboarding");
+          return;
+        }
         if (!user.isApproved) {
+          syncProfileFromBackendUser(user);
           router.replace("/pending-approval");
           return;
         }
@@ -353,12 +347,8 @@ export default function RouteShell({ children }: RouteShellProps) {
           router.replace("/admin");
           return;
         }
-        if (user.displayName) {
-          syncProfileFromBackendUser(user);
-          router.replace("/dashboard");
-          return;
-        }
-        router.replace("/onboarding");
+        syncProfileFromBackendUser(user);
+        router.replace("/dashboard");
       })
       .catch(() => {
         if (!active) return;
@@ -374,7 +364,6 @@ export default function RouteShell({ children }: RouteShellProps) {
     isAuthenticated,
     isConnected,
     isUnauthorized,
-    profile,
     router,
   ]);
 

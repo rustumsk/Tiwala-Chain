@@ -7,7 +7,6 @@ import { CheckCircle2, UserRound, Wallet } from "lucide-react";
 import {
   clearStoredProfile,
   getStoredProfile,
-  saveStoredProfile,
   type UserRole,
 } from "@/lib/profile";
 import {
@@ -52,11 +51,6 @@ export default function OnboardingForm() {
           return;
         }
 
-        if (!user.isApproved) {
-          router.replace("/pending-approval");
-          return;
-        }
-
         if (user.role === "admin") {
           syncProfileFromBackendUser(user);
           router.replace("/admin");
@@ -64,6 +58,11 @@ export default function OnboardingForm() {
         }
 
         if (user.displayName) {
+          if (!user.isApproved) {
+            syncProfileFromBackendUser(user);
+            router.replace("/pending-approval");
+            return;
+          }
           syncProfileFromBackendUser(user);
           router.replace(user.role === "admin" ? "/admin" : "/dashboard");
           return;
@@ -116,10 +115,22 @@ export default function OnboardingForm() {
     setIsSubmitting(true);
 
     try {
-      await updateCurrentUserProfile(authSession.accessToken, {
+      const updatedUser = await updateCurrentUserProfile(authSession.accessToken, {
         displayName: normalizedName,
         role,
       });
+
+      syncProfileFromBackendUser(updatedUser);
+      setIsSubmitting(false);
+      notifySuccess(updatedUser.isApproved ? "Onboarding complete." : "Profile saved. Waiting for admin approval.");
+      router.replace(
+        updatedUser.role === "admin"
+          ? "/admin"
+          : updatedUser.isApproved
+            ? "/dashboard"
+            : "/pending-approval"
+      );
+      return;
     } catch {
       const msg = "Unable to save profile to the server.";
       setError(msg);
@@ -128,16 +139,6 @@ export default function OnboardingForm() {
       return;
     }
 
-    saveStoredProfile({
-      wallet: address.toLowerCase(),
-      displayName: normalizedName,
-      role,
-      updatedAt: new Date().toISOString(),
-    });
-
-    setIsSubmitting(false);
-    notifySuccess("Onboarding complete.");
-    router.replace("/dashboard");
   };
 
   return (

@@ -96,13 +96,18 @@ export default function WalletButton({
         pathname === "/onboarding";
       if (!shouldRedirect) return;
 
-      if (!user.isApproved) {
-        router.replace("/pending-approval");
+      if (user.role === "admin") {
+        router.replace("/admin");
         return;
       }
 
-      if (user.role === "admin") {
-        router.replace("/admin");
+      if (!user.displayName) {
+        router.replace("/onboarding");
+        return;
+      }
+
+      if (!user.isApproved) {
+        router.replace("/pending-approval");
         return;
       }
 
@@ -110,8 +115,6 @@ export default function WalletButton({
         router.replace("/dashboard");
         return;
       }
-
-      router.replace("/onboarding");
     },
     [pathname, router]
   );

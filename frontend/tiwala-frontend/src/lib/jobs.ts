@@ -142,6 +142,34 @@ export async function fetchJobByHash(
   return (await response.json()) as JobResponse;
 }
 
+export async function syncJobFromChain(
+  session: AuthSession,
+  payload: {
+    onChainJobId: string;
+    employerWallet: string;
+    freelancerWallet: string;
+    amountUsdt: number;
+    contractHash: string;
+    title?: string;
+    description?: string | null;
+  }
+): Promise<JobResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/jobs/sync-from-chain`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return (await response.json()) as JobResponse;
+}
+
 export async function downloadJobContractBlob(
   session: AuthSession,
   id: number

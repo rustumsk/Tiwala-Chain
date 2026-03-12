@@ -15,7 +15,7 @@ import {
   TIWALA_ESCROW_ADDRESS,
   type EscrowJobStatus,
 } from "@/lib/contract";
-import { downloadJobContractByHashBlob } from "@/lib/jobs";
+import { downloadJobContractByHashBlob, syncJobFromChain } from "@/lib/jobs";
 import { notifyError } from "@/lib/notify";
 import { listDeliverablesByHash, type Deliverable } from "@/lib/deliverables";
 import { getStoredProfile } from "@/lib/profile";
@@ -50,6 +50,9 @@ export default function JobDetailPage() {
   const { theme, isDarkTheme } = useAppTheme();
   const [contractError, setContractError] = useState("");
   const [isOpeningContract, setIsOpeningContract] = useState(false);
+  const [isSyncingDeliverablesJob, setIsSyncingDeliverablesJob] = useState(false);
+  const [deliverablesSyncError, setDeliverablesSyncError] = useState("");
+  const [isDeliverablesJobReady, setIsDeliverablesJobReady] = useState(false);
   const [deliverablesMeta, setDeliverablesMeta] = useState<{
     hasAny: boolean;
     allApproved: boolean;
@@ -139,15 +142,67 @@ export default function JobDetailPage() {
   }, [jobId, jobQuery.data]);
 
   useEffect(() => {
-    async function loadDeliverables() {
+    async function syncDeliverablesJob() {
       const parsedJob = parsed;
       if (!parsedJob) {
+        setIsDeliverablesJobReady(false);
+        setDeliverablesSyncError("");
+        return;
+      }
+
+      const session = getStoredAuthSession();
+      if (
+        !session ||
+        !address ||
+        session.walletAddress.toLowerCase() !== address.toLowerCase()
+      ) {
+        setIsDeliverablesJobReady(false);
+        setDeliverablesSyncError("");
+        return;
+      }
+
+      setIsSyncingDeliverablesJob(true);
+      setDeliverablesSyncError("");
+
+      try {
+        await syncJobFromChain(session, {
+          onChainJobId: parsedJob.id.toString(),
+          employerWallet: parsedJob.employer,
+          freelancerWallet: parsedJob.freelancer,
+          amountUsdt: Number(parsedJob.amount) / 1_000_000,
+          contractHash: parsedJob.contractHash,
+        });
+        setIsDeliverablesJobReady(true);
+      } catch (error) {
+        setIsDeliverablesJobReady(false);
+        setDeliverablesMeta(null);
+        setDeliverablesSyncError(
+          error instanceof Error
+            ? error.message
+            : "Unable to prepare deliverables for this job."
+        );
+      } finally {
+        setIsSyncingDeliverablesJob(false);
+      }
+    }
+
+    void syncDeliverablesJob();
+  }, [address, parsed]);
+
+  useEffect(() => {
+    async function loadDeliverables() {
+      const parsedJob = parsed;
+      if (!parsedJob || !isDeliverablesJobReady) {
         setDeliverablesMeta(null);
         return;
       }
       try {
         const session = getStoredAuthSession();
-        if (!session) {
+        if (
+          !session ||
+          !address ||
+          session.walletAddress.toLowerCase() !== address.toLowerCase()
+        ) {
           setDeliverablesMeta(null);
           return;
         }
@@ -163,7 +218,7 @@ export default function JobDetailPage() {
       }
     }
     void loadDeliverables();
-  }, [parsed]);
+  }, [address, isDeliverablesJobReady, parsed]);
 
   if (jobId === null) {
     return (
@@ -187,6 +242,14 @@ export default function JobDetailPage() {
     chainId === 11155111 &&
     canActAsFreelancer &&
     (parsed?.status === 2 || parsed?.status === 3); // Work or Review
+
+  const deliverableSubmitLockReason = !canActAsFreelancer
+    ? null
+    : chainId !== 11155111
+      ? "Switch to Sepolia to manage deliverables for this job."
+      : parsed?.status !== 2 && parsed?.status !== 3
+        ? "Deliverables unlock after the employer starts work."
+        : null;
 
   const canSubmitWorkOnChain =
     canActAsFreelancer &&
@@ -311,13 +374,38 @@ export default function JobDetailPage() {
           </div>
         ) : null}
 
+        {deliverablesSyncError ? (
+          <article
+            className={`rounded-3xl border p-4 text-sm ${
+              isDarkTheme
+                ? "border-red-400/30 bg-red-500/10 text-red-200"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
+            {deliverablesSyncError}
+          </article>
+        ) : null}
+
         {parsed ? (
-          <DeliverablesPanel
-            contractHash={parsed.contractHash}
-            canActAsEmployer={canActAsEmployer}
-            canActAsFreelancer={canActAsFreelancer}
-            canSubmit={canSubmitDeliverables}
-          />
+          isSyncingDeliverablesJob ? (
+            <article
+              className={`rounded-3xl border p-6 text-sm ${
+                isDarkTheme
+                  ? "border-white/12 bg-black/28 text-white/70"
+                  : "border-[#e4e8f2] bg-white text-[#5c6172]"
+              }`}
+            >
+              Preparing deliverables...
+            </article>
+          ) : isDeliverablesJobReady ? (
+            <DeliverablesPanel
+              contractHash={parsed.contractHash}
+              canActAsEmployer={canActAsEmployer}
+              canActAsFreelancer={canActAsFreelancer}
+              canSubmit={canSubmitDeliverables}
+              submitLockReason={deliverableSubmitLockReason}
+            />
+          ) : null
         ) : null}
 
         <article
