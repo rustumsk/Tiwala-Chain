@@ -142,18 +142,23 @@ def _truncate_for_llm(text: str) -> str:
 
 
 def _needs_llm_suggestion(result: dict) -> bool:
+    """Only call the LLM for unfair clauses.
+
+    Fair clauses keep the rule-based suggestion so we don't overwrite
+    everything with LLM output.
+    """
     if _env_flag("LLM_SUGGESTIONS_FORCE_ALL", default=False):
         return True
 
     label = result["label"]
     confidence = result["confidence"]
-    suggestion = result["suggestion"]
 
+    # Only unfair clauses may trigger LLM enhancement, typically when
+    # the model is not very confident about the prediction.
     if label == "unfair" and confidence < MODERATE_CONFIDENCE_THRESHOLD:
         return True
-    if label == "fair" and confidence < LOW_CONFIDENCE_THRESHOLD:
-        return True
-    return suggestion == DEFAULT_UNFAIR_SUGGESTION
+
+    return False
 
 
 def _apply_llm_suggestions(results: list[dict]) -> list[dict]:

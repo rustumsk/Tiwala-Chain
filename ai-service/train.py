@@ -9,8 +9,11 @@ from transformers import (
 from sklearn.model_selection import train_test_split
 import numpy as np
 
-# Load dataset
-df = pd.read_csv("./dataset/Tiwalachain-finetune-dataset.csv")
+# Load dataset (skip any malformed rows to avoid parser errors)
+df = pd.read_csv(
+    "./dataset/Tiwalachain-finetune-dataset.csv",
+    on_bad_lines="skip",
+)
 df = df.rename(columns={"clause": "text"})
 
 # Split into train and test

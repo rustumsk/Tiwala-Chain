@@ -94,14 +94,15 @@ def _strip_code_fences(text: str) -> str:
 
 def _build_messages(batch: List[dict]) -> list:
     system = (
-        "You are a legal contract assistant. Return concise, practical clause-improvement suggestions. "
-        "Focus on balancing obligations between parties. Respond strictly in JSON."
+        "You are a legal contract assistant. Return concise replacement wording for unfair contract clauses. "
+        "Focus on rewriting the clause text so that obligations are more balanced between the parties. "
+        "Respond strictly in JSON."
     )
 
     payload = {
         "instructions": [
-            "For each clause item, provide a single-sentence suggestion.",
-            "Keep tone neutral and actionable.",
+            "For each clause item, provide a short replacement clause the user can paste directly into the contract.",
+            "Write the replacement clause itself, not general advice or meta commentary.",
             "Do not give legal advice disclaimers.",
             "Return only valid JSON array: [{\"index\": number, \"suggestion\": string}].",
         ],
