@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 
 export const TIWALA_ESCROW_ADDRESS =
-  "0x2Ed31094DD468B59f3A76Fd6a71F938232A3C6F9" as Address;
+  "0xC2cEDA247c04e3a49541FcA219580A2348Df3568" as Address;
 
 export const tiwalaEscrowAbi = [
   {
