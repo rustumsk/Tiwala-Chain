@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
@@ -187,7 +187,9 @@ export default function RouteShell({ children }: RouteShellProps) {
   const isOnboarding = pathname === "/onboarding";
   const isUnauthorized = pathname === "/unauthorized";
   const isPendingApproval = pathname === "/pending-approval";
-  const isAppRoute = !isHome && !isOnboarding && !isUnauthorized && !isPendingApproval;
+  const isPublic = pathname === "/public" || pathname.startsWith("/public/");
+  const isAppRoute =
+    !isHome && !isOnboarding && !isUnauthorized && !isPendingApproval && !isPublic;
   const isDashboard = pathname === "/dashboard";
   const isDarkTheme = theme === "dark";
 
@@ -248,6 +250,8 @@ export default function RouteShell({ children }: RouteShellProps) {
 
   const appLinks = useMemo(() => getAppLinks(profile?.role), [profile?.role]);
 
+  const lastVerifiedRef = useRef<string | null>(null);
+
   const toggleTheme = () => {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
   };
@@ -277,6 +281,9 @@ export default function RouteShell({ children }: RouteShellProps) {
 
     if (!authSession) return;
 
+    const verifyKey = `${address.toLowerCase()}:${authSession.accessToken}`;
+    if (lastVerifiedRef.current === verifyKey) return;
+
     let active = true;
     fetchCurrentUser(authSession.accessToken)
       .then((user) => {
@@ -286,6 +293,8 @@ export default function RouteShell({ children }: RouteShellProps) {
           router.replace("/unauthorized");
           return;
         }
+
+        lastVerifiedRef.current = verifyKey;
 
         if (user.role === "admin") {
           syncProfileFromBackendUser(user);
@@ -332,6 +341,11 @@ export default function RouteShell({ children }: RouteShellProps) {
     fetchCurrentUser(authSession.accessToken)
       .then((user) => {
         if (!active) return;
+        if (user.role === "admin") {
+          syncProfileFromBackendUser(user);
+          router.replace("/admin");
+          return;
+        }
         if (!user.displayName) {
           clearStoredProfile();
           router.replace("/onboarding");
@@ -340,11 +354,6 @@ export default function RouteShell({ children }: RouteShellProps) {
         if (!user.isApproved) {
           syncProfileFromBackendUser(user);
           router.replace("/pending-approval");
-          return;
-        }
-        if (user.role === "admin") {
-          syncProfileFromBackendUser(user);
-          router.replace("/admin");
           return;
         }
         syncProfileFromBackendUser(user);
@@ -517,7 +526,7 @@ export default function RouteShell({ children }: RouteShellProps) {
           <aside
             className={`hidden shrink-0 transition-all duration-300 lg:flex lg:flex-col ${
               isDarkTheme
-                ? "bg-[#08001a]/60 backdrop-blur-lg"
+                ? "bg-[#08001a]"
                 : "bg-[#f7f8fc] shadow-[1px_0_0_#e5e8f2]"
             } ${sidebarHidden ? "w-[72px]" : "w-64"}`}
           >
@@ -687,10 +696,10 @@ export default function RouteShell({ children }: RouteShellProps) {
 
           <div className="flex min-w-0 flex-1 flex-col">
             <header
-              className={`sticky top-0 z-30 backdrop-blur-xl ${
+              className={`sticky top-0 z-30 ${
                 isDarkTheme
-                  ? "border-b border-white/[0.07] bg-[#090d18]/80"
-                  : "border-b border-[#e5e8f2] bg-[#f8f9fc]/90"
+                  ? "border-b border-white/[0.07] bg-[#090d18]"
+                  : "border-b border-[#e5e8f2] bg-[#f8f9fc]"
               }`}
             >
               <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-8 lg:px-10">

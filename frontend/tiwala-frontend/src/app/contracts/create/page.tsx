@@ -2,16 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { jsPDF } from "jspdf";
 import { useAccount } from "wagmi";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  AlignmentType,
-} from "docx";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -61,7 +52,10 @@ function formatDate(value: string) {
 
 function parseScore(payload: Record<string, unknown>): number | null {
   const direct = payload.fairness_score ?? payload.overall_score ?? payload.score;
-  if (typeof direct === "number") return Math.max(0, Math.min(100, direct));
+  if (typeof direct === "number") {
+    const normalized = direct <= 1 ? direct * 100 : direct;
+    return Math.max(0, Math.min(100, normalized));
+  }
   return null;
 }
 
@@ -206,7 +200,10 @@ export default function CreateContractPage() {
     return lines;
   };
 
-  const compiledContractText = buildContractLines().join("\n");
+  const compiledContractText = useMemo(
+    () => buildContractLines().join("\n"),
+    [jobTitle, employerName, freelancerName, freelancerWallet, startDate, endDate, projectDescription, totalAmountUsdt, revisionRounds, deliverables, allClausesForContract]
+  );
 
   const updateArrayValue = (
     setter: React.Dispatch<React.SetStateAction<string[]>>,
@@ -363,6 +360,7 @@ export default function CreateContractPage() {
     setIsExportingPdf(true);
     setCopiedHash(false);
     try {
+      const { jsPDF } = await import("jspdf");
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       const marginX = 56;
       const topMargin = 56;
@@ -582,6 +580,8 @@ export default function CreateContractPage() {
     setIsExportingDocx(true);
     setCopiedHash(false);
     try {
+      const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } =
+        await import("docx");
       const lines = buildContractLines();
       const children = lines.map((line, index) => {
         const heading =

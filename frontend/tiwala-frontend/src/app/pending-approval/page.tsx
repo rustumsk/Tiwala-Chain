@@ -33,12 +33,12 @@ export default function PendingApprovalPage() {
     const interval = setInterval(async () => {
       try {
         const user = await fetchCurrentUser(session.accessToken);
-        if (user.isApproved && user.role === "admin") {
+        if (user.role === "admin") {
           syncProfileFromBackendUser(user);
           router.replace("/admin");
         } else if (user.isApproved && user.displayName) {
           syncProfileFromBackendUser(user);
-          router.replace(user.role === "admin" ? "/admin" : "/dashboard");
+          router.replace("/dashboard");
         } else if (user.isApproved && !user.displayName) {
           router.replace("/onboarding");
         }
