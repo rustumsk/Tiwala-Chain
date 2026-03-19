@@ -241,6 +241,8 @@ public sealed partial class AuthController : ControllerBase
             return NotFound("User not found.");
 
         user.Role = parsedRole;
+        if (parsedRole == UserRole.Admin)
+            user.IsApproved = true;
         await _dbContext.SaveChangesAsync();
         return Ok(ToUserResponse(user));
     }

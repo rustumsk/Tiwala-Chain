@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +13,33 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddMemoryCache();
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("public-contracts", httpContext =>
+    {
+        // Simple per-IP fixed window limit for unauthenticated public endpoints.
+        // If you're behind a proxy/CDN later, ensure forwarded headers are configured.
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: ip,
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 12,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+});
+
+builder.Services.AddHttpClient("AiService", client =>
+{
+    // Local AI service; can be overridden later if deployed.
+    client.BaseAddress = new Uri("http://localhost:8000/");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
 
 var frontendOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
@@ -76,6 +105,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 app.UseCors("Frontend");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
