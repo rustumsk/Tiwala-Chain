@@ -129,7 +129,7 @@ export default function CreateContractPage() {
     return stored.wallet.toLowerCase() === address.toLowerCase() ? stored : null;
   }, [address, isConnected]);
   const canUseContractBuilder =
-    profile?.role === "employer" || profile?.role === "both";
+    profile?.role === "employer";
 
   const validateForm = () => {
     const errors: string[] = [];
@@ -664,7 +664,7 @@ export default function CreateContractPage() {
               Employer Access Required
             </h1>
             <p className={`mt-2 max-w-xl text-sm leading-6 ${mutedTextClass}`}>
-              The Contract Builder is only available for users with an Employer or Both role.
+              The Contract Builder is only available for users with an Employer role.
             </p>
             <Link
               href="/settings/profile"

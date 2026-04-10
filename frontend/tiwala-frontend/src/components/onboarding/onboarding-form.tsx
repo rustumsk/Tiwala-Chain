@@ -20,7 +20,6 @@ import { notifyError, notifySuccess } from "@/lib/notify";
 const roleOptions: Array<{ label: string; value: UserRole }> = [
   { label: "Freelancer", value: "freelancer" },
   { label: "Employer", value: "employer" },
-  { label: "Both", value: "both" },
 ];
 
 export default function OnboardingForm() {
@@ -194,7 +193,7 @@ export default function OnboardingForm() {
             <label className="mb-2 block text-sm font-medium text-white/85">
               Role
             </label>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               {roleOptions.map((option) => {
                 const selected = role === option.value;
                 return (

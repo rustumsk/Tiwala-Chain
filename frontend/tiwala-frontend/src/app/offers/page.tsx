@@ -47,7 +47,7 @@ export default function OffersPage() {
     setIsLoading(true);
     setError("");
     const loader =
-      profile?.role === "employer" || profile?.role === "both"
+      profile?.role === "employer"
         ? fetchSentOffers
         : fetchIncomingOffers;
 
@@ -129,17 +129,17 @@ export default function OffersPage() {
       <section className="mx-auto w-full max-w-[1580px] space-y-5">
         <article className={`${panelClass} rounded-xl px-6 py-6 lg:px-8 lg:py-7`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
-            {profile.role === "employer" || profile.role === "both"
+            {profile.role === "employer"
               ? "Employer"
               : "Freelancer"}
           </p>
           <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
-            {profile.role === "employer" || profile.role === "both"
+            {profile.role === "employer"
               ? "Sent job offers"
               : "Incoming job offers"}
           </h1>
           <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
-            {profile.role === "employer" || profile.role === "both"
+            {profile.role === "employer"
               ? "Review contracts you have sent to freelancers, and track whether they are pending, accepted, or declined."
               : "Review contracts that employers have sent to your wallet, run AI analysis, and accept or decline the work."}
           </p>
@@ -168,7 +168,7 @@ export default function OffersPage() {
               <h2
                 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}
               >
-                {profile.role === "employer" || profile.role === "both"
+                {profile.role === "employer"
                   ? "Your job offers"
                   : "Pending job offers"}
               </h2>
@@ -211,7 +211,7 @@ export default function OffersPage() {
             <p className={`mt-4 text-sm ${mutedTextClass}`}>Loading offers...</p>
           ) : offers.length === 0 ? (
             <p className={`mt-4 text-sm ${mutedTextClass}`}>
-              {profile.role === "employer" || profile.role === "both"
+              {profile.role === "employer"
                 ? "You haven't sent any job offers yet. Create a job from the dashboard to send your first proposal."
                 : "No pending offers right now. When employers send job proposals to your wallet, they will appear here."}
             </p>
@@ -257,7 +257,7 @@ export default function OffersPage() {
                   <div className="hidden flex-1 flex-col sm:flex">
                     <p className={`text-xs ${tinyLabelClass}`}>Employer</p>
                     <p className={`mt-0.5 text-xs ${mutedTextClass}`}>
-                      {profile.role === "employer" || profile.role === "both"
+                      {profile.role === "employer"
                         ? shortAddr(offer.freelancerWallet)
                         : shortAddr(offer.employerWallet)}
                     </p>
@@ -291,7 +291,7 @@ export default function OffersPage() {
                         : "Pending offer"}
                     </span>
                     <span className={`text-[11px] ${mutedTextClass}`}>
-                      {profile.role === "employer" || profile.role === "both"
+                      {profile.role === "employer"
                         ? "Click to view"
                         : "Click to review"}
                     </span>

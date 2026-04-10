@@ -49,7 +49,7 @@ type RouteShellProps = {
 const THEME_STORAGE_KEY = "tiwala:theme";
 
 function getAppLinks(role?: LocalUserProfile["role"]) {
-  const canCreateEmployerResources = role === "employer" || role === "both";
+  const canCreateEmployerResources = role === "employer";
   const isAdmin = role === "admin";
 
   if (isAdmin) {

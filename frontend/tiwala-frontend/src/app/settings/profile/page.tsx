@@ -8,16 +8,9 @@ import { useAppTheme } from "@/components/layout/theme-context";
 import {
   getStoredProfile,
   saveStoredProfile,
-  type UserRole,
 } from "@/lib/profile";
 import { getStoredAuthSession, updateCurrentUserProfile } from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
-
-const roleOptions: Array<{ label: string; value: UserRole }> = [
-  { label: "Freelancer", value: "freelancer" },
-  { label: "Employer", value: "employer" },
-  { label: "Both", value: "both" },
-];
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
@@ -52,14 +45,11 @@ export default function ProfileSettingsPage() {
   }, [address, isConnected]);
 
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<UserRole>("freelancer");
   const [nameTouched, setNameTouched] = useState(false);
-  const [roleTouched, setRoleTouched] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingDisplayName, setPendingDisplayName] = useState("");
-  const [pendingRole, setPendingRole] = useState<UserRole>("freelancer");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -70,10 +60,8 @@ export default function ProfileSettingsPage() {
   }, [address, isConnected, profile, router]);
 
   const displayNameValue = nameTouched ? displayName : profile?.displayName ?? "";
-  const roleValue = roleTouched ? role : profile?.role ?? "freelancer";
   const hasChanges =
-    (profile?.displayName ?? "").trim() !== displayNameValue.trim() ||
-    (profile?.role ?? "freelancer") !== roleValue;
+    (profile?.displayName ?? "").trim() !== displayNameValue.trim();
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -102,7 +90,6 @@ export default function ProfileSettingsPage() {
     }
 
     setPendingDisplayName(normalizedName);
-    setPendingRole(roleValue);
     setIsConfirmOpen(true);
   };
 
@@ -141,7 +128,7 @@ export default function ProfileSettingsPage() {
     try {
       await updateCurrentUserProfile(authSession.accessToken, {
         displayName: normalizedName,
-        role: pendingRole,
+        role: profile?.role ?? "freelancer",
       });
     } catch {
       const msg = "Unable to update profile on the server.";
@@ -154,7 +141,7 @@ export default function ProfileSettingsPage() {
     saveStoredProfile({
       wallet: address.toLowerCase(),
       displayName: normalizedName,
-      role: pendingRole,
+      role: profile?.role ?? "freelancer",
       updatedAt: new Date().toISOString(),
     });
 
@@ -163,9 +150,7 @@ export default function ProfileSettingsPage() {
     setSuccess("Profile updated successfully.");
     notifySuccess("Profile updated successfully.");
     setNameTouched(true);
-    setRoleTouched(true);
     setDisplayName(normalizedName);
-    setRole(pendingRole);
   };
 
   return (
@@ -224,45 +209,6 @@ export default function ProfileSettingsPage() {
                   value={displayNameValue}
                   placeholder="Your name or brand"
                 />
-              </div>
-            </section>
-
-            <section className={`${subtlePanelClass} rounded-xl p-4 sm:p-5`}>
-              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
-                Role
-              </p>
-              <h2 className={`mt-2 text-lg font-semibold tracking-tight ${titleClass}`}>
-                How you use TiwalaChain
-              </h2>
-              <p className={`mt-1 text-xs ${mutedTextClass}`}>
-                Your role controls whether you can create jobs, accept work, or both.
-              </p>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {roleOptions.map((option) => {
-                  const selected = roleValue === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setRoleTouched(true);
-                        setRole(option.value);
-                      }}
-                      className={`h-11 rounded-xl border text-sm font-medium transition-all duration-200 ${
-                        selected
-                          ? isDarkTheme
-                            ? "border-violet-300/70 bg-violet-500/20 text-violet-50 shadow-[0_0_0_1px_rgba(196,181,253,0.3)_inset]"
-                            : "border-violet-300 bg-violet-50 text-violet-800 shadow-[0_0_0_1px_rgba(196,181,253,0.6)_inset]"
-                          : isDarkTheme
-                            ? "border-white/15 bg-white/[0.03] text-white/70 hover:border-white/30 hover:bg-white/[0.06]"
-                            : "border-[#dde1ec] bg-white text-[#5c6172] hover:border-violet-300 hover:bg-violet-50"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
               </div>
             </section>
 
@@ -336,22 +282,7 @@ export default function ProfileSettingsPage() {
                     Current: {profile?.displayName || "Not set"}
                   </p>
                 </div>
-                <div>
-                  <dt className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
-                    Role
-                  </dt>
-                  <dd className={`mt-1 font-medium capitalize ${titleClass}`}>
-                    {pendingRole}
-                  </dd>
-                  <p className={`mt-1 text-xs ${mutedTextClass}`}>
-                    Current: {profile?.role ?? "freelancer"}
-                  </p>
-                </div>
               </dl>
-
-              <p className={`mt-3 text-xs ${mutedTextClass}`}>
-                Role changes affect which dashboards and job actions are available to you.
-              </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
                 <button

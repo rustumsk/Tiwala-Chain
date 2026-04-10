@@ -168,7 +168,7 @@ export default function OfferDetailPage() {
   const isEmployerView =
     !!job &&
     !!profile &&
-    (profile.role === "employer" || profile.role === "both") &&
+    profile.role === "employer" &&
     job.employerWallet.toLowerCase() === profile.wallet.toLowerCase();
 
   const handleViewContract = async () => {

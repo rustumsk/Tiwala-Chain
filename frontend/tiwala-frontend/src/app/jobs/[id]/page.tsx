@@ -232,11 +232,11 @@ export default function JobDetailPage() {
 
   const canActAsEmployer =
     Boolean(address && parsed?.employer.toLowerCase() === address.toLowerCase()) &&
-    (profile?.role === "employer" || profile?.role === "both");
+    profile?.role === "employer";
 
   const canActAsFreelancer =
     Boolean(address && parsed?.freelancer.toLowerCase() === address.toLowerCase()) &&
-    (profile?.role === "freelancer" || profile?.role === "both");
+    profile?.role === "freelancer";
 
   const canSubmitDeliverables =
     chainId === 11155111 &&

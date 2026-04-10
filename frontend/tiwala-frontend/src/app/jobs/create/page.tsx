@@ -112,7 +112,7 @@ export default function CreateJobPage() {
     return stored.wallet.toLowerCase() === address.toLowerCase() ? stored : null;
   }, [address]);
 
-  const canCreate = profile?.role === "employer" || profile?.role === "both";
+  const canCreate = profile?.role === "employer";
   const fairnessScore = analysisRaw ? extractScore(analysisRaw) : null;
   const clauseItems = analysisRaw ? extractClauses(analysisRaw) : [];
   const hasUnfairClause = clauseItems.some((item) => !item.isFair);
@@ -167,7 +167,7 @@ export default function CreateJobPage() {
       return;
     }
     if (!canCreate) {
-      setSubmitError("Only Employer or Both role can create jobs.");
+      setSubmitError("Only Employer role can create jobs.");
       return;
     }
     if (!jobTitle.trim() || !jobDescription.trim()) {
@@ -253,7 +253,7 @@ export default function CreateJobPage() {
           </h1>
           <p className={`mt-3 max-w-xl text-sm leading-6 ${mutedTextClass}`}>
             Your current role is <span className="capitalize font-medium">{profile?.role ?? "unknown"}</span>.
-            Update your profile role to Employer or Both before creating jobs.
+            Your role must be Employer before creating jobs.
           </p>
           <Link
             className={`${actionChipClass} mt-6 inline-flex h-11 items-center rounded-xl px-5 text-sm font-semibold transition hover:border-violet-300/50 hover:bg-violet-500/20`}

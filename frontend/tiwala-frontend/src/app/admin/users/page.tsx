@@ -19,7 +19,7 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-const ROLE_OPTIONS = ["freelancer", "employer", "both", "admin"] as const;
+const ROLE_OPTIONS = ["freelancer", "employer", "admin"] as const;
 
 export default function AdminUsersPage() {
   const { address, isConnected } = useAccount();

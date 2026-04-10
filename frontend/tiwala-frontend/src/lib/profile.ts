@@ -1,4 +1,4 @@
-export type UserRole = "freelancer" | "employer" | "both" | "admin";
+export type UserRole = "freelancer" | "employer" | "admin";
 
 export type LocalUserProfile = {
   wallet: string;

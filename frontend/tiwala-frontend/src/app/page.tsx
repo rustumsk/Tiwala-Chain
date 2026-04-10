@@ -170,10 +170,7 @@ export default function Home() {
         {/* Centered hero content */}
         <div className="relative z-10 flex min-h-full flex-1 flex-col items-center justify-center text-center">
           <div className="reveal mb-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-xs text-white/60">
-              <span className="size-1.5 rounded-full bg-violet-400" />
-              Powered by Ethereum · USDT Escrow · AI Contract Review
-            </div>
+      
           </div>
 
           <h1 className="reveal reveal-d1 max-w-2xl text-5xl font-bold leading-[1.1] tracking-tight text-white md:text-6xl">

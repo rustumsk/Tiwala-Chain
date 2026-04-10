@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -141,7 +141,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const [viewMode, setViewMode] = useState<DashboardView>("employer");
   const { theme } = useAppTheme();
   const profile = useMemo<LocalUserProfile | null>(() => {
     if (!isConnected || !address || typeof window === "undefined") return null;
@@ -163,9 +162,9 @@ export default function DashboardPage() {
     }
   }, [address, isConnected, profile, router]);
 
-  const showEmployerList = profile?.role === "employer" || profile?.role === "both";
+  const showEmployerList = profile?.role === "employer";
   const showFreelancerList =
-    profile?.role === "freelancer" || profile?.role === "both";
+    profile?.role === "freelancer";
 
   const employerJobs = useEmployerJobs({
     walletAddress: address,
@@ -184,7 +183,7 @@ export default function DashboardPage() {
     ? "employer"
     : !showEmployerList && showFreelancerList
       ? "freelancer"
-      : viewMode;
+      : "employer";
 
   const activeConfig = useMemo(() => {
     const liveJobs = activeView === "employer" ? employerJobs.jobs : freelancerJobs.jobs;
@@ -515,43 +514,7 @@ export default function DashboardPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {profile?.role === "both" ? (
-              <div className={`${subtlePanelClass} inline-flex p-1 text-sm`}>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("employer")}
-                  className={`px-4 py-1.5 transition ${
-                    activeView === "employer"
-                      ? isDarkTheme
-                        ? "bg-violet-500/20 text-white"
-                        : "bg-violet-100 text-violet-900"
-                      : isDarkTheme
-                        ? "text-white/62 hover:text-white"
-                        : "text-[#5c6172] hover:text-[#11131b]"
-                  }`}
-                >
-                  Employer View
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("freelancer")}
-                  className={`px-4 py-1.5 transition ${
-                    activeView === "freelancer"
-                      ? isDarkTheme
-                        ? "bg-violet-500/20 text-white"
-                        : "bg-violet-100 text-violet-900"
-                      : isDarkTheme
-                        ? "text-white/62 hover:text-white"
-                        : "text-[#5c6172] hover:text-[#11131b]"
-                  }`}
-                >
-                  Freelancer View
-                </button>
-              </div>
-            ) : null}
-
-          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2" />
         </section>
 
         <section className={panelClass}>

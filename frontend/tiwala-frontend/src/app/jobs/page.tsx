@@ -18,8 +18,8 @@ export default function JobsPage() {
     return existing.wallet.toLowerCase() === address.toLowerCase() ? existing : null;
   }, [address, isConnected]);
 
-  const showEmployerList = profile?.role === "employer" || profile?.role === "both";
-  const showFreelancerList = profile?.role === "freelancer" || profile?.role === "both";
+  const showEmployerList = profile?.role === "employer";
+  const showFreelancerList = profile?.role === "freelancer";
 
   const employerJobs = useEmployerJobs({
     walletAddress: address,
