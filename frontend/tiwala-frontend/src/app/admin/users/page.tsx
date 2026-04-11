@@ -11,7 +11,7 @@ import {
   adminListUsers,
   adminUpdateUserRole,
   getStoredAuthSession,
-  type BackendUser,
+  type AdminListedUser,
 } from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 
@@ -19,7 +19,24 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-const ROLE_OPTIONS = ["freelancer", "employer", "admin"] as const;
+const ROLE_OPTIONS = ["freelancer", "employer", "both", "admin"] as const;
+
+function roleLabel(role: string) {
+  if (role === "both") return "Both";
+  return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function getDeleteDisabledReason(user: AdminListedUser, viewer?: string): string | null {
+  if (user.canDelete) return null;
+  const v = viewer?.toLowerCase();
+  if (v && user.walletAddress.toLowerCase() === v) {
+    return "You cannot delete your own account.";
+  }
+  if (user.role === "admin") {
+    return "Admin accounts cannot be deleted.";
+  }
+  return "This user has a pending offer or an accepted job. Resolve those before deleting.";
+}
 
 export default function AdminUsersPage() {
   const { address, isConnected } = useAccount();
@@ -34,7 +51,7 @@ export default function AdminUsersPage() {
 
   const isAdmin = profile?.role === "admin";
 
-  const [users, setUsers] = useState<BackendUser[]>([]);
+  const [users, setUsers] = useState<AdminListedUser[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
@@ -48,10 +65,10 @@ export default function AdminUsersPage() {
     | null
   >(null);
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (opts?: { quiet?: boolean }) => {
     const session = getStoredAuthSession();
     if (!session) return;
-    setIsLoading(true);
+    if (!opts?.quiet) setIsLoading(true);
     setError("");
     try {
       const result = await adminListUsers(session.accessToken);
@@ -62,7 +79,7 @@ export default function AdminUsersPage() {
       setError(msg);
       notifyError(msg);
     } finally {
-      setIsLoading(false);
+      if (!opts?.quiet) setIsLoading(false);
     }
   }, []);
 
@@ -75,8 +92,8 @@ export default function AdminUsersPage() {
     if (!session) return;
     setActionLoading(userId);
     try {
-      const updated = await adminApproveUser(session.accessToken, userId, approved);
-      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      await adminApproveUser(session.accessToken, userId, approved);
+      await loadUsers({ quiet: true });
       notifySuccess(approved ? "User approved." : "User approval revoked.");
     } catch (err) {
       const msg =
@@ -93,8 +110,8 @@ export default function AdminUsersPage() {
     if (!session) return;
     setActionLoading(userId);
     try {
-      const updated = await adminUpdateUserRole(session.accessToken, userId, newRole);
-      setUsers((prev) => prev.map((u) => (u.id === userId ? updated : u)));
+      await adminUpdateUserRole(session.accessToken, userId, newRole);
+      await loadUsers({ quiet: true });
       notifySuccess("User role updated.");
     } catch (err) {
       const msg =
@@ -161,7 +178,8 @@ export default function AdminUsersPage() {
             User management
           </h1>
           <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
-            View all registered users, change roles, or remove accounts.
+            View all registered users, change roles, or remove employer, freelancer, or both accounts
+            when they have no pending offers or accepted jobs.
           </p>
         </article>
 
@@ -199,6 +217,8 @@ export default function AdminUsersPage() {
               </div>
               {users.map((user) => {
                 const isSelf = address?.toLowerCase() === user.walletAddress.toLowerCase();
+                const deleteReason = getDeleteDisabledReason(user, address);
+                const canClickDelete = user.canDelete && !isSelf;
                 return (
                   <div
                     key={user.id}
@@ -220,7 +240,7 @@ export default function AdminUsersPage() {
                       >
                         {ROLE_OPTIONS.map((r) => (
                           <option key={r} value={r}>
-                            {r.charAt(0).toUpperCase() + r.slice(1)}
+                            {roleLabel(r)}
                           </option>
                         ))}
                       </select>
@@ -277,10 +297,10 @@ export default function AdminUsersPage() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setDeleteConfirmId(user.id)}
-                          disabled={isSelf}
-                          className={`inline-flex items-center justify-center rounded-lg p-1.5 transition disabled:opacity-30 ${isDarkTheme ? "text-white/40 hover:bg-white/[0.06] hover:text-red-400" : "text-[#9299ae] hover:bg-red-50 hover:text-red-600"}`}
-                          title={isSelf ? "Cannot delete your own account" : "Delete user"}
+                          onClick={() => canClickDelete && setDeleteConfirmId(user.id)}
+                          disabled={!canClickDelete}
+                          className={`inline-flex items-center justify-center rounded-lg p-1.5 transition disabled:cursor-not-allowed disabled:opacity-30 ${isDarkTheme ? "text-white/40 hover:bg-white/[0.06] hover:text-red-400 enabled:hover:text-red-400" : "text-[#9299ae] hover:bg-red-50 hover:text-red-600 enabled:hover:text-red-600"}`}
+                          title={deleteReason ?? "Delete user"}
                         >
                           <Trash2 size={14} />
                         </button>

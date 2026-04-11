@@ -3,13 +3,21 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { Save, UserRound } from "lucide-react";
+import { Save, Trash2, UserRound } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
 import {
+  clearStoredProfile,
   getStoredProfile,
   saveStoredProfile,
 } from "@/lib/profile";
-import { getStoredAuthSession, updateCurrentUserProfile } from "@/lib/auth";
+import {
+  clearAuthSession,
+  deleteOwnAccount,
+  fetchCurrentUser,
+  getStoredAuthSession,
+  updateCurrentUserProfile,
+  type BackendUser,
+} from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 
 export default function ProfileSettingsPage() {
@@ -51,6 +59,9 @@ export default function ProfileSettingsPage() {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [pendingDisplayName, setPendingDisplayName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [me, setMe] = useState<BackendUser | null>(null);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -58,6 +69,38 @@ export default function ProfileSettingsPage() {
       router.replace("/onboarding");
     }
   }, [address, isConnected, profile, router]);
+
+  useEffect(() => {
+    if (!isConnected || !address || !profile) return;
+    const session = getStoredAuthSession();
+    if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
+      return;
+    }
+    let cancelled = false;
+    fetchCurrentUser(session.accessToken)
+      .then((user) => {
+        if (!cancelled) setMe(user);
+      })
+      .catch(() => {
+        if (!cancelled) setMe(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, isConnected, profile]);
+
+  const deleteBlockedReason = useMemo(() => {
+    if (!me) return "Loading account status…";
+    if (me.role === "admin") {
+      return "Admin accounts cannot be deleted from the app. Contact support if you need this removed.";
+    }
+    if (me.canDeleteAccount !== true) {
+      return "You have a pending offer or an accepted job. Finish or resolve those before deleting your account.";
+    }
+    return null;
+  }, [me]);
+
+  const canDeleteAccount = me?.canDeleteAccount === true && me.role !== "admin";
 
   const displayNameValue = nameTouched ? displayName : profile?.displayName ?? "";
   const hasChanges =
@@ -130,6 +173,8 @@ export default function ProfileSettingsPage() {
         displayName: normalizedName,
         role: profile?.role ?? "freelancer",
       });
+      const refreshed = await fetchCurrentUser(authSession.accessToken);
+      setMe(refreshed);
     } catch {
       const msg = "Unable to update profile on the server.";
       setError(msg);
@@ -153,6 +198,43 @@ export default function ProfileSettingsPage() {
     setDisplayName(normalizedName);
   };
 
+  const handleDeleteAccount = async () => {
+    setError("");
+    setSuccess("");
+    if (!isConnected || !address) {
+      const msg = "Connect your wallet first.";
+      setError(msg);
+      notifyError(msg);
+      return;
+    }
+    const authSession = getStoredAuthSession();
+    if (
+      !authSession ||
+      authSession.walletAddress.toLowerCase() !== address.toLowerCase()
+    ) {
+      const msg = "Please sign in with your wallet first.";
+      setError(msg);
+      notifyError(msg);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteOwnAccount(authSession.accessToken);
+      clearAuthSession();
+      clearStoredProfile();
+      setIsDeleteOpen(false);
+      notifySuccess("Your account was deleted.");
+      router.replace("/onboarding");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Could not delete your account.";
+      setError(msg);
+      notifyError(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className={pageClass}>
       <section className="mx-auto w-full max-w-[1580px] space-y-5">
@@ -172,7 +254,7 @@ export default function ProfileSettingsPage() {
                 Wallet: {`${address.slice(0, 6)}...${address.slice(-4)}`}
               </span>
               <span className={`${chipClass} rounded-full px-3 py-1 capitalize`}>
-                Current role: {profile.role}
+                Current role: {me?.role ?? profile.role}
               </span>
             </div>
           ) : null}
@@ -248,6 +330,35 @@ export default function ProfileSettingsPage() {
             </div>
           </form>
         </article>
+
+        <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
+          <section className={`${subtlePanelClass} rounded-xl border border-red-500/25 p-4 sm:p-5`}>
+            <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+              Danger zone
+            </p>
+            <h2 className={`mt-2 text-lg font-semibold tracking-tight ${titleClass}`}>
+              Delete account
+            </h2>
+            <p className={`mt-1 text-sm ${mutedTextClass}`}>
+              Permanently remove your TiwalaChain account. You can do this only if you have no pending
+              offers or accepted jobs. Your wallet is unchanged on-chain.
+            </p>
+            <button
+              type="button"
+              disabled={!canDeleteAccount}
+              onClick={() => canDeleteAccount && setIsDeleteOpen(true)}
+              title={deleteBlockedReason ?? "Delete your account"}
+              className={`mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                isDarkTheme
+                  ? "border-red-400/40 bg-red-500/10 text-red-200 hover:bg-red-500/18"
+                  : "border-red-200 bg-red-50 text-red-800 hover:bg-red-100"
+              }`}
+            >
+              <Trash2 size={14} />
+              Delete my account
+            </button>
+          </section>
+        </article>
       </section>
 
       {isConfirmOpen ? (
@@ -305,6 +416,49 @@ export default function ProfileSettingsPage() {
                   }`}
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {isDeleteOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
+          <div
+            className={`w-full max-w-md rounded-2xl border shadow-[0_18px_60px_rgba(0,0,0,0.45)] ${
+              isDarkTheme
+                ? "border-red-400/25 bg-[#0b0f1a]"
+                : "border-red-200 bg-white"
+            }`}
+          >
+            <div className="p-5 sm:p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-red-400/90">
+                Delete account
+              </p>
+              <h2 className={`mt-2 text-lg font-semibold tracking-tight ${titleClass}`}>
+                Delete your account permanently?
+              </h2>
+              <p className={`mt-2 text-sm leading-6 ${mutedTextClass}`}>
+                This removes your profile from TiwalaChain. You will need to sign in again to create a new
+                account. Escrow jobs on the blockchain are not reversed by this action.
+              </p>
+              <div className="mt-5 flex flex-wrap justify-end gap-3 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setIsDeleteOpen(false)}
+                  disabled={isDeleting}
+                  className={`rounded-lg px-3 py-1.5 ${mutedTextClass}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="rounded-lg bg-red-600 px-3 py-1.5 font-semibold text-white hover:bg-red-500 disabled:opacity-60"
+                >
+                  {isDeleting ? "Deleting…" : "Yes, delete my account"}
                 </button>
               </div>
             </div>

@@ -14,6 +14,14 @@ export type BackendUser = {
   role: UserRole;
   isApproved: boolean;
   createdAt: string;
+  /** Present on `GET /me` and `PUT /profile`: whether the user may call `DELETE /account`. */
+  canDeleteAccount?: boolean;
+};
+
+/** Admin user list includes whether the row can be deleted (employer/freelancer/both, no ongoing jobs). */
+export type AdminListedUser = Omit<BackendUser, "role"> & {
+  canDelete: boolean;
+  role: UserRole;
 };
 
 export type AuthSession = {
@@ -125,6 +133,16 @@ export async function fetchCurrentUser(accessToken: string) {
   return (await response.json()) as BackendUser;
 }
 
+export async function deleteOwnAccount(accessToken: string) {
+  const response = await fetch(`${API_BASE_URL}/api/auth/account`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+}
+
 export async function updateCurrentUserProfile(
   accessToken: string,
   payload: { displayName: string; role: UserRole }
@@ -162,7 +180,7 @@ export async function adminListUsers(accessToken: string) {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
   if (!response.ok) throw new Error(await response.text());
-  return (await response.json()) as BackendUser[];
+  return (await response.json()) as AdminListedUser[];
 }
 
 export async function adminDeleteUser(accessToken: string, userId: number) {
