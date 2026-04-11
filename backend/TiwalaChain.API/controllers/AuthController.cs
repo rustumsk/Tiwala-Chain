@@ -134,7 +134,38 @@ public sealed partial class AuthController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        return Ok(ToUserResponse(user));
+        var canDeleteAccount = await CanUserDeleteOwnAccountAsync(user);
+        return Ok(ToUserResponse(user, canDeleteAccount));
+    }
+
+    [Authorize]
+    [HttpDelete("account")]
+    public async Task<IActionResult> DeleteOwnAccount()
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        if (user.Role == UserRole.Admin)
+        {
+            return BadRequest("Admin accounts cannot be deleted here. Contact support if needed.");
+        }
+
+        if (!IsSelfServeDeletableRole(user.Role))
+        {
+            return BadRequest("This account type cannot be deleted automatically.");
+        }
+
+        if (await HasOngoingJobsForWalletAsync(user.WalletAddress))
+        {
+            return BadRequest("Finish or resolve pending offers and accepted jobs before deleting your account.");
+        }
+
+        _dbContext.Users.Remove(user);
+        await _dbContext.SaveChangesAsync();
+        return NoContent();
     }
 
     [Authorize]
@@ -162,7 +193,8 @@ public sealed partial class AuthController : ControllerBase
         user.Role = parsedRole;
         await _dbContext.SaveChangesAsync();
 
-        return Ok(ToUserResponse(user));
+        var canDeleteAccount = await CanUserDeleteOwnAccountAsync(user);
+        return Ok(ToUserResponse(user, canDeleteAccount));
     }
 
     [Authorize]
@@ -174,7 +206,7 @@ public sealed partial class AuthController : ControllerBase
 
     [Authorize]
     [HttpGet("admin/users")]
-    public async Task<ActionResult<List<UserResponse>>> AdminListUsers()
+    public async Task<ActionResult<List<AdminUserResponse>>> AdminListUsers()
     {
         var admin = await ResolveCurrentUser();
         if (admin is null || admin.Role != UserRole.Admin)
@@ -182,10 +214,28 @@ public sealed partial class AuthController : ControllerBase
 
         var users = await _dbContext.Users
             .OrderByDescending(u => u.CreatedAt)
-            .Select(u => ToUserResponse(u))
             .ToListAsync();
 
-        return Ok(users);
+        var ongoingJobs = await _dbContext.Jobs.AsNoTracking()
+            .Where(j => j.Status == JobStatus.PendingOffer || j.Status == JobStatus.Accepted)
+            .ToListAsync();
+
+        var walletsWithOngoingJobs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var j in ongoingJobs)
+        {
+            walletsWithOngoingJobs.Add(j.EmployerWallet);
+            walletsWithOngoingJobs.Add(j.FreelancerWallet);
+        }
+
+        var result = users.Select(u =>
+        {
+            var canDelete = u.Role != UserRole.Admin
+                && u.Id != admin.Id
+                && !walletsWithOngoingJobs.Contains(u.WalletAddress);
+            return ToAdminUserResponse(u, canDelete);
+        }).ToList();
+
+        return Ok(result);
     }
 
     [Authorize]
@@ -202,6 +252,15 @@ public sealed partial class AuthController : ControllerBase
 
         if (user.Id == admin.Id)
             return BadRequest("Cannot delete your own admin account.");
+
+        if (user.Role == UserRole.Admin)
+            return BadRequest("Admin accounts cannot be deleted.");
+
+        if (user.Role != UserRole.Freelancer && user.Role != UserRole.Employer && user.Role != UserRole.Both)
+            return BadRequest("Only freelancer, employer, or both accounts can be removed this way.");
+
+        if (await HasOngoingJobsForWalletAsync(user.WalletAddress))
+            return BadRequest("Cannot delete a user who has ongoing jobs (pending offer or accepted).");
 
         _dbContext.Users.Remove(user);
         await _dbContext.SaveChangesAsync();
@@ -294,9 +353,49 @@ public sealed partial class AuthController : ControllerBase
         return new AuthResponse(token, expiresAtUtc, ToUserResponse(user));
     }
 
-    private static UserResponse ToUserResponse(User user)
+    private static UserResponse ToUserResponse(User user, bool canDeleteAccount = false)
     {
-        return new UserResponse(user.Id, user.WalletAddress, user.DisplayName, user.Role.ToString().ToLowerInvariant(), user.IsApproved, user.CreatedAt);
+        return new UserResponse(
+            user.Id,
+            user.WalletAddress,
+            user.DisplayName,
+            user.Role.ToString().ToLowerInvariant(),
+            user.IsApproved,
+            user.CreatedAt,
+            canDeleteAccount);
+    }
+
+    private async Task<bool> HasOngoingJobsForWalletAsync(string wallet, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Jobs.AnyAsync(
+            j => (j.EmployerWallet == wallet || j.FreelancerWallet == wallet)
+                 && (j.Status == JobStatus.PendingOffer || j.Status == JobStatus.Accepted),
+            cancellationToken);
+    }
+
+    private static bool IsSelfServeDeletableRole(UserRole role) =>
+        role is UserRole.Freelancer or UserRole.Employer or UserRole.Both;
+
+    private async Task<bool> CanUserDeleteOwnAccountAsync(User user, CancellationToken cancellationToken = default)
+    {
+        if (user.Role == UserRole.Admin || !IsSelfServeDeletableRole(user.Role))
+        {
+            return false;
+        }
+
+        return !await HasOngoingJobsForWalletAsync(user.WalletAddress, cancellationToken);
+    }
+
+    private static AdminUserResponse ToAdminUserResponse(User user, bool canDelete)
+    {
+        return new AdminUserResponse(
+            user.Id,
+            user.WalletAddress,
+            user.DisplayName,
+            user.Role.ToString().ToLowerInvariant(),
+            user.IsApproved,
+            user.CreatedAt,
+            canDelete);
     }
 
     private static string GetNonceCacheKey(string walletAddress) => $"{NonceCacheKeyPrefix}{walletAddress}";
@@ -309,7 +408,23 @@ public sealed record NonceRequest(string WalletAddress, int ChainId = 0);
 public sealed record NonceResponse(string Message, string Nonce, DateTime ExpiresAtUtc, string Domain, string Uri, int ChainId);
 public sealed record VerifyRequest(string WalletAddress, string Message, string Signature);
 public sealed record AuthResponse(string AccessToken, DateTime ExpiresAtUtc, UserResponse User);
-public sealed record UserResponse(int Id, string WalletAddress, string? DisplayName, string Role, bool IsApproved, DateTime CreatedAt);
+public sealed record UserResponse(
+    int Id,
+    string WalletAddress,
+    string? DisplayName,
+    string Role,
+    bool IsApproved,
+    DateTime CreatedAt,
+    bool CanDeleteAccount = false);
+
+public sealed record AdminUserResponse(
+    int Id,
+    string WalletAddress,
+    string? DisplayName,
+    string Role,
+    bool IsApproved,
+    DateTime CreatedAt,
+    bool CanDelete);
 public sealed record UpdateProfileRequest(string DisplayName, string Role);
 public sealed record UpdateRoleRequest(string Role);
 public sealed record ApproveRequest(bool Approved);
