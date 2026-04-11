@@ -15,7 +15,12 @@ import {
   TIWALA_ESCROW_ADDRESS,
   type EscrowJobStatus,
 } from "@/lib/contract";
-import { downloadJobContractByHashBlob, syncJobFromChain } from "@/lib/jobs";
+import {
+  downloadJobContractByHashBlob,
+  fetchJobDisputeByHash,
+  syncJobFromChain,
+  type JobDisputeResponse,
+} from "@/lib/jobs";
 import { notifyError } from "@/lib/notify";
 import { listDeliverablesByHash, type Deliverable } from "@/lib/deliverables";
 import { getStoredProfile } from "@/lib/profile";
@@ -91,6 +96,10 @@ export default function JobDetailPage() {
     args: jobId !== null ? [jobId] : undefined,
     query: { enabled: jobId !== null && Boolean(isConnected) },
   });
+  const { refetch: refetchOnChainJob } = jobQuery;
+
+  const [disputeInfo, setDisputeInfo] = useState<JobDisputeResponse | null | undefined>(undefined);
+  const [disputeReloadKey, setDisputeReloadKey] = useState(0);
 
   const parsed = useMemo(() => {
     const raw = jobQuery.data;
@@ -220,6 +229,34 @@ export default function JobDetailPage() {
     void loadDeliverables();
   }, [address, isDeliverablesJobReady, parsed]);
 
+  useEffect(() => {
+    const parsedJob = parsed;
+    if (!parsedJob || parsedJob.status !== 4) {
+      setDisputeInfo(undefined);
+      return;
+    }
+    const session = getStoredAuthSession();
+    if (
+      !session ||
+      !address ||
+      session.walletAddress.toLowerCase() !== address.toLowerCase()
+    ) {
+      setDisputeInfo(undefined);
+      return;
+    }
+    let cancelled = false;
+    fetchJobDisputeByHash(session, parsedJob.contractHash)
+      .then((d) => {
+        if (!cancelled) setDisputeInfo(d);
+      })
+      .catch(() => {
+        if (!cancelled) setDisputeInfo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, parsed, disputeReloadKey]);
+
   if (jobId === null) {
     return (
       <div className="themed-app-page text-slate-100">
@@ -232,11 +269,11 @@ export default function JobDetailPage() {
 
   const canActAsEmployer =
     Boolean(address && parsed?.employer.toLowerCase() === address.toLowerCase()) &&
-    profile?.role === "employer";
+    (profile?.role === "employer" || profile?.role === "both");
 
   const canActAsFreelancer =
     Boolean(address && parsed?.freelancer.toLowerCase() === address.toLowerCase()) &&
-    profile?.role === "freelancer";
+    (profile?.role === "freelancer" || profile?.role === "both");
 
   const canSubmitDeliverables =
     chainId === 11155111 &&
@@ -358,6 +395,96 @@ export default function JobDetailPage() {
           ) : null}
         </article>
 
+        {parsed && parsed.status === 4 ? (
+          <article
+            className={`p-8 ${
+              isDarkTheme
+                ? "border border-amber-400/25 bg-amber-500/[0.06]"
+                : "border border-amber-200 bg-amber-50/80"
+            }`}
+          >
+            <h2 className={`text-lg font-semibold ${isDarkTheme ? "text-amber-100" : "text-amber-950"}`}>
+              Dispute in progress
+            </h2>
+            <p className={`mt-2 text-sm leading-6 ${isDarkTheme ? "text-amber-100/75" : "text-amber-950/80"}`}>
+              Funds stay in escrow until a moderator resolves this job on-chain (release to freelancer or
+              refund to employer). The moderator can see your contract, deliverables, and the summary below
+              if it was saved successfully.
+            </p>
+            {disputeInfo === undefined ? (
+              <p className={`mt-3 text-sm ${isDarkTheme ? "text-white/50" : "text-[#5c6172]"}`}>
+                Loading dispute summary…
+              </p>
+            ) : disputeInfo === null ? (
+              <p className={`mt-3 text-sm ${isDarkTheme ? "text-white/60" : "text-[#5c6172]"}`}>
+                No off-chain summary is on file yet. If you just raised the dispute, try{" "}
+                <button
+                  type="button"
+                  className="underline underline-offset-2"
+                  onClick={() => {
+                    const parsedJob = parsed;
+                    if (!parsedJob) return;
+                    const session = getStoredAuthSession();
+                    if (
+                      !session ||
+                      !address ||
+                      session.walletAddress.toLowerCase() !== address.toLowerCase()
+                    ) {
+                      notifyError("Please sign in with your wallet first.");
+                      return;
+                    }
+                    setDisputeInfo(undefined);
+                    fetchJobDisputeByHash(session, parsedJob.contractHash)
+                      .then((d) => setDisputeInfo(d))
+                      .catch(() => setDisputeInfo(null));
+                  }}
+                >
+                  refresh
+                </button>
+                , or use &quot;Retry save summary&quot; in the actions panel if the save failed after your
+                on-chain transaction.
+              </p>
+            ) : (
+              <dl className={`mt-4 space-y-3 rounded-xl border p-4 text-sm ${isDarkTheme ? "border-white/10 bg-black/20" : "border-amber-200/80 bg-white"}`}>
+                <div>
+                  <dt className={`text-[11px] uppercase tracking-[0.14em] ${isDarkTheme ? "text-white/45" : "text-[#73788b]"}`}>
+                    Reported by
+                  </dt>
+                  <dd className={`mt-1 font-mono text-xs ${isDarkTheme ? "text-white/90" : "text-[#11131b]"}`}>
+                    {shortAddress(disputeInfo.raisedByWallet)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={`text-[11px] uppercase tracking-[0.14em] ${isDarkTheme ? "text-white/45" : "text-[#73788b]"}`}>
+                    Reason
+                  </dt>
+                  <dd className={`mt-1 ${isDarkTheme ? "text-white/90" : "text-[#11131b]"}`}>
+                    {disputeInfo.reasonLabel}
+                  </dd>
+                </div>
+                {disputeInfo.details ? (
+                  <div>
+                    <dt className={`text-[11px] uppercase tracking-[0.14em] ${isDarkTheme ? "text-white/45" : "text-[#73788b]"}`}>
+                      Details
+                    </dt>
+                    <dd className={`mt-1 whitespace-pre-wrap ${isDarkTheme ? "text-white/80" : "text-[#2a3040]"}`}>
+                      {disputeInfo.details}
+                    </dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt className={`text-[11px] uppercase tracking-[0.14em] ${isDarkTheme ? "text-white/45" : "text-[#73788b]"}`}>
+                    Recorded
+                  </dt>
+                  <dd className={`mt-1 ${isDarkTheme ? "text-white/70" : "text-[#5c6172]"}`}>
+                    {new Date(disputeInfo.createdAt).toLocaleString()}
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </article>
+        ) : null}
+
         {parsed ? (
           <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
             <JobTimeline status={parsed.status} mode={theme} />
@@ -365,9 +492,14 @@ export default function JobDetailPage() {
               canActAsEmployer={canActAsEmployer}
               canActAsFreelancer={canActAsFreelancer}
               chainOk={chainId === 11155111}
+              contractHash={parsed.contractHash}
               jobAmount={parsed.amount}
               jobId={parsed.id}
               mode={theme}
+              onAfterDisputeRecord={async () => {
+                await refetchOnChainJob();
+                setDisputeReloadKey((k) => k + 1);
+              }}
               status={parsed.status}
               canSubmitWorkOnChain={canSubmitWorkOnChain}
             />

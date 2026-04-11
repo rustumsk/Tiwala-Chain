@@ -14,6 +14,8 @@ import { getStoredAuthSession } from "@/lib/auth";
 import {
   fetchJobByHash,
   downloadJobContractByHashBlob,
+  fetchJobDisputeByHash,
+  type JobDisputeResponse,
 } from "@/lib/jobs";
 import {
   listDeliverablesByHash,
@@ -39,6 +41,7 @@ type EnrichedJob = ParsedJob & {
     amountUsdt: number;
   };
   deliverables: Deliverable[] | null;
+  dispute: JobDisputeResponse | null;
 };
 
 function shortAddr(addr: string) {
@@ -128,9 +131,10 @@ export default function AdminDisputesPage() {
         const key = j.id.toString();
         try {
           const contractHash = j.contractHash as string;
-          const [job, deliverables] = await Promise.all([
+          const [job, deliverables, dispute] = await Promise.all([
             fetchJobByHash(baseSession, contractHash).catch(() => null),
             listDeliverablesByHash(baseSession, contractHash).catch(() => []),
+            fetchJobDisputeByHash(baseSession, contractHash),
           ]);
           map[key] = {
             ...j,
@@ -142,9 +146,10 @@ export default function AdminDisputesPage() {
                 }
               : undefined,
             deliverables,
+            dispute,
           };
         } catch {
-          map[key] = { ...j, offchainJob: undefined, deliverables: null };
+          map[key] = { ...j, offchainJob: undefined, deliverables: null, dispute: null };
         }
       }
       if (!cancelled) {
@@ -250,6 +255,7 @@ export default function AdminDisputesPage() {
               const extra = enriched[key];
               const off = extra?.offchainJob;
               const deliverables = extra?.deliverables ?? null;
+              const dispute = extra?.dispute ?? null;
               return (
               <article key={key} className={`${panelClass} rounded-xl p-6 lg:p-7`}>
                 <div className="flex flex-wrap items-start justify-between gap-4">
@@ -295,6 +301,43 @@ export default function AdminDisputesPage() {
                     <p className={`mt-1 truncate font-mono text-[10px] ${mutedTextClass}`}>{job.contractHash}</p>
                   </div>
                 </div>
+
+                {dispute ? (
+                  <div
+                    className={`mt-4 rounded-xl border p-4 text-sm ${
+                      isDarkTheme
+                        ? "border-amber-400/25 bg-amber-500/10"
+                        : "border-amber-200 bg-amber-50"
+                    }`}
+                  >
+                    <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${tinyLabelClass}`}>
+                      Party dispute summary (off-chain)
+                    </p>
+                    <p className={`mt-2 text-xs ${mutedTextClass}`}>
+                      Raised by <span className="font-mono">{shortAddr(dispute.raisedByWallet)}</span>
+                      {" · "}
+                      {new Date(dispute.createdAt).toLocaleString()}
+                    </p>
+                    <p className={`mt-2 font-medium ${titleClass}`}>{dispute.reasonLabel}</p>
+                    {dispute.details ? (
+                      <p className={`mt-2 whitespace-pre-wrap text-xs leading-relaxed ${mutedTextClass}`}>
+                        {dispute.details}
+                      </p>
+                    ) : (
+                      <p className={`mt-2 text-xs italic ${mutedTextClass}`}>No additional details.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    className={`mt-4 rounded-xl border p-4 text-xs ${
+                      isDarkTheme
+                        ? "border-white/10 bg-white/[0.03] text-white/55"
+                        : "border-[#e6e8f1] bg-[#fafbff] text-[#5c6172]"
+                    }`}
+                  >
+                    No off-chain dispute summary on file for this contract hash yet.
+                  </div>
+                )}
 
                 <div className="mt-3 flex flex-wrap gap-2 text-xs">
                   <button

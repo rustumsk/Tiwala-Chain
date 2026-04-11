@@ -243,3 +243,85 @@ export async function declineJobOffer(
   return (await response.json()) as JobResponse;
 }
 
+/** Lowercase hex, no `0x`, for API paths and dispute payloads. */
+export function normalizeContractHashForApi(hash: string): string {
+  const t = hash.trim().toLowerCase();
+  return t.startsWith("0x") ? t.slice(2) : t;
+}
+
+export const DISPUTE_REASON_CODES = [
+  "scope_mismatch",
+  "quality",
+  "late_or_no_delivery",
+  "communication",
+  "other",
+] as const;
+
+export type DisputeReasonCode = (typeof DISPUTE_REASON_CODES)[number];
+
+export const DISPUTE_REASON_LABELS: Record<DisputeReasonCode, string> = {
+  scope_mismatch: "Scope or requirements mismatch",
+  quality: "Quality of work",
+  late_or_no_delivery: "Late or missing delivery",
+  communication: "Communication or collaboration",
+  other: "Other",
+};
+
+export type JobDisputeResponse = {
+  contractHash: string;
+  onChainJobId: string;
+  raisedByWallet: string;
+  reasonCode: string;
+  reasonLabel: string;
+  details: string | null;
+  createdAt: string;
+};
+
+export async function fetchJobDisputeByHash(
+  session: AuthSession,
+  contractHash: string
+): Promise<JobDisputeResponse | null> {
+  const h = normalizeContractHashForApi(contractHash);
+  const response = await fetch(
+    `${API_BASE_URL}/api/jobs/disputes/by-hash/${encodeURIComponent(h)}`,
+    {
+      headers: { Authorization: `Bearer ${session.accessToken}` },
+    }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return (await response.json()) as JobDisputeResponse;
+}
+
+export async function recordJobDispute(
+  session: AuthSession,
+  body: {
+    contractHash: string;
+    onChainJobId: string;
+    reasonCode: DisputeReasonCode;
+    details?: string;
+  }
+): Promise<JobDisputeResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/jobs/disputes`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session.accessToken}`,
+    },
+    body: JSON.stringify({
+      contractHash: normalizeContractHashForApi(body.contractHash),
+      onChainJobId: body.onChainJobId,
+      reasonCode: body.reasonCode,
+      details: body.details?.trim() || undefined,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+  return (await response.json()) as JobDisputeResponse;
+}
+
