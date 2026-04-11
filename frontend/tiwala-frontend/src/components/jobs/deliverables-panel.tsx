@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { useAccount } from "wagmi";
 import { ExternalLink, FileUp, Link2, ShieldCheck, RotateCcw, Download } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
@@ -15,6 +16,7 @@ import {
   type Deliverable,
 } from "@/lib/deliverables";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
 
 type DeliverablesPanelProps = {
   contractHash: string;
@@ -101,36 +103,57 @@ export default function DeliverablesPanel({
     return map;
   }, [items]);
 
-  const refresh = async () => {
-    if (!address) {
-      setItems([]);
-      setError("");
-      return;
-    }
+  const getActiveSession = useCallback(() => {
+    const session = getStoredAuthSession();
+    if (!session || !address) return null;
+    return session.walletAddress.toLowerCase() === address.toLowerCase() ? session : null;
+  }, [address]);
 
-    const session = getActiveSession();
-    if (!session) {
-      setItems([]);
-      setError("Please sign in with your wallet first.");
-      return;
-    }
-    setIsLoading(true);
-    setError("");
-    try {
-      const data = await listDeliverablesByHash(session, contractHash);
-      setItems(data);
-      setSelectedId((prev) => prev ?? data[0]?.id ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load deliverables.");
-      notifyError("Failed to load deliverables.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const refresh = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!address) {
+        setItems([]);
+        setError("");
+        return;
+      }
+
+      const session = getActiveSession();
+      if (!session) {
+        setItems([]);
+        setError("Please sign in with your wallet first.");
+        return;
+      }
+      if (!opts?.silent) {
+        setIsLoading(true);
+        setError("");
+      }
+      try {
+        const data = await listDeliverablesByHash(session, contractHash);
+        setItems(data);
+        setSelectedId((prev) => prev ?? data[0]?.id ?? null);
+      } catch (err) {
+        if (!opts?.silent) {
+          setError(err instanceof Error ? err.message : "Failed to load deliverables.");
+          notifyError("Failed to load deliverables.");
+        }
+      } finally {
+        if (!opts?.silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [address, contractHash, getActiveSession]
+  );
 
   useEffect(() => {
     void refresh();
-  }, [address, contractHash]);
+  }, [refresh]);
+
+  useVisibleInterval(
+    () => void refresh({ silent: true }),
+    API_POLL_INTERVAL_MS,
+    Boolean(address && contractHash)
+  );
 
   // freelancer submission state
   const [note, setNote] = useState("");
@@ -145,12 +168,6 @@ export default function DeliverablesPanel({
     | { kind: "approve" | "revision"; deliverableId: number; title: string }
   >(null);
   const [isReviewing, setIsReviewing] = useState(false);
-
-  const getActiveSession = () => {
-    const session = getStoredAuthSession();
-    if (!session || !address) return null;
-    return session.walletAddress.toLowerCase() === address.toLowerCase() ? session : null;
-  };
 
   return (
     <article className={`${panelClass} rounded-3xl p-6 lg:p-7`}>

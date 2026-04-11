@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount, useChainId, useReadContract } from "wagmi";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { useAppTheme } from "@/components/layout/theme-context";
 import JobStatusBadge from "@/components/jobs/job-status-badge";
 import JobTimeline from "@/components/jobs/job-timeline";
@@ -21,6 +22,7 @@ import {
   syncJobFromChain,
   type JobDisputeResponse,
 } from "@/lib/jobs";
+import { API_POLL_INTERVAL_MS, escrowLiveQueryOptions } from "@/lib/realtime";
 import { notifyError } from "@/lib/notify";
 import { listDeliverablesByHash, type Deliverable } from "@/lib/deliverables";
 import { getStoredProfile } from "@/lib/profile";
@@ -94,7 +96,10 @@ export default function JobDetailPage() {
     abi: tiwalaEscrowAbi,
     functionName: "getJob",
     args: jobId !== null ? [jobId] : undefined,
-    query: { enabled: jobId !== null && Boolean(isConnected) },
+    query: {
+      enabled: jobId !== null && Boolean(isConnected),
+      ...escrowLiveQueryOptions,
+    },
   });
   const { refetch: refetchOnChainJob } = jobQuery;
 
@@ -256,6 +261,16 @@ export default function JobDetailPage() {
       cancelled = true;
     };
   }, [address, parsed, disputeReloadKey]);
+
+  useVisibleInterval(
+    () => setDisputeReloadKey((k) => k + 1),
+    API_POLL_INTERVAL_MS,
+    Boolean(
+      parsed?.status === 4 &&
+        address &&
+        getStoredAuthSession()?.walletAddress.toLowerCase() === address.toLowerCase()
+    )
+  );
 
   if (jobId === null) {
     return (

@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { useAppTheme } from "@/components/layout/theme-context";
 import JobCard from "@/components/jobs/job-card";
 import { useEmployerJobs, useFreelancerJobs } from "@/hooks/use-escrow-jobs";
+import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
 import { getStoredProfile } from "@/lib/profile";
+
+const JOB_TAB_FILTERS = ["all", "ongoing", "done", "disputed"] as const;
+type JobTabFilter = (typeof JOB_TAB_FILTERS)[number];
 
 export default function JobsPage() {
   const { address, isConnected } = useAccount();
@@ -18,8 +22,8 @@ export default function JobsPage() {
     return existing.wallet.toLowerCase() === address.toLowerCase() ? existing : null;
   }, [address, isConnected]);
 
-  const showEmployerList = profile?.role === "employer";
-  const showFreelancerList = profile?.role === "freelancer";
+  const showEmployerList = profile?.role === "employer" || profile?.role === "both";
+  const showFreelancerList = profile?.role === "freelancer" || profile?.role === "both";
 
   const employerJobs = useEmployerJobs({
     walletAddress: address,
@@ -41,8 +45,16 @@ export default function JobsPage() {
   const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
   const tableBorderClass = isDarkTheme ? "border-b border-white/10" : "border-b border-[#eceef5]";
 
-  const [employerFilter, setEmployerFilter] = useState<"all" | "ongoing" | "done" | "disputed">("all");
-  const [freelancerFilter, setFreelancerFilter] = useState<"all" | "ongoing" | "done" | "disputed">("all");
+  const [employerFilter, setEmployerFilter] = usePersistedSessionString<JobTabFilter>(
+    "tiwala:jobs:employerFilter",
+    "all",
+    JOB_TAB_FILTERS
+  );
+  const [freelancerFilter, setFreelancerFilter] = usePersistedSessionString<JobTabFilter>(
+    "tiwala:jobs:freelancerFilter",
+    "all",
+    JOB_TAB_FILTERS
+  );
 
   const categorizeStatus = (status: number) => {
     // EscrowJobStatus: 0 Created, 1 Funded, 2 Work, 3 Review, 4 Disputed, 5 Released, 6 Refunded
@@ -100,9 +112,7 @@ export default function JobsPage() {
                       <button
                         key={opt.key}
                         type="button"
-                        onClick={() =>
-                          setEmployerFilter(opt.key as "all" | "ongoing" | "done" | "disputed")
-                        }
+                        onClick={() => setEmployerFilter(opt.key as JobTabFilter)}
                         className={`rounded-full px-3 py-1 font-medium transition ${
                           active
                             ? isDarkTheme
@@ -179,9 +189,7 @@ export default function JobsPage() {
                       <button
                         key={opt.key}
                         type="button"
-                        onClick={() =>
-                          setFreelancerFilter(opt.key as "all" | "ongoing" | "done" | "disputed")
-                        }
+                        onClick={() => setFreelancerFilter(opt.key as JobTabFilter)}
                         className={`rounded-full px-3 py-1 font-medium transition ${
                           active
                             ? isDarkTheme

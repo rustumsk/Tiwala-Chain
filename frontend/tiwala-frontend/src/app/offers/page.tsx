@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
+import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
 import { useAppTheme } from "@/components/layout/theme-context";
@@ -12,10 +14,14 @@ import {
   fetchSentOffers,
   type JobResponse,
 } from "@/lib/jobs";
+import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
 
 function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
+
+const OFFER_STATUS_FILTERS = ["all", "pending", "accepted", "declined"] as const;
+type OfferStatusFilter = (typeof OFFER_STATUS_FILTERS)[number];
 
 export default function OffersPage() {
   const router = useRouter();
@@ -32,46 +38,61 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<JobResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "pending" | "accepted" | "declined"
-  >("all");
+  const [statusFilter, setStatusFilter] = usePersistedSessionString<OfferStatusFilter>(
+    "tiwala:offers:statusFilter",
+    "all",
+    OFFER_STATUS_FILTERS
+  );
 
-  useEffect(() => {
-    if (!isConnected || !address) return;
-    const session = getStoredAuthSession();
-    if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
-      return;
-    }
+  const loadOffers = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isConnected || !address) return;
+      const session = getStoredAuthSession();
+      if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
+        return;
+      }
 
-    let active = true;
-    setIsLoading(true);
-    setError("");
-    const loader =
-      profile?.role === "employer"
-        ? fetchSentOffers
-        : fetchIncomingOffers;
+      if (!opts?.silent) {
+        setIsLoading(true);
+        setError("");
+      }
 
-    loader(session)
-      .then((data) => {
-        if (!active) return;
+      const loader =
+        profile?.role === "employer" ? fetchSentOffers : fetchIncomingOffers;
+
+      try {
+        const data = await loader(session);
         setOffers(data);
-      })
-      .catch((err) => {
-        if (!active) return;
+      } catch (err) {
         const msg =
           err instanceof Error ? err.message : "Failed to load offers.";
         setError(msg);
-        notifyError(msg);
-      })
-      .finally(() => {
-        if (!active) return;
-        setIsLoading(false);
-      });
+        if (!opts?.silent) {
+          notifyError(msg);
+        }
+      } finally {
+        if (!opts?.silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [address, isConnected, profile?.role]
+  );
 
-    return () => {
-      active = false;
-    };
-  }, [address, isConnected, profile?.role]);
+  useEffect(() => {
+    void loadOffers({ silent: false });
+  }, [loadOffers]);
+
+  useVisibleInterval(
+    () => void loadOffers({ silent: true }),
+    API_POLL_INTERVAL_MS,
+    Boolean(
+      isConnected &&
+        address &&
+        getStoredAuthSession()?.walletAddress.toLowerCase() === address.toLowerCase() &&
+        profile
+    )
+  );
 
   const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
   const panelClass = isDarkTheme
@@ -188,9 +209,7 @@ export default function OffersPage() {
                 <button
                   key={opt.key}
                   type="button"
-                  onClick={() =>
-                    setStatusFilter(opt.key as "all" | "pending" | "accepted" | "declined")
-                  }
+                  onClick={() => setStatusFilter(opt.key as OfferStatusFilter)}
                   className={`rounded-full px-3 py-1 font-medium transition ${
                     active
                       ? isDarkTheme

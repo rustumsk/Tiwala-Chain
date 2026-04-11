@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { useParams, useRouter } from "next/navigation";
 import {
   useAccount,
@@ -21,6 +22,7 @@ import {
 import { getStoredAuthSession } from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { getStoredProfile } from "@/lib/profile";
+import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
 import ClauseAnalysis, {
   type ClauseItem,
 } from "@/components/ai/clause-analysis";
@@ -107,42 +109,58 @@ export default function OfferDetailPage() {
     return stored.wallet.toLowerCase() === address.toLowerCase() ? stored : null;
   }, [address, isConnected]);
 
-  useEffect(() => {
-    if (!isConnected || !address) return;
-    const session = getStoredAuthSession();
-    if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
-      return;
-    }
+  const loadJob = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!isConnected || !address) return;
+      const session = getStoredAuthSession();
+      if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
+        return;
+      }
 
-    const idNumber = Number(params?.id);
-    if (!Number.isFinite(idNumber) || idNumber <= 0) {
-      setJobError("Invalid offer id.");
-      setLoadingJob(false);
-      return;
-    }
-
-    let active = true;
-    setLoadingJob(true);
-    setJobError("");
-
-    fetchJobById(session, idNumber)
-      .then((data) => {
-        if (!active) return;
-        setJob(data);
-      })
-      .catch((err) => {
-        if (!active) return;
-        setJobError(err instanceof Error ? err.message : "Failed to load offer.");
-      })
-      .finally(() => {
-        if (!active) return;
+      const idNumber = Number(params?.id);
+      if (!Number.isFinite(idNumber) || idNumber <= 0) {
+        setJobError("Invalid offer id.");
         setLoadingJob(false);
-      });
+        return;
+      }
 
-    return () => {
-      active = false;
-    };
-  }, [address, isConnected, params?.id]);
+      if (!opts?.silent) {
+        setLoadingJob(true);
+        setJobError("");
+      }
+
+      try {
+        const data = await fetchJobById(session, idNumber);
+        setJob(data);
+      } catch (err) {
+        if (!opts?.silent) {
+          setJobError(err instanceof Error ? err.message : "Failed to load offer.");
+        }
+      } finally {
+        if (!opts?.silent) {
+          setLoadingJob(false);
+        }
+      }
+    },
+    [address, isConnected, params?.id]
+  );
+
+  useEffect(() => {
+    void loadJob({ silent: false });
+  }, [loadJob]);
+
+  useVisibleInterval(
+    () => void loadJob({ silent: true }),
+    API_POLL_INTERVAL_MS,
+    Boolean(
+      isConnected &&
+        address &&
+        getStoredAuthSession()?.walletAddress.toLowerCase() === address.toLowerCase() &&
+        params?.id &&
+        Number.isFinite(Number(params.id)) &&
+        Number(params.id) > 0
+    )
+  );
 
   const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
   const panelClass = isDarkTheme

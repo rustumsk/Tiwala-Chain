@@ -25,6 +25,7 @@ import {
   useEmployerJobs,
   useFreelancerJobs,
 } from "@/hooks/use-escrow-jobs";
+import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
 import { getStoredProfile, type LocalUserProfile } from "@/lib/profile";
 import type { EscrowJob } from "@/types";
 
@@ -162,28 +163,47 @@ export default function DashboardPage() {
     }
   }, [address, isConnected, profile, router]);
 
-  const showEmployerList = profile?.role === "employer";
-  const showFreelancerList =
-    profile?.role === "freelancer";
+  const showEmployerList = profile?.role === "employer" || profile?.role === "both";
+  const showFreelancerList = profile?.role === "freelancer" || profile?.role === "both";
+
+  const [dualWorkspaceTab, setDualWorkspaceTab] = usePersistedSessionString<DashboardView>(
+    "tiwala:dashboard:workspaceTab",
+    "employer",
+    ["employer", "freelancer"]
+  );
+
+  const activeView: DashboardView =
+    showEmployerList && showFreelancerList
+      ? dualWorkspaceTab
+      : showEmployerList && !showFreelancerList
+        ? "employer"
+        : !showEmployerList && showFreelancerList
+          ? "freelancer"
+          : "employer";
 
   const employerJobs = useEmployerJobs({
     walletAddress: address,
-    enabled: Boolean(isConnected && address && showEmployerList),
+    enabled: Boolean(
+      isConnected &&
+        address &&
+        showEmployerList &&
+        (!showFreelancerList || activeView === "employer")
+    ),
   });
 
   const freelancerJobs = useFreelancerJobs({
     walletAddress: address,
-    enabled: Boolean(isConnected && address && showFreelancerList),
+    enabled: Boolean(
+      isConnected &&
+        address &&
+        showFreelancerList &&
+        (!showEmployerList || activeView === "freelancer")
+    ),
   });
 
   const shortWallet = address
     ? `${address.slice(0, 6)}...${address.slice(-4)}`
     : "Not connected";
-  const activeView: DashboardView = showEmployerList && !showFreelancerList
-    ? "employer"
-    : !showEmployerList && showFreelancerList
-      ? "freelancer"
-      : "employer";
 
   const activeConfig = useMemo(() => {
     const liveJobs = activeView === "employer" ? employerJobs.jobs : freelancerJobs.jobs;
@@ -514,7 +534,42 @@ export default function DashboardPage() {
             ) : null}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2" />
+          {showEmployerList && showFreelancerList ? (
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
+                Workspace
+              </span>
+              <div
+                className={`inline-flex rounded-full border p-0.5 text-xs font-semibold ${
+                  isDarkTheme ? "border-white/12 bg-black/30" : "border-[#e1e4f0] bg-[#f4f5fb]"
+                }`}
+              >
+                {(["employer", "freelancer"] as const).map((tab) => {
+                  const selected = dualWorkspaceTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setDualWorkspaceTab(tab)}
+                      className={`rounded-full px-3 py-1.5 capitalize transition ${
+                        selected
+                          ? isDarkTheme
+                            ? "bg-violet-500/25 text-violet-50"
+                            : "bg-violet-100 text-violet-900"
+                          : isDarkTheme
+                            ? "text-white/65 hover:text-white"
+                            : "text-[#5c6172] hover:text-[#242838]"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center gap-2" />
+          )}
         </section>
 
         <section className={panelClass}>

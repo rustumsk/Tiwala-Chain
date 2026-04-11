@@ -13,6 +13,7 @@ import {
   type EscrowJobStatus,
 } from "@/lib/contract";
 import { getStoredProfile } from "@/lib/profile";
+import { escrowLiveQueryOptions } from "@/lib/realtime";
 import type { Address, Hex } from "viem";
 
 type ParsedJob = {
@@ -51,7 +52,7 @@ export default function AdminDashboardPage() {
     address: TIWALA_ESCROW_ADDRESS,
     abi: tiwalaEscrowAbi,
     functionName: "jobCounter",
-    query: { enabled: isAdmin },
+    query: { enabled: isAdmin, ...escrowLiveQueryOptions },
   });
 
   const jobCount = typeof counterQuery.data === "bigint" ? Number(counterQuery.data) : 0;
@@ -69,7 +70,7 @@ export default function AdminDashboardPage() {
 
   const jobsQuery = useReadContracts({
     contracts: jobContracts,
-    query: { enabled: jobCount > 0 },
+    query: { enabled: jobCount > 0, ...escrowLiveQueryOptions },
     allowFailure: true,
   });
 

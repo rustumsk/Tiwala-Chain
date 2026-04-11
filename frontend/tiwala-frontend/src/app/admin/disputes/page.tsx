@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { useAccount, useChainId, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useReadContract, useReadContracts } from "wagmi";
 import { useAppTheme } from "@/components/layout/theme-context";
@@ -10,6 +11,7 @@ import {
   type EscrowJobStatus,
 } from "@/lib/contract";
 import { getStoredProfile } from "@/lib/profile";
+import { API_POLL_INTERVAL_MS, escrowLiveQueryOptions } from "@/lib/realtime";
 import { getStoredAuthSession } from "@/lib/auth";
 import {
   fetchJobByHash,
@@ -77,7 +79,7 @@ export default function AdminDisputesPage() {
     address: TIWALA_ESCROW_ADDRESS,
     abi: tiwalaEscrowAbi,
     functionName: "jobCounter",
-    query: { enabled: isAdmin },
+    query: { enabled: isAdmin, ...escrowLiveQueryOptions },
   });
 
   const jobCount = typeof counterQuery.data === "bigint" ? Number(counterQuery.data) : 0;
@@ -95,7 +97,7 @@ export default function AdminDisputesPage() {
 
   const jobsQuery = useReadContracts({
     contracts: jobContracts,
-    query: { enabled: jobCount > 0 },
+    query: { enabled: jobCount > 0, ...escrowLiveQueryOptions },
     allowFailure: true,
   });
 
@@ -120,6 +122,13 @@ export default function AdminDisputesPage() {
   }, [jobsQuery.data]);
 
   const [enriched, setEnriched] = useState<Record<string, EnrichedJob>>({});
+  const [enrichTick, setEnrichTick] = useState(0);
+
+  useVisibleInterval(
+    () => setEnrichTick((t) => t + 1),
+    API_POLL_INTERVAL_MS,
+    Boolean(isAdmin && disputedJobs.length > 0)
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -164,7 +173,7 @@ export default function AdminDisputesPage() {
     return () => {
       cancelled = true;
     };
-  }, [disputedJobs]);
+  }, [disputedJobs, enrichTick]);
 
   const handleResolve = (jobId: bigint, releaseToFreelancer: boolean) => {
     writeContract({

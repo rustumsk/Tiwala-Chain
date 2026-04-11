@@ -7,6 +7,7 @@ import {
   tiwalaEscrowAbi,
   type EscrowJobStatus,
 } from "@/lib/contract";
+import { escrowLiveQueryOptions } from "@/lib/realtime";
 import type { EscrowJob } from "@/types";
 import type { Address, Hex } from "viem";
 
@@ -87,7 +88,10 @@ export function useEmployerJobs({ walletAddress, enabled }: UseEscrowJobsParams)
     abi: tiwalaEscrowAbi,
     functionName: "getEmployerJobs",
     args: walletAddress ? [walletAddress] : undefined,
-    query: { enabled: Boolean(enabled && walletAddress) },
+    query: {
+      enabled: Boolean(enabled && walletAddress),
+      ...escrowLiveQueryOptions,
+    },
   });
 
   const jobIds = useMemo(
@@ -115,6 +119,7 @@ export function useEmployerJobs({ walletAddress, enabled }: UseEscrowJobsParams)
     contracts,
     query: {
       enabled: Boolean(enabled && contracts.length > 0),
+      ...escrowLiveQueryOptions,
     },
     allowFailure: true,
   });
@@ -147,7 +152,10 @@ export function useFreelancerJobs({
     abi: tiwalaEscrowAbi,
     functionName: "getFreelancerJobs",
     args: walletAddress ? [walletAddress] : undefined,
-    query: { enabled: Boolean(enabled && walletAddress) },
+    query: {
+      enabled: Boolean(enabled && walletAddress),
+      ...escrowLiveQueryOptions,
+    },
   });
 
   const jobIds = useMemo(
@@ -175,6 +183,7 @@ export function useFreelancerJobs({
     contracts,
     query: {
       enabled: Boolean(enabled && contracts.length > 0),
+      ...escrowLiveQueryOptions,
     },
     allowFailure: true,
   });
