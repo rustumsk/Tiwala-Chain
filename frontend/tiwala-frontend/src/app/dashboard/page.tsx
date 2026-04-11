@@ -4,46 +4,28 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Activity,
-  ArrowRight,
   BriefcaseBusiness,
-  Clock3,
   FilePlus2,
   FileText,
-  LineChart,
   Scale,
   Settings,
   ShieldCheck,
-  Sparkles,
-  Wallet,
+  Users,
 } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
 import type { Address, Hex } from "viem";
 import { useAppTheme } from "@/components/layout/theme-context";
 import JobCard from "@/components/jobs/job-card";
-import {
-  useEmployerJobs,
-  useFreelancerJobs,
-} from "@/hooks/use-escrow-jobs";
+import { useEmployerJobs, useFreelancerJobs } from "@/hooks/use-escrow-jobs";
 import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
+import {
+  JOB_STATUS_LABEL,
+  type EscrowJobStatus,
+} from "@/lib/contract";
 import { getStoredProfile, type LocalUserProfile } from "@/lib/profile";
 import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
-
-type StageDefinition = {
-  label: string;
-  description: string;
-  statuses: number[];
-};
-
-const ESCROW_STAGES: StageDefinition[] = [
-  { label: "Created", description: "Terms recorded", statuses: [0] },
-  { label: "Funded", description: "USDT secured", statuses: [1] },
-  { label: "In Progress", description: "Work underway", statuses: [2] },
-  { label: "Under Review", description: "Awaiting approval", statuses: [3] },
-  { label: "Released", description: "Payout settled", statuses: [5] },
-];
 
 function asAddress(value: string) {
   return value as Address;
@@ -134,15 +116,15 @@ function countJobsByStatuses(jobs: EscrowJob[], statuses: number[]) {
   return jobs.filter((job) => statuses.includes(job.status)).length;
 }
 
-function getActiveCount(jobs: EscrowJob[]) {
-  return jobs.filter((job) => job.status !== 5 && job.status !== 6).length;
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 export default function DashboardPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { theme } = useAppTheme();
+  const { theme, isDarkTheme } = useAppTheme();
   const profile = useMemo<LocalUserProfile | null>(() => {
     if (!isConnected || !address || typeof window === "undefined") return null;
     const existing = getStoredProfile();
@@ -201,10 +183,6 @@ export default function DashboardPage() {
     ),
   });
 
-  const shortWallet = address
-    ? `${address.slice(0, 6)}...${address.slice(-4)}`
-    : "Not connected";
-
   const activeConfig = useMemo(() => {
     const liveJobs = activeView === "employer" ? employerJobs.jobs : freelancerJobs.jobs;
     const isLoading =
@@ -221,23 +199,14 @@ export default function DashboardPage() {
       (sum, job) => sum + Number(job.amount) / 1_000_000,
       0
     );
-    const activeJobs = getActiveCount(jobs);
-    const createdCount = countJobsByStatuses(jobs, [0]);
-    const fundedCount = countJobsByStatuses(jobs, [1]);
-    const inProgressCount = countJobsByStatuses(jobs, [2]);
-    const submittedCount = countJobsByStatuses(jobs, [3]);
     const disputedCount = countJobsByStatuses(jobs, [4]);
-    const completedCount = countJobsByStatuses(jobs, [5]);
-    const refundedCount = countJobsByStatuses(jobs, [6]);
-    const completionRate = jobs.length === 0 ? 0 : Math.round((completedCount / jobs.length) * 100);
 
     if (activeView === "employer") {
       return {
-        label: "Employer",
-        eyebrow: "Escrow Dashboard",
-        heading: "Track funded work, approvals, and release risk.",
-        description:
-          "This view is tuned for escrow operations: what is already secured, what needs your approval, and which engagements are still moving through delivery.",
+        workspaceEyebrow: "Employer",
+        title: "Dashboard",
+        subtitle:
+          "Overview of your escrow jobs, funding, and releases — same layout as the admin view, scoped to your wallet.",
         isLoading,
         isError,
         isPreview,
@@ -245,86 +214,37 @@ export default function DashboardPage() {
         queueCountLabel: isPreview ? `${jobs.length} preview` : `${liveJobIds.length} total`,
         jobs,
         totalEscrow,
-        activeJobs,
+        disputedCount,
+        jobCount: jobs.length,
         counterpartyLabel: "Freelancer",
-        totalEscrowLabel: "Escrow Locked",
-        stageCounts: {
-          created: createdCount,
-          funded: fundedCount,
-          inProgress: inProgressCount,
-          submitted: submittedCount,
-          disputed: disputedCount,
-          completed: completedCount,
-          refunded: refundedCount,
-        },
-        focus: {
-          title:
-            submittedCount > 0
-              ? "Review submitted work"
-              : createdCount > 0
-                ? "Fund newly created jobs"
-                : "Monitor active deliveries",
-          description:
-            submittedCount > 0
-              ? `${submittedCount} job${submittedCount === 1 ? "" : "s"} are ready for approval and release.`
-              : createdCount > 0
-                ? `${createdCount} job${createdCount === 1 ? "" : "s"} still need funding before work can progress.`
-                : "Your active escrow is moving. Stay on top of delivery and settlement timing.",
-          count: submittedCount > 0 ? submittedCount : createdCount > 0 ? createdCount : activeJobs,
-          tone:
-            submittedCount > 0
-              ? "border-amber-400/20 bg-amber-500/10 text-amber-100"
-              : "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
-        },
         quickActions: [
           {
             href: "/jobs/create",
-            label: "Create Job",
+            label: "Create job",
             description: "Open a new escrow-backed engagement.",
             icon: FilePlus2,
           },
           {
             href: "/contracts/create",
-            label: "Build Contract",
+            label: "Build contract",
             description: "Draft and evaluate terms before publishing.",
             icon: FileText,
           },
           {
             href: "/jobs",
-            label: "Review Jobs",
-            description: "Inspect every employer-side record in one queue.",
+            label: "All jobs",
+            description: "Open your full employer job list.",
             icon: BriefcaseBusiness,
-          },
-        ],
-        supportCards: [
-          {
-            title: "Awaiting Release",
-            value: submittedCount,
-            caption: "Submitted jobs waiting on your approval.",
-            icon: Clock3,
-          },
-          {
-            title: "Counterparties",
-            value: jobs.length,
-            caption: "Freelancer relationships being coordinated through escrow.",
-            icon: ShieldCheck,
-          },
-          {
-            title: "Completion Rate",
-            value: `${completionRate}%`,
-            caption: "Jobs that have already moved to settled payout.",
-            icon: Scale,
           },
         ],
       };
     }
 
     return {
-      label: "Freelancer",
-      eyebrow: "Escrow Workbench",
-      heading: "Track deliverables, reviews, and payout timing.",
-      description:
-        "This view centers the payout path: which jobs are funded, what you should deliver next, and what is already sitting with the employer for approval.",
+      workspaceEyebrow: "Freelancer",
+      title: "Dashboard",
+      subtitle:
+        "Overview of assigned work, reviews, and payouts — aligned with the admin dashboard style.",
       isLoading,
       isError,
       isPreview,
@@ -332,84 +252,27 @@ export default function DashboardPage() {
       queueCountLabel: isPreview ? `${jobs.length} preview` : `${liveJobIds.length} total`,
       jobs,
       totalEscrow,
-      activeJobs,
+      disputedCount,
+      jobCount: jobs.length,
       counterpartyLabel: "Employer",
-      totalEscrowLabel: "Payout in Escrow",
-      stageCounts: {
-        created: createdCount,
-        funded: fundedCount,
-        inProgress: inProgressCount,
-        submitted: submittedCount,
-        disputed: disputedCount,
-        completed: completedCount,
-        refunded: refundedCount,
-      },
-      focus: {
-        title:
-          inProgressCount > 0
-            ? "Advance active delivery"
-            : submittedCount > 0
-              ? "Await employer review"
-              : fundedCount > 0
-                ? "Start funded jobs"
-                : "Keep your profile ready",
-        description:
-          inProgressCount > 0
-            ? `${inProgressCount} job${inProgressCount === 1 ? "" : "s"} are in progress and ready to move toward submission.`
-            : submittedCount > 0
-              ? `${submittedCount} submission${submittedCount === 1 ? "" : "s"} are waiting on employer approval.`
-              : fundedCount > 0
-                ? `${fundedCount} funded job${fundedCount === 1 ? "" : "s"} can be started from the escrow queue.`
-                : "No immediate actions are blocking payout. Keep your profile current and monitor new work.",
-        count:
-          inProgressCount > 0
-            ? inProgressCount
-            : submittedCount > 0
-              ? submittedCount
-              : fundedCount,
-        tone:
-          submittedCount > 0
-            ? "border-amber-400/20 bg-amber-500/10 text-amber-100"
-            : "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
-      },
       quickActions: [
         {
           href: "/jobs",
-          label: "View Jobs",
+          label: "View jobs",
           description: "Work through your assigned escrow queue.",
           icon: BriefcaseBusiness,
         },
         {
           href: "/settings/profile",
-          label: "Profile Settings",
+          label: "Profile settings",
           description: "Update the identity employers see on chain.",
           icon: Settings,
         },
         {
           href: "/public/contracts",
-          label: "Verify Contract",
+          label: "Verify contract",
           description: "Paste any contract and check fairness.",
           icon: FileText,
-        },
-      ],
-      supportCards: [
-        {
-          title: "Ready to Submit",
-          value: inProgressCount,
-          caption: "Jobs currently moving toward delivery.",
-          icon: Clock3,
-        },
-        {
-          title: "Awaiting Review",
-          value: submittedCount,
-          caption: "Submitted work sitting with the employer.",
-          icon: ShieldCheck,
-        },
-        {
-          title: "Completion Rate",
-          value: `${completionRate}%`,
-          caption: "Assigned jobs that have already been paid out.",
-          icon: Scale,
         },
       ],
     };
@@ -425,7 +288,6 @@ export default function DashboardPage() {
     freelancerJobs.jobs,
   ]);
 
-  const isDarkTheme = theme === "dark";
   const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
   const panelClass = isDarkTheme
     ? "border border-white/12 bg-black/32"
@@ -440,97 +302,41 @@ export default function DashboardPage() {
     ? "border border-white/14 bg-white/[0.04] text-white/82"
     : "border border-[#e1e4f0] bg-white text-[#2a3040]";
   const actionChipClass = isDarkTheme
-    ? "border border-violet-300/40 bg-violet-500/18 text-violet-100"
+    ? "border border-violet-300/30 bg-violet-500/14 text-violet-100"
     : "border border-violet-200 bg-violet-50 text-violet-700";
-  const focusToneClass =
-    activeConfig.focus.title.toLowerCase().includes("review") ||
-    activeConfig.focus.title.toLowerCase().includes("submitted")
-      ? isDarkTheme
-        ? "border border-amber-300/28 bg-amber-500/12 text-amber-100"
-        : "border border-amber-200 bg-amber-50 text-amber-900"
-      : isDarkTheme
-        ? "border border-violet-300/28 bg-violet-500/12 text-violet-100"
-        : "border border-violet-200 bg-violet-50 text-violet-900";
+
+  const walletChip = address ? shortAddr(address) : "N/A";
+  const networkLabel = chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`;
 
   return (
     <div className={pageClass}>
       <section className="mx-auto w-full max-w-[1580px] space-y-5">
-        <section className={`${panelClass} px-6 py-6 lg:px-8 lg:py-7`}>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-300">
-                <Sparkles size={12} />
-                <span>{activeConfig.eyebrow}</span>
-              </div>
-              <h1 className={`text-3xl font-semibold tracking-tight ${titleClass}`}>
-                Welcome{profile ? `, ${profile.displayName}` : ""}.
-              </h1>
-              <p className={`max-w-3xl text-sm leading-6 ${mutedTextClass}`}>
-                {activeConfig.heading}
-              </p>
-            </div>
-
-            <div className="grid gap-3 text-sm sm:grid-cols-3">
-              <div
-                className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${
-                  isDarkTheme ? "bg-white/[0.03]" : "bg-[#f4f3ff]"
-                }`}
-              >
-                <div className="inline-flex size-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
-                  <Wallet size={16} />
-                </div>
-                <div className="min-w-0">
-                  <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
-                    Wallet
-                  </p>
-                  <p className={`truncate text-xs font-medium ${titleClass}`}>{shortWallet}</p>
-                </div>
-              </div>
-
-              <div
-                className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${
-                  isDarkTheme ? "bg-emerald-500/10" : "bg-emerald-50"
-                }`}
-              >
-                <div className="inline-flex size-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-100">
-                  <Activity size={16} />
-                </div>
-                <div>
-                  <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
-                    Active Jobs
-                  </p>
-                  <p className={`text-lg font-semibold tabular-nums ${titleClass}`}>
-                    {activeConfig.activeJobs}
-                  </p>
-                </div>
-              </div>
-
-              <div
-                className={`flex items-center gap-3 rounded-2xl px-3 py-2 ${
-                  isDarkTheme ? "bg-sky-500/10" : "bg-sky-50"
-                }`}
-              >
-                <div className="inline-flex size-9 items-center justify-center rounded-xl bg-sky-500/20 text-sky-100">
-                  <LineChart size={16} />
-                </div>
-                <div>
-                  <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
-                    {activeConfig.totalEscrowLabel}
-                  </p>
-                  <p className={`text-lg font-semibold tabular-nums ${titleClass}`}>
-                    {formatUsdtValue(activeConfig.totalEscrow)} USDT
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <article className={`${panelClass} rounded-xl px-6 py-6 lg:px-8 lg:py-7`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+            {activeConfig.workspaceEyebrow}
+          </p>
+          <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
+            {activeConfig.title}
+            {profile?.displayName ? (
+              <span className={`font-normal ${mutedTextClass}`}>
+                {" "}
+                · {profile.displayName}
+              </span>
+            ) : null}
+          </h1>
+          <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
+            {activeConfig.subtitle}
+          </p>
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-            <span className={`${chipClass} px-2.5 py-1.5`}>
-              Network: {chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`}
+            <span className={`${chipClass} rounded-full px-3 py-1`}>Wallet: {walletChip}</span>
+            <span className={`${chipClass} rounded-full px-3 py-1`}>
+              Network: {networkLabel}
+            </span>
+            <span className={`${actionChipClass} rounded-full px-3 py-1`}>
+              {activeConfig.workspaceEyebrow}
             </span>
             {activeConfig.isPreview ? (
-              <span className={`${actionChipClass} px-2.5 py-1.5`}>Preview queue active</span>
+              <span className={`${actionChipClass} rounded-full px-3 py-1`}>Preview</span>
             ) : null}
           </div>
 
@@ -567,177 +373,147 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-          ) : (
-            <div className="mt-4 flex flex-wrap items-center gap-2" />
-          )}
-        </section>
+          ) : null}
+        </article>
 
-        <section className={panelClass}>
-          <div className={`flex items-center justify-between border-b px-6 py-3 lg:px-8 ${isDarkTheme ? "border-white/10" : "border-[#eceef5]"}`}>
-            <div>
-              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Escrow Rail</p>
-              <p className={`mt-1 text-sm ${mutedTextClass}`}>
-                Lifecycle state across the current {activeConfig.label.toLowerCase()} queue.
-              </p>
-            </div>
-            <span className={`${isDarkTheme ? "border-red-300/25 bg-red-500/10 text-red-100" : "border border-red-200 bg-red-50 text-red-700"} px-3 py-1 text-xs`}>
-              {activeConfig.stageCounts.disputed} disputed · {activeConfig.stageCounts.refunded} refunded
-            </span>
-          </div>
-
-          <div className="grid gap-0 md:grid-cols-5">
-            {ESCROW_STAGES.map((stage, index) => {
-              const count = countJobsByStatuses(activeConfig.jobs, stage.statuses);
-              return (
-                <div
-                  key={stage.label}
-                  className={`px-6 py-4 last:border-r-0 lg:px-8 ${isDarkTheme ? "border-r border-white/10" : "border-r border-[#eceef5]"}`}
+        <div className="grid gap-5 sm:grid-cols-3">
+          {[
+            {
+              label: "Your jobs",
+              value: activeConfig.jobCount,
+              icon: ShieldCheck,
+            },
+            {
+              label: "Active disputes",
+              value: activeConfig.disputedCount,
+              icon: Scale,
+            },
+            {
+              label: "Total escrow",
+              value: `${formatUsdtValue(activeConfig.totalEscrow)} USDT`,
+              icon: Users,
+            },
+          ].map((stat) => (
+            <article key={stat.label} className={`${panelClass} rounded-xl p-5`}>
+              <div className="flex items-center justify-between">
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+                  {stat.label}
+                </p>
+                <span
+                  className={`${subtlePanelClass} inline-flex size-9 items-center justify-center rounded-lg`}
                 >
-                  <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>0{index + 1}</p>
-                  <p className={`mt-2 text-2xl font-semibold tabular-nums ${titleClass}`}>{count}</p>
-                  <p className={`mt-2 text-sm font-medium ${titleClass}`}>{stage.label}</p>
-                  <p className={`mt-1 text-xs ${mutedTextClass}`}>{stage.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <div className="grid gap-5 xl:grid-cols-[minmax(340px,0.9fr)_minmax(0,1.1fr)]">
-          <section className={`${panelClass} p-6 lg:p-7`}>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Action Queue</p>
-                <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
-                  {activeConfig.focus.title}
-                </h2>
+                  <stat.icon size={16} className="text-violet-400" />
+                </span>
               </div>
-              <span className={`${actionChipClass} inline-flex size-10 items-center justify-center`}>
-                <ShieldCheck size={17} />
-              </span>
-            </div>
+              <p className={`mt-3 text-2xl font-semibold tabular-nums ${titleClass}`}>
+                {stat.value}
+              </p>
+            </article>
+          ))}
+        </div>
 
-            <p className={`mt-3 text-sm leading-6 ${mutedTextClass}`}>{activeConfig.focus.description}</p>
-
-            <div className={`${focusToneClass} mt-4 px-4 py-4`}>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-current/80">Jobs in focus</p>
-                  <p className="mt-1 text-3xl font-semibold tabular-nums text-current">{activeConfig.focus.count}</p>
-                </div>
-                <ArrowRight size={18} className="text-current/80" />
-              </div>
-            </div>
-
-            <div className={`${subtlePanelClass} mt-4 divide-y ${isDarkTheme ? "divide-white/10" : "divide-[#eceef5]"}`}>
-              {activeConfig.supportCards.map(({ title, value, caption, icon: Icon }) => (
-                <div key={title} className="flex items-start justify-between gap-3 px-4 py-3">
-                  <div>
-                    <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>{title}</p>
-                    <p className={`mt-1 text-2xl font-semibold tabular-nums ${titleClass}`}>{value}</p>
-                    <p className={`mt-1 text-xs ${mutedTextClass}`}>{caption}</p>
-                  </div>
-                  <span className={`${chipClass} inline-flex size-9 items-center justify-center`}>
-                    <Icon size={15} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className={`${panelClass} p-6 lg:p-7`}>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Workspace Context</p>
-                <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>
-                  Read before opening jobs
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+                  Quick actions
+                </p>
+                <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
+                  {activeView === "employer" ? "Employer tools" : "Freelancer tools"}
                 </h2>
               </div>
-              <span className={`${chipClass} inline-flex size-10 items-center justify-center`}>
-                <Wallet size={16} />
-              </span>
             </div>
-
-            <div className={`${subtlePanelClass} mt-4 grid gap-0 divide-y md:grid-cols-2 md:divide-x md:divide-y-0 ${isDarkTheme ? "divide-white/10" : "divide-[#eceef5]"}`}>
-              <div className="px-4 py-4">
-                <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Trust Signal</p>
-                <p className={`mt-2 text-lg font-semibold ${titleClass}`}>Escrow-backed delivery</p>
-                <p className={`mt-2 text-sm ${mutedTextClass}`}>
-                  Every job is anchored to a funding-review-release lifecycle.
-                </p>
-              </div>
-              <div className="px-4 py-4">
-                <p className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>Primary Counterparty</p>
-                <p className={`mt-2 text-lg font-semibold ${titleClass}`}>{activeConfig.counterpartyLabel} wallets</p>
-                <p className={`mt-2 text-sm ${mutedTextClass}`}>
-                  Open rows to continue escrow actions with complete on-chain context.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              {activeConfig.quickActions.map(({ href, label, icon: Icon }) => (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {activeConfig.quickActions.map((action) => (
                 <Link
-                  key={label}
-                  href={href}
-                  className={`${chipClass} inline-flex items-center gap-2 px-3 py-2 text-sm transition hover:border-violet-300/50 hover:bg-violet-500/10`}
+                  key={action.href}
+                  href={action.href}
+                  className={`${subtlePanelClass} flex items-center gap-3 rounded-xl p-4 transition hover:border-violet-300/40`}
                 >
-                  <Icon size={15} />
-                  {label}
+                  <span
+                    className={`${actionChipClass} inline-flex size-10 shrink-0 items-center justify-center rounded-lg`}
+                  >
+                    <action.icon size={17} />
+                  </span>
+                  <div>
+                    <p className={`text-sm font-semibold ${titleClass}`}>{action.label}</p>
+                    <p className={`mt-0.5 text-xs ${mutedTextClass}`}>{action.description}</p>
+                  </div>
                 </Link>
               ))}
             </div>
-          </section>
+          </article>
+
+          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+                  Status breakdown
+                </p>
+                <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
+                  Jobs by status
+                </h2>
+              </div>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {([0, 1, 2, 3, 4, 5, 6] as EscrowJobStatus[]).map((s) => {
+                const count = activeConfig.jobs.filter((j) => j.status === s).length;
+                return (
+                  <div key={s} className={`${subtlePanelClass} rounded-xl p-3 text-center`}>
+                    <p className={`text-xl font-semibold tabular-nums ${titleClass}`}>{count}</p>
+                    <p className={`mt-1 text-[10px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>
+                      {JOB_STATUS_LABEL[s]}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </article>
         </div>
 
         {(activeView === "employer" && showEmployerList) ||
         (activeView === "freelancer" && showFreelancerList) ? (
-          <section className={`${panelClass} p-6 lg:p-7`}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Job Queue</p>
-                <h2 className={`mt-2 text-2xl font-semibold tracking-tight ${titleClass}`}>{activeConfig.queueTitle}</h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`${chipClass} px-3 py-1 text-xs`}>{activeConfig.queueCountLabel}</span>
-                {activeConfig.isPreview ? (
-                  <span className={`${actionChipClass} px-3 py-1 text-xs`}>Preview mode</span>
-                ) : null}
-              </div>
+          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
+            <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Job queue</p>
+            <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
+              {activeConfig.queueTitle}
+            </h2>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className={`${chipClass} rounded-full px-3 py-1 text-xs`}>
+                {activeConfig.queueCountLabel}
+              </span>
+              {activeConfig.isPreview ? (
+                <span className={`${actionChipClass} rounded-full px-3 py-1 text-xs`}>
+                  Preview mode
+                </span>
+              ) : null}
             </div>
 
             {activeConfig.isPreview ? (
-              <p className={`mb-4 text-sm ${mutedTextClass}`}>
+              <p className={`mt-4 text-sm ${mutedTextClass}`}>
                 Live jobs are empty, so preview rows are shown for visual validation.
               </p>
             ) : null}
 
             {activeConfig.isLoading ? (
-              <div className="space-y-2">
+              <div className="mt-4 space-y-2">
                 {[0, 1, 2].map((i) => (
-                  // eslint-disable-next-line react/no-array-index-key
                   <div
+                    // eslint-disable-next-line react/no-array-index-key
                     key={i}
-                    className="animate-pulse rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="space-y-2">
-                        <div className="h-3 w-40 rounded-full bg-white/10" />
-                        <div className="h-2 w-24 rounded-full bg-white/7" />
-                      </div>
-                      <div className="h-6 w-24 rounded-full bg-white/8" />
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="h-2 w-full rounded-full bg-white/8" />
-                      <div className="h-2 w-5/6 rounded-full bg-white/6" />
-                    </div>
-                  </div>
+                    className={`h-24 animate-pulse rounded-xl ${subtlePanelClass}`}
+                  />
                 ))}
               </div>
             ) : activeConfig.isError ? (
-              <p className="text-sm text-red-500">Could not load jobs from contract.</p>
+              <p className={`mt-4 text-sm ${isDarkTheme ? "text-red-300" : "text-red-600"}`}>
+                Could not load jobs from contract.
+              </p>
+            ) : activeConfig.jobs.length === 0 ? (
+              <p className={`mt-4 text-sm ${mutedTextClass}`}>No jobs in this workspace yet.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="mt-4 space-y-2">
                 {activeConfig.jobs.map((job) => (
                   <JobCard
                     counterpartyAddress={
@@ -751,7 +527,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             )}
-          </section>
+          </article>
         ) : null}
       </section>
     </div>
