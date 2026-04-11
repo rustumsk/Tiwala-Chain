@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Frozen;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
@@ -9,6 +10,15 @@ using System.Text.RegularExpressions;
 [Route("api/[controller]")]
 public sealed class JobsController : ControllerBase
 {
+    private static readonly FrozenSet<string> DisputeReasonCodes = new[]
+    {
+        "scope_mismatch",
+        "quality",
+        "late_or_no_delivery",
+        "communication",
+        "other",
+    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
 
@@ -205,6 +215,127 @@ public sealed class JobsController : ControllerBase
         var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
         var downloadFileName = $"job-{job.Id}-contract";
         return File(stream, contentType, downloadFileName);
+    }
+
+    [Authorize]
+    [HttpGet("disputes/by-hash/{hash}")]
+    public async Task<ActionResult<JobDisputeResponse>> GetJobDisputeByHash(string hash, CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        var normalized = NormalizeHash(hash);
+        if (normalized is null)
+        {
+            return BadRequest("Invalid contract hash.");
+        }
+
+        var dispute = await _dbContext.JobDisputes.AsNoTracking()
+            .FirstOrDefaultAsync(d => d.ContractHash == normalized, cancellationToken);
+        if (dispute is null)
+        {
+            return NotFound("No dispute details recorded for this job.");
+        }
+
+        if (user.Role == UserRole.Admin)
+        {
+            return Ok(ToJobDisputeResponse(dispute));
+        }
+
+        var wallet = user.WalletAddress;
+        var job = await _dbContext.Jobs.AsNoTracking()
+            .OrderByDescending(j => j.CreatedAt)
+            .FirstOrDefaultAsync(
+                j => j.ContractHash == normalized &&
+                     (j.EmployerWallet == wallet || j.FreelancerWallet == wallet),
+                cancellationToken);
+
+        if (job is null)
+        {
+            return Forbid();
+        }
+
+        return Ok(ToJobDisputeResponse(dispute));
+    }
+
+    [Authorize]
+    [HttpPost("disputes")]
+    public async Task<ActionResult<JobDisputeResponse>> RecordJobDispute(
+        [FromBody] RecordJobDisputeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await ResolveCurrentUser();
+        if (user is null)
+        {
+            return Unauthorized("Invalid session.");
+        }
+
+        if (!user.IsApproved)
+        {
+            return StatusCode(403, "Your account is pending admin approval.");
+        }
+
+        var normalized = NormalizeHash(request.ContractHash);
+        if (normalized is null)
+        {
+            return BadRequest("Invalid contract hash.");
+        }
+
+        var onChainJobId = request.OnChainJobId?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(onChainJobId) || onChainJobId.Length > 40 || !Regex.IsMatch(onChainJobId, "^[0-9]+$"))
+        {
+            return BadRequest("Invalid on-chain job id.");
+        }
+
+        var reasonCode = request.ReasonCode?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (!DisputeReasonCodes.Contains(reasonCode))
+        {
+            return BadRequest("Invalid dispute reason.");
+        }
+
+        var details = string.IsNullOrWhiteSpace(request.Details) ? null : request.Details.Trim();
+        if (details is not null && details.Length > 2000)
+        {
+            return BadRequest("Details must be at most 2000 characters.");
+        }
+
+        var job = await _dbContext.Jobs
+            .OrderByDescending(j => j.CreatedAt)
+            .FirstOrDefaultAsync(
+                j => j.ContractHash == normalized &&
+                     (j.EmployerWallet == user.WalletAddress || j.FreelancerWallet == user.WalletAddress),
+                cancellationToken);
+
+        if (job is null)
+        {
+            return NotFound("Job not found for this contract hash, or you are not a participant.");
+        }
+
+        var exists = await _dbContext.JobDisputes.AnyAsync(d => d.ContractHash == normalized, cancellationToken);
+        if (exists)
+        {
+            return Conflict("Dispute details for this job were already recorded.");
+        }
+
+        var dispute = new JobDispute
+        {
+            ContractHash = normalized,
+            OnChainJobId = onChainJobId,
+            RaisedByWallet = user.WalletAddress,
+            ReasonCode = reasonCode,
+            Details = details,
+        };
+
+        _dbContext.JobDisputes.Add(dispute);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetJobDisputeByHash),
+            new { hash = normalized },
+            ToJobDisputeResponse(dispute));
     }
 
     [Authorize]
@@ -443,6 +574,29 @@ public sealed class JobsController : ControllerBase
         );
     }
 
+    private static JobDisputeResponse ToJobDisputeResponse(JobDispute d)
+    {
+        return new JobDisputeResponse(
+            d.ContractHash,
+            d.OnChainJobId,
+            d.RaisedByWallet,
+            d.ReasonCode,
+            DisputeReasonLabel(d.ReasonCode),
+            d.Details,
+            d.CreatedAt);
+    }
+
+    private static string DisputeReasonLabel(string code) =>
+        code.ToLowerInvariant() switch
+        {
+            "scope_mismatch" => "Scope or requirements mismatch",
+            "quality" => "Quality of work",
+            "late_or_no_delivery" => "Late or missing delivery",
+            "communication" => "Communication or collaboration",
+            "other" => "Other",
+            _ => code,
+        };
+
     private static string? NormalizeHash(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
@@ -495,4 +649,19 @@ public sealed record JobResponse(
     DateTime CreatedAt,
     DateTime? UpdatedAt
 );
+
+public sealed record RecordJobDisputeRequest(
+    string ContractHash,
+    string OnChainJobId,
+    string ReasonCode,
+    string? Details);
+
+public sealed record JobDisputeResponse(
+    string ContractHash,
+    string OnChainJobId,
+    string RaisedByWallet,
+    string ReasonCode,
+    string ReasonLabel,
+    string? Details,
+    DateTime CreatedAt);
 

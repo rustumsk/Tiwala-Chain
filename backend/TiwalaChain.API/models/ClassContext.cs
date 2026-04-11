@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<JobDispute> JobDisputes => Set<JobDispute>();
     public DbSet<Deliverable> Deliverables => Set<Deliverable>();
     public DbSet<DeliverableAttachment> DeliverableAttachments => Set<DeliverableAttachment>();
 
