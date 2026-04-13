@@ -429,17 +429,23 @@ export default function CreateContractPage() {
   const applySuggestion = (item: EvaluatedClause) => {
     if (!item.suggestion.trim()) return;
 
-    setCustomClauses((prev) => {
-      const offset = confidentialityEnabled? 1 : 0;
-      const customIndex = item.clauseNumber - 1 - offset;
-      if (customIndex < 0 || customIndex >= prev.length) return prev;
-      return prev.map((clause, idx) => (idx === customIndex? item.suggestion : clause));
-    });
+    const offset = confidentialityEnabled ? 1 : 0;
+    const customIndex = item.clauseNumber - 1 - offset;
+
+    if (confidentialityEnabled && item.clauseNumber === 1) {
+      setConfidentialityEnabled(false);
+      setCustomClauses((prev) => [item.suggestion, ...prev]);
+    } else if (customIndex >= 0) {
+      setCustomClauses((prev) => {
+        if (customIndex >= prev.length) return prev;
+        return prev.map((clause, idx) => (idx === customIndex ? item.suggestion : clause));
+      });
+    }
 
     setEvaluatedClauses((prev) =>
       prev.map((clause) =>
         clause.id === item.id
-         ? {...clause, text: item.suggestion, dismissed: false, applied: true }
+          ? { ...clause, text: item.suggestion, dismissed: false, applied: true }
           : clause
       )
     );
@@ -1037,7 +1043,7 @@ export default function CreateContractPage() {
               <span className="text-sm font-bold text-violet-500">01</span>
             </div>
             <div>
-              <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 1</p>
+              <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Compose</p>
               <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
                 Contract Details
               </h2>
@@ -1135,7 +1141,7 @@ export default function CreateContractPage() {
           <span className="text-sm font-bold text-violet-500">02</span>
         </div>
         <div>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 2</p>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Compose</p>
           <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
             Compensation & Deliverables
           </h2>
@@ -1216,7 +1222,7 @@ export default function CreateContractPage() {
             <span className="text-sm font-bold text-violet-500">03</span>
           </div>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 3</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Compose</p>
             <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
               Custom Clauses
             </h2>
@@ -1274,7 +1280,7 @@ export default function CreateContractPage() {
             <Sparkles size={20} className="text-white" />
           </div>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 2</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Review</p>
             <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
               AI Fairness Review
             </h2>
@@ -1459,7 +1465,7 @@ export default function CreateContractPage() {
             <FileCheck size={20} className="text-white" />
           </div>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 3</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Export</p>
             <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
               Export Contract
             </h2>

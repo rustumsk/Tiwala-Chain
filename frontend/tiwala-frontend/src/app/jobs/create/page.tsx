@@ -6,57 +6,14 @@ import { isAddress } from "viem";
 import {
   useAccount,
 } from "wagmi";
-import ClauseAnalysis, {
-  type ClauseItem,
-} from "@/components/ai/clause-analysis";
+import ClauseAnalysis from "@/components/ai/clause-analysis";
 import FairnessScore from "@/components/ai/fairness-score";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
+import { type AIResponse, extractScore, extractClauses } from "@/lib/ai-parsing";
 import { getStoredAuthSession } from "@/lib/auth";
 import { createJobOffer, uploadJobContract } from "@/lib/jobs";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { getStoredProfile } from "@/lib/profile";
-
-type AIResponse = Record<string, unknown>;
-
-function extractScore(payload: AIResponse): number | null {
-  const direct = payload.fairness_score ?? payload.score ?? payload.overall_score;
-  if (typeof direct === "number") return Math.max(0, Math.min(100, direct));
-  return null;
-}
-
-function extractClauses(payload: AIResponse): ClauseItem[] {
-  const rawClauses = payload.clauses ?? payload.analysis ?? payload.results;
-  if (!Array.isArray(rawClauses)) return [];
-
-  return rawClauses
-    .map((item) => {
-      if (typeof item !== "object" || !item) return null;
-      const record = item as Record<string, unknown>;
-      const title =
-        (typeof record.clause === "string" && record.clause) ||
-        (typeof record.text === "string" && record.text) ||
-        (typeof record.title === "string" && record.title) ||
-        "Clause";
-
-      const label =
-        (typeof record.label === "string" && record.label.toLowerCase()) ||
-        (typeof record.verdict === "string" && record.verdict.toLowerCase()) ||
-        "";
-      const isFair =
-        label === "fair" ||
-        label === "safe" ||
-        record.is_fair === true ||
-        record.isFair === true;
-
-      const suggestion =
-        (typeof record.suggestion === "string" && record.suggestion) ||
-        (typeof record.recommendation === "string" && record.recommendation) ||
-        undefined;
-
-      return { title, isFair, suggestion };
-    })
-    .filter((item): item is ClauseItem => Boolean(item));
-}
 
 export default function CreateJobPage() {
   const { address, isConnected } = useAccount();
@@ -84,7 +41,7 @@ export default function CreateJobPage() {
   const canCreate = profile?.role === "employer";
   const fairnessScore = analysisRaw ? extractScore(analysisRaw) : null;
   const clauseItems = analysisRaw ? extractClauses(analysisRaw) : [];
-  const hasUnfairClause = clauseItems.some((item) => !item.isFair);
+  const hasUnfairClause = clauseItems.some((c) => !c.isFair);
 
   const analyzeFile = async () => {
     setAnalysisError("");
@@ -395,18 +352,7 @@ export default function CreateJobPage() {
             </p>
           ) : null}
 
-          <ClauseAnalysis clauses={clauseItems} />
-
-          {analysisRaw ? (
-            <details className={`${subtlePanelClass} rounded-xl p-4`}>
-              <summary className={`cursor-pointer text-sm font-medium ${titleClass}`}>
-                Raw AI response
-              </summary>
-              <pre className={`mt-3 overflow-auto text-xs ${mutedTextClass}`}>
-                {JSON.stringify(analysisRaw, null, 2)}
-              </pre>
-            </details>
-          ) : null}
+          <ClauseAnalysis clauses={clauseItems} isLoading={isAnalyzing} />
         </article>
       </section>
     </div>

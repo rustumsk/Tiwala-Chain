@@ -23,53 +23,10 @@ import { getStoredAuthSession } from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
 import { getStoredProfile } from "@/lib/profile";
 import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
-import ClauseAnalysis, {
-  type ClauseItem,
-} from "@/components/ai/clause-analysis";
+import ClauseAnalysis from "@/components/ai/clause-analysis";
 import FairnessScore from "@/components/ai/fairness-score";
+import { type AIResponse, extractScore, extractClauses } from "@/lib/ai-parsing";
 import { tiwalaEscrowAbi, TIWALA_ESCROW_ADDRESS } from "@/lib/contract";
-
-type AIResponse = Record<string, unknown>;
-
-function extractScore(payload: AIResponse): number | null {
-  const direct = payload.fairness_score ?? payload.score ?? payload.overall_score;
-  if (typeof direct === "number") return Math.max(0, Math.min(100, direct));
-  return null;
-}
-
-function extractClauses(payload: AIResponse): ClauseItem[] {
-  const rawClauses = payload.clauses ?? payload.analysis ?? payload.results;
-  if (!Array.isArray(rawClauses)) return [];
-
-  return rawClauses
-    .map((item) => {
-      if (typeof item !== "object" || !item) return null;
-      const record = item as Record<string, unknown>;
-      const title =
-        (typeof record.clause === "string" && record.clause) ||
-        (typeof record.text === "string" && record.text) ||
-        (typeof record.title === "string" && record.title) ||
-        "Clause";
-
-      const label =
-        (typeof record.label === "string" && record.label.toLowerCase()) ||
-        (typeof record.verdict === "string" && record.verdict.toLowerCase()) ||
-        "";
-      const isFair =
-        label === "fair" ||
-        label === "safe" ||
-        record.is_fair === true ||
-        record.isFair === true;
-
-      const suggestion =
-        (typeof record.suggestion === "string" && record.suggestion) ||
-        (typeof record.recommendation === "string" && record.recommendation) ||
-        undefined;
-
-      return { title, isFair, suggestion };
-    })
-    .filter((item): item is ClauseItem => Boolean(item));
-}
 
 export default function OfferDetailPage() {
   const params = useParams<{ id: string }>();
@@ -234,7 +191,7 @@ export default function OfferDetailPage() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("http://localhost:8000/evaluate/file", {
+      const response = await fetch("/api/ai/evaluate-file", {
         method: "POST",
         body: formData,
       });
@@ -680,18 +637,7 @@ export default function OfferDetailPage() {
             )}
           </button>
 
-          <ClauseAnalysis clauses={clauseItems} />
-
-          {analysisRaw ? (
-            <details className={`${subtlePanelClass} rounded-xl p-4`}>
-              <summary className={`cursor-pointer text-sm font-medium ${titleClass}`}>
-                Raw AI response
-              </summary>
-              <pre className={`mt-3 overflow-auto text-xs ${mutedTextClass}`}>
-                {JSON.stringify(analysisRaw, null, 2)}
-              </pre>
-            </details>
-          ) : null}
+          <ClauseAnalysis clauses={clauseItems} isLoading={isAnalyzing} />
         </article>
       </section>
     </div>
