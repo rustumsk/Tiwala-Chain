@@ -5,7 +5,7 @@ import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
 import { useAccount } from "wagmi";
 import { useRouter } from "next/navigation";
-import { useAppTheme } from "@/components/layout/theme-context";
+import { useThemeStyles } from "@/hooks/use-theme-styles";
 import { getStoredAuthSession } from "@/lib/auth";
 import { notifyError } from "@/lib/notify";
 import { getStoredProfile } from "@/lib/profile";
@@ -26,7 +26,7 @@ type OfferStatusFilter = (typeof OFFER_STATUS_FILTERS)[number];
 export default function OffersPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
-  const { isDarkTheme } = useAppTheme();
+  const { isDarkTheme, panelClass, subtlePanelClass, mutedTextClass, tinyLabelClass, titleClass, pageClass } = useThemeStyles();
 
   const profile = useMemo(() => {
     if (!isConnected || !address || typeof window === "undefined") return null;
@@ -94,16 +94,6 @@ export default function OffersPage() {
     )
   );
 
-  const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
-  const panelClass = isDarkTheme
-    ? "border border-white/12 bg-black/32"
-    : "border border-[#e6e8f1] bg-white";
-  const subtlePanelClass = isDarkTheme
-    ? "border border-white/12 bg-white/[0.03]"
-    : "border border-[#eaecf4] bg-[#fafbff]";
-  const mutedTextClass = isDarkTheme ? "text-white/62" : "text-[#5c6172]";
-  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#73788b]";
-  const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
 
   if (!isConnected) {
     return (
@@ -239,22 +229,11 @@ export default function OffersPage() {
               {offers
                 .filter((offer) => {
                   if (statusFilter === "all") return true;
+                  const s = offer.status.toLowerCase();
                   if (statusFilter === "pending")
-                    return (
-                      offer.status === "PendingOffer" ||
-                      offer.status === "pendingoffer" ||
-                      offer.status === "pending"
-                    );
-                  if (statusFilter === "accepted")
-                    return (
-                      offer.status === "Accepted" ||
-                      offer.status === "accepted"
-                    );
-                  if (statusFilter === "declined")
-                    return (
-                      offer.status === "Declined" ||
-                      offer.status === "declined"
-                    );
+                    return s === "pendingoffer" || s === "pending";
+                  if (statusFilter === "accepted") return s === "accepted";
+                  if (statusFilter === "declined") return s === "declined";
                   return true;
                 })
                 .map((offer) => (

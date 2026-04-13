@@ -156,7 +156,7 @@ export default function OnboardingForm() {
         Finish your onboarding
       </h2>
       <p className="mt-2 text-sm text-white/65">
-        Set your display name and role. We will store this locally for now.
+        Set your display name and choose your role to complete your profile.
       </p>
 
       {isConnected && address ? (

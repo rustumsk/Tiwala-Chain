@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useAccount, useChainId, useReadContract } from "wagmi";
 import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import { useAppTheme } from "@/components/layout/theme-context";
@@ -50,7 +50,6 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 export default function JobDetailPage() {
-  const router = useRouter();
   const params = useParams<{ id: string }>();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -75,21 +74,11 @@ export default function JobDetailPage() {
   }, [params?.id]);
 
   const profile = useMemo(() => {
-    if (!address || typeof window === "undefined") return null;
+    if (!isConnected || !address || typeof window === "undefined") return null;
     const stored = getStoredProfile();
     if (!stored) return null;
     return stored.wallet.toLowerCase() === address.toLowerCase() ? stored : null;
-  }, [address]);
-
-  useEffect(() => {
-    if (!isConnected || !address) {
-      router.replace("/");
-      return;
-    }
-    if (!profile) {
-      router.replace("/onboarding");
-    }
-  }, [address, isConnected, profile, router]);
+  }, [address, isConnected]);
 
   const jobQuery = useReadContract({
     address: TIWALA_ESCROW_ADDRESS,

@@ -16,6 +16,7 @@ import {
 export default function WalletRouteGate() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+
   const authSnapshot = useSyncExternalStore(
     (onStoreChange) => {
       if (typeof window === "undefined") return () => undefined;

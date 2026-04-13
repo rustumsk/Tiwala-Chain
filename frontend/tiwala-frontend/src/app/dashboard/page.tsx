@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   BriefcaseBusiness,
   FilePlus2,
@@ -13,8 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
-import type { Address, Hex } from "viem";
-import { useAppTheme } from "@/components/layout/theme-context";
+import { useThemeStyles } from "@/hooks/use-theme-styles";
 import JobCard from "@/components/jobs/job-card";
 import { useEmployerJobs, useFreelancerJobs } from "@/hooks/use-escrow-jobs";
 import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
@@ -27,83 +25,6 @@ import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
 
-function asAddress(value: string) {
-  return value as Address;
-}
-
-function asHex(value: string) {
-  return value as Hex;
-}
-
-const MOCK_EMPLOYER_JOBS: EscrowJob[] = [
-  {
-    id: BigInt(1201),
-    employer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    freelancer: asAddress("0xA13e5d77c3bF27D1F5A9C7b4d3E9A1c9F0B451A2"),
-    amount: BigInt("3250000000"),
-    contractHash: asHex("0x1111111111111111111111111111111111111111111111111111111111111111"),
-    status: 3,
-  },
-  {
-    id: BigInt(1202),
-    employer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    freelancer: asAddress("0xB43d0a89E5cC1177aD3B9f8A2e2D4b9c6B3d7F10"),
-    amount: BigInt("1850000000"),
-    contractHash: asHex("0x2222222222222222222222222222222222222222222222222222222222222222"),
-    status: 2,
-  },
-  {
-    id: BigInt(1203),
-    employer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    freelancer: asAddress("0xC9488d2B317A2E4E7f5A1E4d7c9A8E1a3C27B5D1"),
-    amount: BigInt("4600000000"),
-    contractHash: asHex("0x3333333333333333333333333333333333333333333333333333333333333333"),
-    status: 1,
-  },
-  {
-    id: BigInt(1204),
-    employer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    freelancer: asAddress("0xD2192C4d6A4d1A1eC1A4C1D9a8d3B2f1E7c5A903"),
-    amount: BigInt("900000000"),
-    contractHash: asHex("0x4444444444444444444444444444444444444444444444444444444444444444"),
-    status: 5,
-  },
-];
-
-const MOCK_FREELANCER_JOBS: EscrowJob[] = [
-  {
-    id: BigInt(2201),
-    employer: asAddress("0x7A4d2E1a1cA1B5e4D2f6b9A1C3d5E7F8a0B1C2D3"),
-    freelancer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    amount: BigInt("2400000000"),
-    contractHash: asHex("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
-    status: 2,
-  },
-  {
-    id: BigInt(2202),
-    employer: asAddress("0x8B1e4d7A3c5E2f9D1A2b3C4d5e6F7a8B9c0D1E2F"),
-    freelancer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    amount: BigInt("1150000000"),
-    contractHash: asHex("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
-    status: 3,
-  },
-  {
-    id: BigInt(2203),
-    employer: asAddress("0x9C6f3B1a4E7d2A9b5C1d8E2a3b4C6d7E8f9A0B1C"),
-    freelancer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    amount: BigInt("3900000000"),
-    contractHash: asHex("0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"),
-    status: 1,
-  },
-  {
-    id: BigInt(2204),
-    employer: asAddress("0xA3d5F7b1C9e2D4a6B8c1E3f5A7d9C2b4E6f8A0D1"),
-    freelancer: asAddress("0x5f41aB2f1d0E9C5D4c5B6eD7a8C9b0D1e2F34567"),
-    amount: BigInt("725000000"),
-    contractHash: asHex("0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"),
-    status: 5,
-  },
-];
 
 function formatUsdtValue(value: number) {
   return value.toLocaleString(undefined, {
@@ -121,10 +42,9 @@ function shortAddr(addr: string) {
 }
 
 export default function DashboardPage() {
-  const router = useRouter();
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { theme, isDarkTheme } = useAppTheme();
+  const { theme, isDarkTheme, panelClass, subtlePanelClass, mutedTextClass, tinyLabelClass, titleClass, pageClass, chipClass, actionChipClass } = useThemeStyles();
   const profile = useMemo<LocalUserProfile | null>(() => {
     if (!isConnected || !address || typeof window === "undefined") return null;
     const existing = getStoredProfile();
@@ -134,16 +54,6 @@ export default function DashboardPage() {
       : null;
   }, [address, isConnected]);
 
-  useEffect(() => {
-    if (!isConnected || !address) {
-      router.replace("/");
-      return;
-    }
-
-    if (!profile) {
-      router.replace("/onboarding");
-    }
-  }, [address, isConnected, profile, router]);
 
   const showEmployerList = profile?.role === "employer" || profile?.role === "both";
   const showFreelancerList = profile?.role === "freelancer" || profile?.role === "both";
@@ -184,17 +94,13 @@ export default function DashboardPage() {
   });
 
   const activeConfig = useMemo(() => {
-    const liveJobs = activeView === "employer" ? employerJobs.jobs : freelancerJobs.jobs;
+    const jobs = activeView === "employer" ? employerJobs.jobs : freelancerJobs.jobs;
     const isLoading =
       activeView === "employer" ? employerJobs.isLoading : freelancerJobs.isLoading;
     const isError =
       activeView === "employer" ? employerJobs.isError : freelancerJobs.isError;
-    const liveJobIds =
+    const jobIds =
       activeView === "employer" ? employerJobs.jobIds : freelancerJobs.jobIds;
-    const previewJobs =
-      activeView === "employer" ? MOCK_EMPLOYER_JOBS : MOCK_FREELANCER_JOBS;
-    const isPreview = !isLoading && !isError && liveJobs.length === 0;
-    const jobs = isPreview ? previewJobs : liveJobs;
     const totalEscrow = jobs.reduce(
       (sum, job) => sum + Number(job.amount) / 1_000_000,
       0
@@ -206,17 +112,19 @@ export default function DashboardPage() {
         workspaceEyebrow: "Employer",
         title: "Dashboard",
         subtitle:
-          "Overview of your escrow jobs, funding, and releases — same layout as the admin view, scoped to your wallet.",
+          "Overview of your escrow jobs, funding, and releases — scoped to your wallet.",
         isLoading,
         isError,
-        isPreview,
         queueTitle: "Employer jobs",
-        queueCountLabel: isPreview ? `${jobs.length} preview` : `${liveJobIds.length} total`,
+        queueCountLabel: `${jobIds.length} total`,
         jobs,
         totalEscrow,
         disputedCount,
         jobCount: jobs.length,
         counterpartyLabel: "Freelancer",
+        emptyMessage: "You haven't created any escrow jobs yet. Start by creating your first job offer.",
+        emptyActionHref: "/jobs/create",
+        emptyActionLabel: "Create your first job",
         quickActions: [
           {
             href: "/jobs/create",
@@ -244,17 +152,19 @@ export default function DashboardPage() {
       workspaceEyebrow: "Freelancer",
       title: "Dashboard",
       subtitle:
-        "Overview of assigned work, reviews, and payouts — aligned with the admin dashboard style.",
+        "Overview of assigned work, reviews, and payouts.",
       isLoading,
       isError,
-      isPreview,
       queueTitle: "Freelancer jobs",
-      queueCountLabel: isPreview ? `${jobs.length} preview` : `${liveJobIds.length} total`,
+      queueCountLabel: `${jobIds.length} total`,
       jobs,
       totalEscrow,
       disputedCount,
       jobCount: jobs.length,
       counterpartyLabel: "Employer",
+      emptyMessage: "No jobs assigned to you yet. When employers create escrow jobs for your wallet, they will appear here.",
+      emptyActionHref: "/offers",
+      emptyActionLabel: "Check your offers",
       quickActions: [
         {
           href: "/jobs",
@@ -288,22 +198,6 @@ export default function DashboardPage() {
     freelancerJobs.jobs,
   ]);
 
-  const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
-  const panelClass = isDarkTheme
-    ? "border border-white/12 bg-black/32"
-    : "border border-[#e6e8f1] bg-white";
-  const subtlePanelClass = isDarkTheme
-    ? "border border-white/12 bg-white/[0.03]"
-    : "border border-[#eaecf4] bg-[#fafbff]";
-  const mutedTextClass = isDarkTheme ? "text-white/62" : "text-[#5c6172]";
-  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#73788b]";
-  const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
-  const chipClass = isDarkTheme
-    ? "border border-white/14 bg-white/[0.04] text-white/82"
-    : "border border-[#e1e4f0] bg-white text-[#2a3040]";
-  const actionChipClass = isDarkTheme
-    ? "border border-violet-300/30 bg-violet-500/14 text-violet-100"
-    : "border border-violet-200 bg-violet-50 text-violet-700";
 
   const walletChip = address ? shortAddr(address) : "N/A";
   const networkLabel = chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`;
@@ -335,9 +229,6 @@ export default function DashboardPage() {
             <span className={`${actionChipClass} rounded-full px-3 py-1`}>
               {activeConfig.workspaceEyebrow}
             </span>
-            {activeConfig.isPreview ? (
-              <span className={`${actionChipClass} rounded-full px-3 py-1`}>Preview</span>
-            ) : null}
           </div>
 
           {showEmployerList && showFreelancerList ? (
@@ -483,18 +374,7 @@ export default function DashboardPage() {
               <span className={`${chipClass} rounded-full px-3 py-1 text-xs`}>
                 {activeConfig.queueCountLabel}
               </span>
-              {activeConfig.isPreview ? (
-                <span className={`${actionChipClass} rounded-full px-3 py-1 text-xs`}>
-                  Preview mode
-                </span>
-              ) : null}
             </div>
-
-            {activeConfig.isPreview ? (
-              <p className={`mt-4 text-sm ${mutedTextClass}`}>
-                Live jobs are empty, so preview rows are shown for visual validation.
-              </p>
-            ) : null}
 
             {activeConfig.isLoading ? (
               <div className="mt-4 space-y-2">
@@ -511,7 +391,18 @@ export default function DashboardPage() {
                 Could not load jobs from contract.
               </p>
             ) : activeConfig.jobs.length === 0 ? (
-              <p className={`mt-4 text-sm ${mutedTextClass}`}>No jobs in this workspace yet.</p>
+              <div className={`mt-4 flex flex-col items-center gap-4 rounded-xl py-10 ${subtlePanelClass}`}>
+                <BriefcaseBusiness size={36} className="text-violet-400/50" />
+                <p className={`max-w-sm text-center text-sm ${mutedTextClass}`}>
+                  {activeConfig.emptyMessage}
+                </p>
+                <Link
+                  href={activeConfig.emptyActionHref}
+                  className={`inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold transition ${actionChipClass} hover:border-violet-300/50 hover:bg-violet-500/20`}
+                >
+                  {activeConfig.emptyActionLabel}
+                </Link>
+              </div>
             ) : (
               <div className="mt-4 space-y-2">
                 {activeConfig.jobs.map((job) => (

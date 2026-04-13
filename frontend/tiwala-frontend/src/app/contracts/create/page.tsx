@@ -23,6 +23,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
+import { API_BASE_URL } from "@/lib/auth";
 import { getStoredProfile } from "@/lib/profile";
 
 type EvaluatedClause = {
@@ -342,7 +343,7 @@ export default function CreateContractPage() {
     setCopiedHash(false);
 
     try {
-      const response = await fetch("http://localhost:8000/evaluate/text", {
+      const response = await fetch(`${API_BASE_URL}/api/public/contracts/evaluate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: compiledContractText }),
@@ -917,7 +918,7 @@ export default function CreateContractPage() {
   if (!canUseContractBuilder) {
     return (
       <div className={isDarkTheme? "min-h-screen bg-[#0a0b0f] text-white" : "min-h-screen bg-slate-50 text-slate-900"}>
-        <div className="mx-auto w-full max-w- px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
           <div className={`${cardClass} p-8 text-center`}>
             <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-violet-500/10">
               <ShieldCheck className="size-8 text-violet-500" />
@@ -946,7 +947,7 @@ export default function CreateContractPage() {
 
   return (
     <div className={isDarkTheme? "min-h-screen bg-[#0a0b0f] text-white" : "min-h-screen bg-slate-50 text-slate-900"}>
-      <div className="mx-auto w-full max-w- px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* Header + Progress */}
         <div className={`${cardClass} p-6 sm:p-8`}>
@@ -992,7 +993,7 @@ export default function CreateContractPage() {
                         <p className={`text-xs font-semibold transition-colors duration-300 ${isActive? titleClass : mutedTextClass}`}>
                           {step.title}
                         </p>
-                        <p className={`text- ${tinyLabelClass}`}>{step.desc}</p>
+                        <p className={`text-xs ${tinyLabelClass}`}>{step.desc}</p>
                       </div>
                     </div>
                     {idx < steps.length - 1 && (
@@ -1130,11 +1131,11 @@ export default function CreateContractPage() {
     {/* Section 2: Compensation & Deliverables */}
     <div className={`${cardClass} mt-5 p-6 sm:p-8`}>
       <div className="flex items-center gap-3">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-violet-500/10">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-violet-500/10">
           <span className="text-sm font-bold text-violet-500">02</span>
         </div>
         <div>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 1</p>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 2</p>
           <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
             Compensation & Deliverables
           </h2>
@@ -1215,7 +1216,7 @@ export default function CreateContractPage() {
             <span className="text-sm font-bold text-violet-500">03</span>
           </div>
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 1</p>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Step 3</p>
             <h2 className={`text-xl font-bold tracking-tight ${titleClass}`}>
               Custom Clauses
             </h2>

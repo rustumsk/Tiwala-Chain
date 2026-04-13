@@ -10,7 +10,7 @@ import ClauseAnalysis, {
   type ClauseItem,
 } from "@/components/ai/clause-analysis";
 import FairnessScore from "@/components/ai/fairness-score";
-import { useAppTheme } from "@/components/layout/theme-context";
+import { useThemeStyles } from "@/hooks/use-theme-styles";
 import { getStoredAuthSession } from "@/lib/auth";
 import { createJobOffer, uploadJobContract } from "@/lib/jobs";
 import { notifyError, notifySuccess } from "@/lib/notify";
@@ -58,41 +58,9 @@ function extractClauses(payload: AIResponse): ClauseItem[] {
     .filter((item): item is ClauseItem => Boolean(item));
 }
 
-async function sha256ToBytes32(file: File): Promise<`0x${string}`> {
-  const bytes = await file.arrayBuffer();
-  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(digest))
-    .map((value) => value.toString(16).padStart(2, "0"))
-    .join("");
-  return `0x${hex}`;
-}
-
 export default function CreateJobPage() {
   const { address, isConnected } = useAccount();
-  const { theme } = useAppTheme();
-
-  const isDarkTheme = theme === "dark";
-  const panelClass = isDarkTheme
-    ? "border border-white/12 bg-black/32"
-    : "border border-[#e6e8f1] bg-white";
-  const subtlePanelClass = isDarkTheme
-    ? "border border-white/12 bg-white/[0.03]"
-    : "border border-[#eaecf4] bg-[#fafbff]";
-  const mutedTextClass = isDarkTheme ? "text-white/62" : "text-[#5c6172]";
-  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#73788b]";
-  const titleClass = isDarkTheme ? "text-white" : "text-[#11131b]";
-  const chipClass = isDarkTheme
-    ? "border border-white/14 bg-white/[0.04] text-white/82"
-    : "border border-[#e1e4f0] bg-white text-[#2a3040]";
-  const actionChipClass = isDarkTheme
-    ? "border border-violet-300/30 bg-violet-500/14 text-violet-100"
-    : "border border-violet-200 bg-violet-50 text-violet-700";
-  const inputClass = isDarkTheme
-    ? "h-11 w-full rounded-xl border border-white/14 bg-black/40 px-4 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50"
-    : "h-11 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400";
-  const textareaClass = isDarkTheme
-    ? "min-h-28 w-full rounded-xl border border-white/14 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50"
-    : "min-h-28 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 py-3 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400";
+  const { isDarkTheme, panelClass, subtlePanelClass, mutedTextClass, tinyLabelClass, titleClass, chipClass, actionChipClass, inputClass, textareaClass } = useThemeStyles();
 
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -102,15 +70,16 @@ export default function CreateJobPage() {
   const [analysisRaw, setAnalysisRaw] = useState<AIResponse | null>(null);
   const [analysisError, setAnalysisError] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState("");
 
   const profile = useMemo(() => {
-    if (!address || typeof window === "undefined") return null;
+    if (!isConnected || !address || typeof window === "undefined") return null;
     const stored = getStoredProfile();
     if (!stored) return null;
     return stored.wallet.toLowerCase() === address.toLowerCase() ? stored : null;
-  }, [address]);
+  }, [address, isConnected]);
 
   const canCreate = profile?.role === "employer";
   const fairnessScore = analysisRaw ? extractScore(analysisRaw) : null;
@@ -133,7 +102,7 @@ export default function CreateJobPage() {
       const formData = new FormData();
       formData.append("file", contractFile);
 
-      const response = await fetch("http://localhost:8000/evaluate/file", {
+      const response = await fetch("/api/ai/evaluate-file", {
         method: "POST",
         body: formData,
       });
@@ -187,6 +156,7 @@ export default function CreateJobPage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const session = getStoredAuthSession();
       if (
@@ -220,6 +190,8 @@ export default function CreateJobPage() {
         error instanceof Error ? error.message : "Unable to create job offer.";
       setSubmitError(message);
       notifyError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -389,10 +361,10 @@ export default function CreateJobPage() {
             <div className="flex flex-wrap items-center gap-3">
               <button
                 className={`inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${actionChipClass} hover:border-violet-300/50 hover:bg-violet-500/20`}
-                disabled={false}
+                disabled={isSubmitting}
                 type="submit"
               >
-                Send job offer
+                {isSubmitting ? "Sending..." : "Send job offer"}
               </button>
               <button
                 className={`inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${chipClass} hover:border-violet-300/50 hover:bg-violet-500/10`}
