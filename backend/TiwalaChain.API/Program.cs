@@ -34,11 +34,12 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+var aiServiceUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000/";
+var aiServiceTimeoutSeconds = builder.Configuration.GetValue("AiService:TimeoutSeconds", 30);
 builder.Services.AddHttpClient("AiService", client =>
 {
-    // Local AI service; can be overridden later if deployed.
-    client.BaseAddress = new Uri("http://localhost:8000/");
-    client.Timeout = TimeSpan.FromSeconds(30);
+    client.BaseAddress = new Uri(aiServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(aiServiceTimeoutSeconds);
 });
 
 var frontendOrigins = builder.Configuration
