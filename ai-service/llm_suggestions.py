@@ -114,8 +114,40 @@ def _build_messages(batch: List[dict]) -> list:
     ]
 
 
+def _build_review_messages(batch: List[dict]) -> list:
+    system = (
+        "You are a legal contract fairness reviewer for freelance and client agreements. "
+        "Classify each clause as fair or unfair based on whether the obligations and rights are balanced. "
+        "Mark clauses as unfair when they impose one-sided obligations, allow unlimited out-of-scope work, "
+        "create unreasonable restrictions unrelated to the agreed deliverables, or remove basic protections "
+        "without a balanced justification. Respond strictly in JSON."
+    )
+
+    payload = {
+        "instructions": [
+            "For each clause item, decide whether it is fair or unfair.",
+            "If a clause is unfair, explain the core issue briefly and provide a concise replacement clause.",
+            "If a clause is fair, keep the issue empty and provide a short confirmation suggestion.",
+            "Return only valid JSON array: "
+            "[{\"index\": number, \"label\": \"fair\" | \"unfair\", \"issue\": string, \"suggestion\": string}].",
+        ],
+        "items": batch,
+    }
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(payload, ensure_ascii=True)},
+    ]
+
+
 def _chat_prompt_text(batch: List[dict]) -> str:
     messages = _build_messages(batch)
+    return "\n\n".join(
+        [f"{m['role'].upper()}:\n{m['content']}" for m in messages]
+    )
+
+
+def _review_prompt_text(batch: List[dict]) -> str:
+    messages = _build_review_messages(batch)
     return "\n\n".join(
         [f"{m['role'].upper()}:\n{m['content']}" for m in messages]
     )
@@ -176,6 +208,24 @@ def _openai_request_config(batch: List[dict]) -> tuple[str, Dict[str, str], dict
     return endpoint, headers, body
 
 
+def _openai_review_request_config(batch: List[dict]) -> tuple[str, Dict[str, str], dict]:
+    base_url = _env("LLM_SUGGESTIONS_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    endpoint = _env("LLM_SUGGESTIONS_ENDPOINT", f"{base_url}/chat/completions")
+    model = _env("LLM_SUGGESTIONS_MODEL", "gpt-4o-mini")
+    body = {
+        "model": model,
+        "temperature": 0.1,
+        "messages": _build_review_messages(batch),
+    }
+    headers = _merge_headers(
+        {
+            "Content-Type": "application/json",
+            **_build_auth_headers(),
+        }
+    )
+    return endpoint, headers, body
+
+
 def _anthropic_request_config(batch: List[dict]) -> tuple[str, Dict[str, str], dict]:
     base_url = _env("LLM_SUGGESTIONS_BASE_URL", "https://api.anthropic.com/v1").rstrip("/")
     endpoint = _env("LLM_SUGGESTIONS_ENDPOINT", f"{base_url}/messages")
@@ -192,6 +242,36 @@ def _anthropic_request_config(batch: List[dict]) -> tuple[str, Dict[str, str], d
         "model": model,
         "max_tokens": max_tokens,
         "temperature": 0.2,
+        "system": system,
+        "messages": [{"role": "user", "content": user_text}],
+    }
+    headers = _merge_headers(
+        {
+            "Content-Type": "application/json",
+            "anthropic-version": anthropic_version,
+            **_build_auth_headers(),
+        }
+    )
+    return endpoint, headers, body
+
+
+def _anthropic_review_request_config(batch: List[dict]) -> tuple[str, Dict[str, str], dict]:
+    base_url = _env("LLM_SUGGESTIONS_BASE_URL", "https://api.anthropic.com/v1").rstrip("/")
+    endpoint = _env("LLM_SUGGESTIONS_ENDPOINT", f"{base_url}/messages")
+    model = _env("LLM_SUGGESTIONS_MODEL", "claude-3-5-sonnet-latest")
+    max_tokens = int(_env("LLM_SUGGESTIONS_MAX_TOKENS", "900"))
+    anthropic_version = _env("LLM_SUGGESTIONS_ANTHROPIC_VERSION", "2023-06-01")
+
+    system = (
+        "You are a legal contract fairness reviewer for freelance and client agreements. "
+        "Classify clauses as fair or unfair and provide concise remediation wording when needed. "
+        "Respond strictly in JSON."
+    )
+    user_text = _review_prompt_text(batch)
+    body = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "temperature": 0.1,
         "system": system,
         "messages": [{"role": "user", "content": user_text}],
     }
@@ -234,6 +314,27 @@ def _parse_suggestions_content(content: str) -> list:
         pass
 
     # Fallback: extract first JSON array in noisy responses.
+    match = re.search(r"\[.*\]", cleaned, flags=re.DOTALL)
+    if not match:
+        return []
+    try:
+        parsed = json.loads(match.group(0))
+        if isinstance(parsed, list):
+            return parsed
+    except Exception:
+        return []
+    return []
+
+
+def _parse_reviews_content(content: str) -> list:
+    cleaned = _strip_code_fences(content)
+    try:
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, list):
+            return parsed
+    except Exception:
+        pass
+
     match = re.search(r"\[.*\]", cleaned, flags=re.DOTALL)
     if not match:
         return []
@@ -363,6 +464,61 @@ def _generate_llm_suggestions_once(batch: List[dict]) -> List[str | None]:
     return resolved
 
 
+def _generate_llm_reviews_once(batch: List[dict]) -> List[dict | None]:
+    provider = _provider()
+    timeout = float(_env("LLM_SUGGESTIONS_TIMEOUT_SECONDS", "20"))
+
+    if provider == "anthropic":
+        endpoint, headers, body = _anthropic_review_request_config(batch)
+    else:
+        endpoint, headers, body = _openai_review_request_config(batch)
+
+    _debug(
+        f"review_start provider={provider} endpoint={endpoint} model={body.get('model')} items={len(batch)} timeout={timeout}"
+    )
+
+    try:
+        response = httpx.post(endpoint, headers=headers, json=body, timeout=timeout)
+        status_code = getattr(response, "status_code", 200)
+        if status_code >= 400:
+            preview = response.text[:300].replace("\n", " ")
+            _debug(f"review_http_error status={status_code} body_preview={preview}")
+            return [None] * len(batch)
+        payload = response.json()
+        content = _extract_response_content(payload)
+        if not content:
+            _debug("review_empty_content_from_provider")
+            return [None] * len(batch)
+        parsed = _parse_reviews_content(content)
+    except Exception as exc:
+        _debug(f"review_exception type={type(exc).__name__} msg={exc}")
+        return [None] * len(batch)
+
+    mapped: dict[int, dict] = {}
+    if isinstance(parsed, list):
+        for entry in parsed:
+            if not isinstance(entry, dict):
+                continue
+            idx = entry.get("index")
+            label = entry.get("label")
+            issue = entry.get("issue", "")
+            suggestion = entry.get("suggestion", "")
+            if (
+                isinstance(idx, int)
+                and isinstance(label, str)
+                and label.strip().lower() in {"fair", "unfair"}
+            ):
+                mapped[idx] = {
+                    "label": label.strip().lower(),
+                    "issue": issue.strip() if isinstance(issue, str) else "",
+                    "suggestion": suggestion.strip() if isinstance(suggestion, str) else "",
+                }
+
+    resolved = [mapped.get(item["index"]) for item in batch]
+    _debug(f"review_done resolved={sum(1 for x in resolved if x)} total={len(resolved)}")
+    return resolved
+
+
 def generate_llm_suggestions_batch(batch: List[dict]) -> List[str | None]:
     """
     Generate suggestions for a list of clause dicts with keys:
@@ -388,4 +544,36 @@ def generate_llm_suggestions_batch(batch: List[dict]) -> List[str | None]:
             outputs[start + i] = item
 
     _debug(f"batch_done resolved={sum(1 for x in outputs if x)} total={len(outputs)}")
+    return outputs
+
+
+def generate_llm_clause_reviews_batch(batch: List[dict]) -> List[dict | None]:
+    """
+    Review a list of clause dicts with keys:
+    - index (int)
+    - clause (str)
+    - label (str)
+    - confidence (float)
+    Returns list aligned with input where each item may contain:
+    - label: fair | unfair
+    - issue: str
+    - suggestion: str
+    """
+    if not batch:
+        return []
+    if not is_llm_suggestions_enabled():
+        _debug("review_disabled_or_missing_key")
+        return [None] * len(batch)
+
+    batch_size = max(1, int(_env("LLM_SUGGESTIONS_BATCH_SIZE", "4")))
+    outputs: List[dict | None] = [None] * len(batch)
+
+    for start in range(0, len(batch), batch_size):
+        chunk = batch[start : start + batch_size]
+        _debug(f"review_chunk_start start={start} size={len(chunk)}")
+        chunk_out = _generate_llm_reviews_once(chunk)
+        for i, item in enumerate(chunk_out):
+            outputs[start + i] = item
+
+    _debug(f"review_batch_done resolved={sum(1 for x in outputs if x)} total={len(outputs)}")
     return outputs
