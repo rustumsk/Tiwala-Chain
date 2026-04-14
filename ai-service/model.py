@@ -1,11 +1,17 @@
 import re
 import os
+import math
 from typing import Any
 
 from transformers import pipeline
 try:
-    from llm_suggestions import generate_llm_suggestions_batch, is_llm_suggestions_enabled
+    from llm_suggestions import (
+        generate_llm_clause_reviews_batch,
+        generate_llm_suggestions_batch,
+        is_llm_suggestions_enabled,
+    )
 except Exception:  # pragma: no cover - optional module fallback
+    generate_llm_clause_reviews_batch = None
     generate_llm_suggestions_batch = None
     is_llm_suggestions_enabled = lambda: False
 
@@ -63,6 +69,13 @@ DEFAULT_UNFAIR_SUGGESTION = (
     "Consider revising this clause to ensure fair and balanced obligations for both parties."
 )
 
+LLM_REVIEW_PATTERNS = [
+    re.compile(r"\b(outside (?:the )?project scope|scope creep|unlimited revisions?|revise anything)\b", re.IGNORECASE),
+    re.compile(r"\b(no paid leave|no vacation|no sick leave|vacation and sick leaves?|paid[- ]leaves?)\b", re.IGNORECASE),
+    re.compile(r"\b(cannot use the internet|may not use the internet|no internet access)\b", re.IGNORECASE),
+]
+SUSPICIOUS_FAIR_LLM_THRESHOLD = 0.9
+
 
 def load_model():
     """Load the fine-tuned model from local path."""
@@ -80,6 +93,10 @@ def _suggestion_by_risk_pattern(clause: str) -> str | None:
         if pattern.search(clause):
             return suggestion
     return None
+
+
+def _matches_llm_review_pattern(clause: str) -> bool:
+    return any(pattern.search(clause) for pattern in LLM_REVIEW_PATTERNS)
 
 
 def get_suggestion(clause: str, label: str, confidence: float) -> str:
@@ -133,12 +150,72 @@ def _env_int(name: str, default: int) -> int:
     return max(1, value)
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw.strip())
+    except Exception:
+        return default
+
+
 def _truncate_for_llm(text: str) -> str:
     max_chars = _env_int("LLM_SUGGESTIONS_MAX_CLAUSE_CHARS", 1200)
     cleaned = text.strip()
     if len(cleaned) <= max_chars:
         return cleaned
     return f"{cleaned[:max_chars].rstrip()} ... [truncated for LLM suggestion]"
+
+
+def _calibrate_confidence(probability: float) -> float:
+    """
+    The classifier's raw softmax score is often overly saturated after fine-tuning.
+    Apply lightweight temperature scaling so UI confidence reflects trustworthiness
+    more realistically and does not collapse to 100% for nearly every clause.
+    """
+    temperature = max(1.0, _env_float("CLASSIFIER_CONFIDENCE_TEMPERATURE", 2.5))
+    epsilon = 1e-6
+    p = min(max(probability, epsilon), 1 - epsilon)
+    logit = math.log(p / (1 - p))
+    calibrated = 1 / (1 + math.exp(-(logit / temperature)))
+    return round(calibrated, 4)
+
+
+def _extract_prediction_scores(prediction: Any) -> tuple[str, float]:
+    entries: list[dict[str, Any]]
+
+    if isinstance(prediction, list) and prediction and isinstance(prediction[0], list):
+        entries = prediction[0]
+    elif isinstance(prediction, list):
+        entries = prediction
+    else:
+        entries = [prediction]
+
+    normalized: list[tuple[str, float]] = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        raw_label = entry.get("label")
+        raw_score = entry.get("score")
+        if isinstance(raw_label, str) and isinstance(raw_score, (int, float)):
+            normalized.append((raw_label, float(raw_score)))
+
+    if not normalized:
+        return "LABEL_0", 0.5
+
+    normalized.sort(key=lambda item: item[1], reverse=True)
+    raw_label, top_score = normalized[0]
+    calibrated_confidence = _calibrate_confidence(top_score)
+    return raw_label, calibrated_confidence
+
+
+def _predict_clause(classifier, clause: str) -> tuple[str, float]:
+    try:
+        prediction = classifier(clause, truncation=True, max_length=128, top_k=None)
+    except TypeError:
+        prediction = classifier(clause, truncation=True, max_length=128)
+    return _extract_prediction_scores(prediction)
 
 
 def _needs_llm_suggestion(result: dict) -> bool:
@@ -150,6 +227,9 @@ def _needs_llm_suggestion(result: dict) -> bool:
     if _env_flag("LLM_SUGGESTIONS_FORCE_ALL", default=False):
         return True
 
+    if result.get("suggestion_source") == "llm":
+        return False
+
     label = result["label"]
     confidence = result["confidence"]
 
@@ -159,6 +239,87 @@ def _needs_llm_suggestion(result: dict) -> bool:
         return True
 
     return False
+
+
+def _needs_llm_verdict(result: dict) -> bool:
+    if _env_flag("LLM_SUGGESTIONS_FORCE_ALL", default=False):
+        return True
+
+    confidence = result["confidence"]
+    clause = result["clause"]
+
+    if confidence < LOW_CONFIDENCE_THRESHOLD:
+        return True
+
+    return (
+        result["label"] == "fair"
+        and confidence < SUSPICIOUS_FAIR_LLM_THRESHOLD
+        and (
+            _matches_llm_review_pattern(clause)
+            or _suggestion_by_risk_pattern(clause) is not None
+        )
+    )
+
+
+def _apply_llm_verdicts(results: list[dict]) -> list[dict]:
+    """
+    Optionally use the LLM to review borderline or suspicious clauses and
+    override the classifier verdict when a more reliable answer is returned.
+    """
+    if not results:
+        return results
+    if not is_llm_suggestions_enabled():
+        return results
+    if generate_llm_clause_reviews_batch is None:
+        return results
+
+    candidates: list[dict[str, Any]] = []
+    for idx, result in enumerate(results):
+        if _needs_llm_verdict(result):
+            candidates.append(
+                {
+                    "index": idx,
+                    "clause": _truncate_for_llm(result["clause"]),
+                    "label": result["label"],
+                    "confidence": result["confidence"],
+                }
+            )
+
+    if not candidates:
+        return results
+
+    llm_reviews = generate_llm_clause_reviews_batch(candidates)
+    if not llm_reviews:
+        return results
+
+    for candidate, review in zip(candidates, llm_reviews):
+        if not review:
+            continue
+
+        label = review.get("label")
+        suggestion = review.get("suggestion", "")
+        issue = review.get("issue", "")
+        if label not in {"fair", "unfair"}:
+            continue
+
+        result_idx = candidate["index"]
+        original_label = results[result_idx]["label"]
+        results[result_idx]["label"] = label
+
+        if isinstance(issue, str) and issue.strip():
+            results[result_idx]["issue"] = issue.strip()
+
+        if isinstance(suggestion, str) and suggestion.strip():
+            results[result_idx]["suggestion"] = suggestion.strip()
+            results[result_idx]["suggestion_source"] = "llm"
+
+        # When the classifier was low-confidence and the LLM flips the label,
+        # mark the result with a conservative confidence so the UI reflects
+        # that it came from fallback review rather than a strong model score.
+        if original_label != label and results[result_idx]["confidence"] < MODERATE_CONFIDENCE_THRESHOLD:
+            results[result_idx]["confidence"] = round(min(results[result_idx]["confidence"], LOW_CONFIDENCE_THRESHOLD), 4)
+
+    return results
 
 
 def _apply_llm_suggestions(results: list[dict]) -> list[dict]:
@@ -209,9 +370,7 @@ def analyze_clauses(classifier, clauses: list) -> list:
         if not clause.strip():
             continue
 
-        prediction = classifier(clause, truncation=True, max_length=128)
-        raw_label = prediction[0]["label"]
-        confidence = round(prediction[0]["score"], 4)
+        raw_label, confidence = _predict_clause(classifier, clause)
         label = LABELS.get(raw_label, raw_label)
         suggestion = get_suggestion(clause, label, confidence)
 
@@ -223,4 +382,5 @@ def analyze_clauses(classifier, clauses: list) -> list:
             "suggestion_source": "rule",
         })
 
+    results = _apply_llm_verdicts(results)
     return _apply_llm_suggestions(results)

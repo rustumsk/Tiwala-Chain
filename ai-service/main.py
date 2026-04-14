@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import uvicorn
 
 from model import load_model, analyze_clauses
@@ -35,6 +35,7 @@ class ClauseResult(BaseModel):
     confidence: float
     suggestion: str
     suggestion_source: str = "rule"
+    issue: Optional[str] = None
 
 class EvaluationResponse(BaseModel):
     total_clauses: int
@@ -132,7 +133,8 @@ def build_response(results: List[dict]) -> EvaluationResponse:
             label=r["label"],
             confidence=r["confidence"],
             suggestion=r["suggestion"],
-            suggestion_source=r.get("suggestion_source", "rule")
+            suggestion_source=r.get("suggestion_source", "rule"),
+            issue=r.get("issue"),
         )
         for r in results
     ]
