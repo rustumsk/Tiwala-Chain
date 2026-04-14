@@ -351,45 +351,57 @@ export default function JobDetailPage() {
 
           {parsed ? (
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <button
-                type="button"
-                disabled={isOpeningContract}
-                onClick={async () => {
-                  if (!address) return;
-                  setContractError("");
-                  setIsOpeningContract(true);
-                  try {
-                    const session = getStoredAuthSession();
-                    if (
-                      !session ||
-                      session.walletAddress.toLowerCase() !== address.toLowerCase()
-                    ) {
-                      throw new Error("Please sign in with your wallet first.");
-                    }
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={isOpeningContract}
+                  onClick={async () => {
+                    if (!address) return;
+                    setContractError("");
+                    setIsOpeningContract(true);
+                    try {
+                      const session = getStoredAuthSession();
+                      if (
+                        !session ||
+                        session.walletAddress.toLowerCase() !== address.toLowerCase()
+                      ) {
+                        throw new Error("Please sign in with your wallet first.");
+                      }
 
-                    const blob = await downloadJobContractByHashBlob(
-                      session,
-                      parsed.contractHash
-                    );
-                    const url = URL.createObjectURL(blob);
-                    window.open(url, "_blank");
-                  } catch (err) {
-                    const msg =
-                      err instanceof Error ? err.message : "Unable to open contract.";
-                    setContractError(msg);
-                    notifyError(msg);
-                  } finally {
-                    setIsOpeningContract(false);
-                  }
-                }}
-                className={`inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium transition ${
-                  isDarkTheme
-                    ? "border-white/14 bg-white/[0.04] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
-                    : "border-[#d8dced] bg-white text-[#242838] hover:border-violet-300 hover:bg-violet-50"
-                }`}
-              >
-                {isOpeningContract ? "Opening contract..." : "View contract"}
-              </button>
+                      const blob = await downloadJobContractByHashBlob(
+                        session,
+                        parsed.contractHash
+                      );
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, "_blank");
+                    } catch (err) {
+                      const msg =
+                        err instanceof Error ? err.message : "Unable to open contract.";
+                      setContractError(msg);
+                      notifyError(msg);
+                    } finally {
+                      setIsOpeningContract(false);
+                    }
+                  }}
+                  className={`inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium transition ${
+                    isDarkTheme
+                      ? "border-white/14 bg-white/[0.04] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
+                      : "border-[#d8dced] bg-white text-[#242838] hover:border-violet-300 hover:bg-violet-50"
+                  }`}
+                >
+                  {isOpeningContract ? "Opening contract..." : "View contract"}
+                </button>
+                <Link
+                  href={`/contracts/verify?jobId=${parsed.id.toString()}`}
+                  className={`inline-flex h-10 items-center rounded-xl border px-4 text-sm font-medium transition ${
+                    isDarkTheme
+                      ? "border-violet-300/30 bg-violet-500/14 text-violet-100 hover:border-violet-300/50 hover:bg-violet-500/20"
+                      : "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100"
+                  }`}
+                >
+                  Verify contract
+                </Link>
+              </div>
               {contractError ? (
                 <p className={`text-sm ${isDarkTheme ? "text-red-200" : "text-red-700"}`}>
                   {contractError}

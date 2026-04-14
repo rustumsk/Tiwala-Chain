@@ -24,6 +24,11 @@ function formatUsdt(amount: bigint) {
   return whole.toLocaleString(undefined, { maximumFractionDigits: 4 });
 }
 
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
 function getStageIndex(status: EscrowJobStatus) {
   switch (status) {
     case 0:
@@ -112,15 +117,28 @@ export default function JobCard({
   const ctaClass = isDarkTheme
     ? "border border-white/14 bg-white/[0.04] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
     : "border border-[#d8dced] bg-white text-[#242838] hover:border-violet-300 hover:bg-violet-50";
+  const displayTitle =
+    job.title?.trim() || `Job #${job.id.toString()}`;
+  const descriptionPreview = job.description?.trim()
+    ? truncateText(job.description.trim(), 120)
+    : null;
 
   return (
     <article className={`${rowClass} px-4 py-4 transition-colors lg:px-5`}>
       <div className={`pointer-events-none mb-4 h-px w-full bg-gradient-to-r ${tone.gradient}`} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(120px,0.75fr)_minmax(170px,1.1fr)_minmax(130px,0.8fr)_minmax(180px,1.15fr)_auto] lg:items-center">
+      <div className="grid gap-4 lg:grid-cols-[minmax(240px,1.35fr)_minmax(170px,1fr)_minmax(130px,0.8fr)_minmax(180px,1.15fr)_auto] lg:items-center">
         <div>
           <p className={`text-[11px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>Job</p>
-          <p className={`mt-1 text-sm font-semibold ${titleClass}`}>#{job.id.toString()}</p>
+          <p className={`mt-1 text-sm font-semibold ${titleClass}`}>{displayTitle}</p>
+          <p className={`mt-1 text-xs ${tinyLabelClass}`}>
+            On-chain job #{job.id.toString()}
+          </p>
+          {descriptionPreview ? (
+            <p className={`mt-2 text-xs leading-5 ${mutedTextClass}`}>
+              {descriptionPreview}
+            </p>
+          ) : null}
         </div>
 
         <div>

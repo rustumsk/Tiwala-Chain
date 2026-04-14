@@ -1,12 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useReadContract, useReadContracts } from "wagmi";
 import {
   TIWALA_ESCROW_ADDRESS,
   tiwalaEscrowAbi,
   type EscrowJobStatus,
 } from "@/lib/contract";
+import { getStoredAuthSession } from "@/lib/auth";
+import {
+  fetchIncomingOffers,
+  fetchSentOffers,
+  normalizeContractHashForApi,
+  type JobResponse,
+} from "@/lib/jobs";
 import { escrowLiveQueryOptions } from "@/lib/realtime";
 import type { EscrowJob } from "@/types";
 import type { Address, Hex } from "viem";
@@ -82,6 +89,24 @@ type UseEscrowJobsParams = {
   enabled?: boolean;
 };
 
+function mergeJobMetadata(
+  jobs: EscrowJob[],
+  metadataMap: Map<string, JobResponse>
+): EscrowJob[] {
+  return jobs.map((job) => {
+    const metadata = metadataMap.get(
+      normalizeContractHashForApi(job.contractHash)
+    );
+    if (!metadata) return job;
+    return {
+      ...job,
+      title: metadata.title,
+      description: metadata.description,
+      offChainId: metadata.id,
+    };
+  });
+}
+
 export function useEmployerJobs({ walletAddress, enabled }: UseEscrowJobsParams) {
   const idsQuery = useReadContract({
     address: TIWALA_ESCROW_ADDRESS,
@@ -135,9 +160,51 @@ export function useEmployerJobs({ walletAddress, enabled }: UseEscrowJobsParams)
       .filter((job): job is EscrowJob => Boolean(job));
   }, [jobIds, jobsQuery.data]);
 
+  const [metadataMap, setMetadataMap] = useState<Map<string, JobResponse>>(
+    () => new Map()
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMetadata() {
+      if (!enabled || !walletAddress) {
+        if (!cancelled) setMetadataMap(new Map());
+        return;
+      }
+
+      const session = getStoredAuthSession();
+      if (
+        !session ||
+        session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()
+      ) {
+        if (!cancelled) setMetadataMap(new Map());
+        return;
+      }
+
+      try {
+        const offers = await fetchSentOffers(session);
+        if (cancelled) return;
+        const map = new Map<string, JobResponse>();
+        offers.forEach((offer) => {
+          map.set(normalizeContractHashForApi(offer.contractHash), offer);
+        });
+        setMetadataMap(map);
+      } catch {
+        if (!cancelled) setMetadataMap(new Map());
+      }
+    }
+
+    void loadMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, walletAddress]);
+
   return {
     jobIds,
-    jobs,
+    jobs: mergeJobMetadata(jobs, metadataMap),
     isLoading: idsQuery.isLoading || jobsQuery.isLoading,
     isError: idsQuery.isError || jobsQuery.isError,
   };
@@ -199,9 +266,51 @@ export function useFreelancerJobs({
       .filter((job): job is EscrowJob => Boolean(job));
   }, [jobIds, jobsQuery.data]);
 
+  const [metadataMap, setMetadataMap] = useState<Map<string, JobResponse>>(
+    () => new Map()
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMetadata() {
+      if (!enabled || !walletAddress) {
+        if (!cancelled) setMetadataMap(new Map());
+        return;
+      }
+
+      const session = getStoredAuthSession();
+      if (
+        !session ||
+        session.walletAddress.toLowerCase() !== walletAddress.toLowerCase()
+      ) {
+        if (!cancelled) setMetadataMap(new Map());
+        return;
+      }
+
+      try {
+        const offers = await fetchIncomingOffers(session);
+        if (cancelled) return;
+        const map = new Map<string, JobResponse>();
+        offers.forEach((offer) => {
+          map.set(normalizeContractHashForApi(offer.contractHash), offer);
+        });
+        setMetadataMap(map);
+      } catch {
+        if (!cancelled) setMetadataMap(new Map());
+      }
+    }
+
+    void loadMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, walletAddress]);
+
   return {
     jobIds,
-    jobs,
+    jobs: mergeJobMetadata(jobs, metadataMap),
     isLoading: idsQuery.isLoading || jobsQuery.isLoading,
     isError: idsQuery.isError || jobsQuery.isError,
   };

@@ -25,7 +25,6 @@ import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
 
-
 function formatUsdtValue(value: number) {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: value >= 100 ? 0 : 2,
@@ -112,7 +111,7 @@ export default function DashboardPage() {
         workspaceEyebrow: "Employer",
         title: "Dashboard",
         subtitle:
-          "Overview of your escrow jobs, funding, and releases — scoped to your wallet.",
+          "Overview of your escrow jobs, funding, and releases â€” scoped to your wallet.",
         isLoading,
         isError,
         queueTitle: "Employer jobs",
@@ -137,6 +136,12 @@ export default function DashboardPage() {
             label: "Build contract",
             description: "Draft and evaluate terms before publishing.",
             icon: FileText,
+          },
+          {
+            href: "/contracts/verify",
+            label: "Verify contract",
+            description: "Check a current job file against its on-chain hash.",
+            icon: ShieldCheck,
           },
           {
             href: "/jobs",
@@ -179,10 +184,10 @@ export default function DashboardPage() {
           icon: Settings,
         },
         {
-          href: "/public/contracts",
+          href: "/contracts/verify",
           label: "Verify contract",
-          description: "Paste any contract and check fairness.",
-          icon: FileText,
+          description: "Compare a job file to the on-chain contract hash.",
+          icon: ShieldCheck,
         },
       ],
     };
@@ -214,7 +219,7 @@ export default function DashboardPage() {
             {profile?.displayName ? (
               <span className={`font-normal ${mutedTextClass}`}>
                 {" "}
-                · {profile.displayName}
+                Â· {profile.displayName}
               </span>
             ) : null}
           </h1>
@@ -380,7 +385,6 @@ export default function DashboardPage() {
               <div className="mt-4 space-y-2">
                 {[0, 1, 2].map((i) => (
                   <div
-                    // eslint-disable-next-line react/no-array-index-key
                     key={i}
                     className={`h-24 animate-pulse rounded-xl ${subtlePanelClass}`}
                   />

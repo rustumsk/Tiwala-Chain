@@ -9,4 +9,7 @@ export type EscrowJob = {
   contractHash: Hex;
   status: EscrowJobStatus;
   createdAt?: bigint;
+  title?: string | null;
+  description?: string | null;
+  offChainId?: number | null;
 };
