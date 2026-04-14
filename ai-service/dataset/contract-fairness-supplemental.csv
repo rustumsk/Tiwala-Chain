@@ -1,0 +1,25 @@
+clause,label
+"Freelancer may not use the internet, external tools, or third-party resources while completing the project unless the client grants written approval for each use.",1
+"The freelancer is prohibited from using online research, SaaS tools, or third-party services needed to complete the work.",1
+"Any use of external tools requires separate client approval even when the tools are standard for the project.",1
+"The contractor must complete the project without internet access regardless of whether research or external documentation is required.",1
+"The freelancer may use standard software, internet research, and third-party tools as reasonably needed provided confidentiality obligations are maintained.",0
+"Reasonable use of external tools is permitted so long as the freelancer complies with security and confidentiality requirements.",0
+"Security-related restrictions on third-party tools must be narrowly tailored to the project and agreed by both parties in writing.",0
+"The client may request revisions only within the agreed project scope and any new feature request requires a written change order.",0
+"Client may demand revisions to any part of the project, including brand-new features outside the agreed scope, at no added cost.",1
+"The freelancer must revise anything the client wants even when the request is unrelated to the original brief.",1
+"All out-of-scope change requests will be estimated separately and scheduled only after both parties approve them.",0
+"The client may increase the scope of work at its sole discretion without changing the fee or delivery schedule.",1
+"The freelancer may take reasonable sick leave or emergency leave with prompt notice and both parties will adjust timelines in good faith.",0
+"The agreement prohibits the freelancer from taking any vacation leave, sick leave, or personal leave for the entire engagement.",1
+"No paid leave, sick leave, or vacation leave will be recognized under any circumstances during the contract term.",1
+"Availability expectations must be commercially reasonable and any blackout periods must be directly tied to the project schedule.",0
+"The freelancer must remain available every day of the week, including public holidays, without additional compensation.",1
+"Client approval is required before using subcontractors, but standard design, coding, and research tools may be used without separate approval.",0
+"The freelancer is responsible for selecting appropriate tools and methods to deliver the agreed work product professionally and securely.",0
+"The contractor may not use templates, libraries, frameworks, or third-party components of any kind even when licensing permits their use.",1
+"If the client introduces a new deliverable after work begins, the parties will update pricing, deadlines, and acceptance criteria before that work starts.",0
+"The client can continue adding deliverables throughout the engagement and the freelancer must absorb the additional workload.",1
+"Reasonable project policies may limit access to sensitive client systems, but they must not prevent the freelancer from performing the agreed services.",0
+"The freelancer must complete every request using only original work product and may not rely on documentation, search engines, or public references.",1
