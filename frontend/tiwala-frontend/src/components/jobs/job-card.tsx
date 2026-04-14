@@ -50,52 +50,14 @@ function getStageIndex(status: EscrowJobStatus) {
 
 const STAGE_LABELS = ["Created", "Funded", "Work", "Review", "Release"];
 
-const statusTone: Record<
-  EscrowJobStatus,
-  { gradient: string; fill: string; note: string; iconTone: string }
-> = {
-  0: {
-    gradient: "from-slate-300/70 via-slate-300/15 to-transparent",
-    fill: "bg-slate-300/60",
-    note: "Waiting for funding to lock the job into escrow.",
-    iconTone: "text-slate-200",
-  },
-  1: {
-    gradient: "from-blue-300/80 via-blue-400/20 to-transparent",
-    fill: "bg-blue-300/80",
-    note: "Funds are secured and the job can move forward.",
-    iconTone: "text-blue-200",
-  },
-  2: {
-    gradient: "from-amber-300/80 via-amber-400/20 to-transparent",
-    fill: "bg-amber-300/80",
-    note: "Delivery is in motion and moving toward submission.",
-    iconTone: "text-amber-200",
-  },
-  3: {
-    gradient: "from-orange-300/80 via-orange-400/20 to-transparent",
-    fill: "bg-orange-300/80",
-    note: "Work is submitted and waiting for review or release.",
-    iconTone: "text-orange-200",
-  },
-  4: {
-    gradient: "from-red-300/80 via-red-400/20 to-transparent",
-    fill: "bg-red-300/80",
-    note: "A dispute is blocking settlement and needs attention.",
-    iconTone: "text-red-200",
-  },
-  5: {
-    gradient: "from-emerald-300/80 via-emerald-400/20 to-transparent",
-    fill: "bg-emerald-300/80",
-    note: "Payout has been released and the workflow is settled.",
-    iconTone: "text-emerald-200",
-  },
-  6: {
-    gradient: "from-purple-300/80 via-purple-400/20 to-transparent",
-    fill: "bg-purple-300/80",
-    note: "Funds were refunded and the job is closed.",
-    iconTone: "text-purple-200",
-  },
+const statusAccent: Record<EscrowJobStatus, string> = {
+  0: "#94a3b8",
+  1: "#60a5fa",
+  2: "#fbbf24",
+  3: "#fb923c",
+  4: "#f87171",
+  5: "#34d399",
+  6: "#a78bfa",
 };
 
 export default function JobCard({
@@ -104,78 +66,116 @@ export default function JobCard({
   counterpartyAddress,
   mode = "dark",
 }: JobCardProps) {
-  const tone = statusTone[job.status];
   const stageIndex = getStageIndex(job.status);
   const isDarkTheme = mode === "dark";
+
   const rowClass = isDarkTheme
-    ? "border border-white/12 bg-black/25 hover:border-violet-300/35 hover:bg-violet-500/[0.06]"
-    : "border border-[#e6e8f1] bg-white hover:border-violet-300 hover:bg-violet-50/40";
-  const tinyLabelClass = isDarkTheme ? "text-white/45" : "text-[#72788c]";
+    ? "border border-white/10 bg-white/[0.02] hover:border-violet-300/30 hover:bg-violet-500/[0.04]"
+    : "border border-[#e6e8f1] bg-white hover:border-violet-300 hover:bg-violet-50/30";
+
+  const tinyLabelClass = isDarkTheme ? "text-white/40" : "text-[#72788c]";
   const titleClass = isDarkTheme ? "text-white" : "text-[#121420]";
   const mutedTextClass = isDarkTheme ? "text-white/55" : "text-[#63697c]";
-  const railOffClass = isDarkTheme ? "bg-white/[0.1]" : "bg-[#e2e5f1]";
+  const railOffClass = isDarkTheme ? "bg-white/[0.08]" : "bg-[#e2e5f1]";
+  const stageLabelClass = isDarkTheme ? "text-white/30" : "text-[#a0a6ba]";
+
   const ctaClass = isDarkTheme
-    ? "border border-white/14 bg-white/[0.04] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
+    ? "border border-white/12 bg-white/[0.03] text-white/90 hover:border-violet-300/35 hover:bg-violet-500/15"
     : "border border-[#d8dced] bg-white text-[#242838] hover:border-violet-300 hover:bg-violet-50";
+
   const displayTitle =
     job.title?.trim() || `Job #${job.id.toString()}`;
   const descriptionPreview = job.description?.trim()
-    ? truncateText(job.description.trim(), 120)
+    ? truncateText(job.description.trim(), 100)
     : null;
 
-  return (
-    <article className={`${rowClass} px-4 py-4 transition-colors lg:px-5`}>
-      <div className={`pointer-events-none mb-4 h-px w-full bg-gradient-to-r ${tone.gradient}`} />
+  const accent = statusAccent[job.status];
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(240px,1.35fr)_minmax(170px,1fr)_minmax(130px,0.8fr)_minmax(180px,1.15fr)_auto] lg:items-center">
-        <div>
-          <p className={`text-[11px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>Job</p>
-          <p className={`mt-1 text-sm font-semibold ${titleClass}`}>{displayTitle}</p>
-          <p className={`mt-1 text-xs ${tinyLabelClass}`}>
-            On-chain job #{job.id.toString()}
+  return (
+    <Link
+      href={`/jobs/${job.id.toString()}`}
+      className={`${rowClass} group block rounded-xl px-5 py-4 transition-all duration-200 lg:px-6`}
+    >
+      {/* Accent line */}
+      <div
+        className="mb-4 h-px w-full"
+        style={{
+          background: `linear-gradient(to right, ${accent}55, transparent 70%)`,
+        }}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(220px,1.4fr)_minmax(140px,0.8fr)_minmax(110px,0.7fr)_minmax(170px,1.1fr)_auto] lg:items-center">
+        {/* Job info */}
+        <div className="min-w-0">
+          <p className={`truncate text-sm font-semibold ${titleClass}`}>{displayTitle}</p>
+          <p className={`mt-0.5 text-[11px] tabular-nums ${tinyLabelClass}`}>
+            #{job.id.toString()}
           </p>
           {descriptionPreview ? (
-            <p className={`mt-2 text-xs leading-5 ${mutedTextClass}`}>
+            <p className={`mt-1.5 truncate text-xs leading-5 ${mutedTextClass}`}>
               {descriptionPreview}
             </p>
           ) : null}
         </div>
 
-        <div>
-          <p className={`text-[11px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>{counterpartyLabel}</p>
-          <p className={`mt-1 text-sm font-medium ${isDarkTheme ? "text-white/90" : "text-[#1f2433]"}`}>{truncateAddress(counterpartyAddress)}</p>
+        {/* Counterparty */}
+        <div className="min-w-0">
+          <p className={`text-[10px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>{counterpartyLabel}</p>
+          <p className={`mt-1 truncate text-sm font-medium tabular-nums ${isDarkTheme ? "text-white/85" : "text-[#1f2433]"}`}>
+            {truncateAddress(counterpartyAddress)}
+          </p>
         </div>
 
+        {/* Escrow amount */}
         <div>
-          <p className={`text-[11px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>Escrow</p>
-          <p className={`mt-1 text-sm font-semibold tabular-nums ${titleClass}`}>{formatUsdt(job.amount)} USDT</p>
+          <p className={`text-[10px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>Escrow</p>
+          <p className={`mt-1 text-sm font-semibold tabular-nums ${titleClass}`}>
+            {formatUsdt(job.amount)}
+            <span className={`ml-1 text-xs font-normal ${mutedTextClass}`}>USDT</span>
+          </p>
         </div>
 
+        {/* Status + rail */}
         <div>
           <div className="flex items-center gap-2">
             <JobStatusBadge status={job.status} />
-            <span className={`text-xs ${mutedTextClass}`}>{JOB_STATUS_LABEL[job.status]}</span>
           </div>
-          <div className="mt-3 flex items-center gap-1.5">
+          <div className="mt-2.5 flex items-center gap-1">
             {STAGE_LABELS.map((label, index) => (
-              <div key={label} className="flex-1">
-                <div className={`h-1 ${index <= stageIndex ? tone.fill : railOffClass}`} />
+              <div key={label} className="flex-1" title={label}>
+                <div
+                  className={`h-1 rounded-full transition-colors ${
+                    index <= stageIndex ? "" : railOffClass
+                  }`}
+                  style={index <= stageIndex ? { backgroundColor: accent } : undefined}
+                />
               </div>
             ))}
           </div>
-          <p className={`mt-2 text-xs ${mutedTextClass}`}>{tone.note}</p>
+          <div className="mt-1.5 flex justify-between">
+            {STAGE_LABELS.map((label, index) => (
+              <span
+                key={label}
+                className={`flex-1 text-center text-[8px] uppercase tracking-[0.06em] ${
+                  index <= stageIndex ? mutedTextClass : stageLabelClass
+                }`}
+              >
+                {label}
+              </span>
+            ))}
+          </div>
         </div>
 
+        {/* CTA */}
         <div className="flex lg:justify-end">
-          <Link
-            className={`${ctaClass} inline-flex h-10 items-center gap-2 px-3 text-sm font-medium transition`}
-            href={`/jobs/${job.id.toString()}`}
+          <span
+            className={`${ctaClass} inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-medium transition group-hover:border-violet-300/40`}
           >
             Open
-            <ArrowUpRight size={14} />
-          </Link>
+            <ArrowUpRight size={13} />
+          </span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }

@@ -4,12 +4,9 @@ import { useMemo } from "react";
 import Link from "next/link";
 import {
   BriefcaseBusiness,
-  FilePlus2,
-  FileText,
+  CircleDollarSign,
   Scale,
-  Settings,
-  ShieldCheck,
-  Users,
+  TrendingUp,
 } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
@@ -24,6 +21,26 @@ import { getStoredProfile, type LocalUserProfile } from "@/lib/profile";
 import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
+
+const STATUS_COLORS: Record<EscrowJobStatus, { ring: string; dot: string; text: string }> = {
+  0: { ring: "#94a3b8", dot: "bg-slate-400", text: "text-slate-300" },
+  1: { ring: "#60a5fa", dot: "bg-blue-400", text: "text-blue-300" },
+  2: { ring: "#fbbf24", dot: "bg-amber-400", text: "text-amber-300" },
+  3: { ring: "#fb923c", dot: "bg-orange-400", text: "text-orange-300" },
+  4: { ring: "#f87171", dot: "bg-red-400", text: "text-red-300" },
+  5: { ring: "#34d399", dot: "bg-emerald-400", text: "text-emerald-300" },
+  6: { ring: "#a78bfa", dot: "bg-purple-400", text: "text-purple-300" },
+};
+
+const STATUS_COLORS_LIGHT: Record<EscrowJobStatus, { dot: string; text: string }> = {
+  0: { dot: "bg-slate-500", text: "text-slate-600" },
+  1: { dot: "bg-blue-500", text: "text-blue-600" },
+  2: { dot: "bg-amber-500", text: "text-amber-600" },
+  3: { dot: "bg-orange-500", text: "text-orange-600" },
+  4: { dot: "bg-red-500", text: "text-red-600" },
+  5: { dot: "bg-emerald-500", text: "text-emerald-600" },
+  6: { dot: "bg-purple-500", text: "text-purple-600" },
+};
 
 function formatUsdtValue(value: number) {
   return value.toLocaleString(undefined, {
@@ -40,6 +57,127 @@ function shortAddr(addr: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function DonutChart({
+  jobs,
+  isDark,
+}: {
+  jobs: EscrowJob[];
+  isDark: boolean;
+}) {
+  const total = jobs.length;
+  const SIZE = 160;
+  const STROKE = 22;
+  const RADIUS = (SIZE - STROKE) / 2;
+  const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+  const segments = useMemo(() => {
+    const counts: { status: EscrowJobStatus; count: number }[] = [];
+    for (let s = 0; s <= 6; s++) {
+      const count = jobs.filter((j) => j.status === s).length;
+      if (count > 0) counts.push({ status: s as EscrowJobStatus, count });
+    }
+    let offset = 0;
+    return counts.map(({ status, count }) => {
+      const pct = count / total;
+      const dashLength = pct * CIRCUMFERENCE;
+      const seg = {
+        status,
+        count,
+        pct,
+        dashArray: `${dashLength} ${CIRCUMFERENCE - dashLength}`,
+        dashOffset: -offset,
+        color: STATUS_COLORS[status].ring,
+      };
+      offset += dashLength;
+      return seg;
+    });
+  }, [jobs, total, CIRCUMFERENCE]);
+
+  if (total === 0) {
+    return (
+      <div className="flex items-center justify-center" style={{ width: SIZE, height: SIZE }}>
+        <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+          <circle
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={RADIUS}
+            fill="none"
+            stroke={isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}
+            strokeWidth={STROKE}
+          />
+          <text
+            x={SIZE / 2}
+            y={SIZE / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)"}
+            fontSize="13"
+            fontWeight="500"
+          >
+            No jobs
+          </text>
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center" style={{ width: SIZE, height: SIZE }}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+        <circle
+          cx={SIZE / 2}
+          cy={SIZE / 2}
+          r={RADIUS}
+          fill="none"
+          stroke={isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}
+          strokeWidth={STROKE}
+        />
+        {segments.map((seg) => (
+          <circle
+            key={seg.status}
+            cx={SIZE / 2}
+            cy={SIZE / 2}
+            r={RADIUS}
+            fill="none"
+            stroke={seg.color}
+            strokeWidth={STROKE}
+            strokeDasharray={seg.dashArray}
+            strokeDashoffset={seg.dashOffset}
+            strokeLinecap="butt"
+            transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+            className="transition-all duration-700 ease-out"
+          />
+        ))}
+        <text
+          x={SIZE / 2}
+          y={SIZE / 2 - 8}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={isDark ? "#fff" : "#111"}
+          fontSize="28"
+          fontWeight="700"
+          fontFamily="inherit"
+        >
+          {total}
+        </text>
+        <text
+          x={SIZE / 2}
+          y={SIZE / 2 + 14}
+          textAnchor="middle"
+          dominantBaseline="central"
+          fill={isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.4)"}
+          fontSize="11"
+          fontWeight="500"
+          fontFamily="inherit"
+          letterSpacing="0.05em"
+        >
+          TOTAL
+        </text>
+      </svg>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -52,7 +190,6 @@ export default function DashboardPage() {
       ? existing
       : null;
   }, [address, isConnected]);
-
 
   const showEmployerList = profile?.role === "employer" || profile?.role === "both";
   const showFreelancerList = profile?.role === "freelancer" || profile?.role === "both";
@@ -105,13 +242,14 @@ export default function DashboardPage() {
       0
     );
     const disputedCount = countJobsByStatuses(jobs, [4]);
+    const activeCount = countJobsByStatuses(jobs, [1, 2, 3]);
 
     if (activeView === "employer") {
       return {
         workspaceEyebrow: "Employer",
         title: "Dashboard",
         subtitle:
-          "Overview of your escrow jobs, funding, and releases â€” scoped to your wallet.",
+          "Overview of your escrow jobs, funding, and releases — scoped to your wallet.",
         isLoading,
         isError,
         queueTitle: "Employer jobs",
@@ -119,37 +257,12 @@ export default function DashboardPage() {
         jobs,
         totalEscrow,
         disputedCount,
+        activeCount,
         jobCount: jobs.length,
         counterpartyLabel: "Freelancer",
         emptyMessage: "You haven't created any escrow jobs yet. Start by creating your first job offer.",
         emptyActionHref: "/jobs/create",
         emptyActionLabel: "Create your first job",
-        quickActions: [
-          {
-            href: "/jobs/create",
-            label: "Create job",
-            description: "Open a new escrow-backed engagement.",
-            icon: FilePlus2,
-          },
-          {
-            href: "/contracts/create",
-            label: "Build contract",
-            description: "Draft and evaluate terms before publishing.",
-            icon: FileText,
-          },
-          {
-            href: "/contracts/verify",
-            label: "Verify contract",
-            description: "Check a current job file against its on-chain hash.",
-            icon: ShieldCheck,
-          },
-          {
-            href: "/jobs",
-            label: "All jobs",
-            description: "Open your full employer job list.",
-            icon: BriefcaseBusiness,
-          },
-        ],
       };
     }
 
@@ -165,31 +278,12 @@ export default function DashboardPage() {
       jobs,
       totalEscrow,
       disputedCount,
+      activeCount,
       jobCount: jobs.length,
       counterpartyLabel: "Employer",
       emptyMessage: "No jobs assigned to you yet. When employers create escrow jobs for your wallet, they will appear here.",
       emptyActionHref: "/offers",
       emptyActionLabel: "Check your offers",
-      quickActions: [
-        {
-          href: "/jobs",
-          label: "View jobs",
-          description: "Work through your assigned escrow queue.",
-          icon: BriefcaseBusiness,
-        },
-        {
-          href: "/settings/profile",
-          label: "Profile settings",
-          description: "Update the identity employers see on chain.",
-          icon: Settings,
-        },
-        {
-          href: "/contracts/verify",
-          label: "Verify contract",
-          description: "Compare a job file to the on-chain contract hash.",
-          icon: ShieldCheck,
-        },
-      ],
     };
   }, [
     activeView,
@@ -203,41 +297,77 @@ export default function DashboardPage() {
     freelancerJobs.jobs,
   ]);
 
-
   const walletChip = address ? shortAddr(address) : "N/A";
   const networkLabel = chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`;
 
+  const statCards = [
+    {
+      label: "Total jobs",
+      value: activeConfig.jobCount,
+      suffix: "",
+      icon: BriefcaseBusiness,
+      accent: "violet",
+      accentBorder: isDarkTheme ? "border-l-violet-400" : "border-l-violet-500",
+      iconBg: isDarkTheme ? "bg-violet-500/15 text-violet-300" : "bg-violet-100 text-violet-600",
+    },
+    {
+      label: "Active",
+      value: activeConfig.activeCount,
+      suffix: "",
+      icon: TrendingUp,
+      accent: "emerald",
+      accentBorder: isDarkTheme ? "border-l-emerald-400" : "border-l-emerald-500",
+      iconBg: isDarkTheme ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-100 text-emerald-600",
+    },
+    {
+      label: "Disputes",
+      value: activeConfig.disputedCount,
+      suffix: "",
+      icon: Scale,
+      accent: "red",
+      accentBorder: isDarkTheme ? "border-l-red-400" : "border-l-red-500",
+      iconBg: isDarkTheme ? "bg-red-500/15 text-red-300" : "bg-red-100 text-red-600",
+    },
+    {
+      label: "Total escrow",
+      value: formatUsdtValue(activeConfig.totalEscrow),
+      suffix: " USDT",
+      icon: CircleDollarSign,
+      accent: "blue",
+      accentBorder: isDarkTheme ? "border-l-blue-400" : "border-l-blue-500",
+      iconBg: isDarkTheme ? "bg-blue-500/15 text-blue-300" : "bg-blue-100 text-blue-600",
+    },
+  ];
+
   return (
     <div className={pageClass}>
-      <section className="mx-auto w-full max-w-[1580px] space-y-5">
-        <article className={`${panelClass} rounded-xl px-6 py-6 lg:px-8 lg:py-7`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
-            {activeConfig.workspaceEyebrow}
-          </p>
-          <h1 className={`mt-2 text-3xl font-semibold tracking-tight ${titleClass}`}>
-            {activeConfig.title}
-            {profile?.displayName ? (
-              <span className={`font-normal ${mutedTextClass}`}>
-                {" "}
-                Â· {profile.displayName}
-              </span>
-            ) : null}
-          </h1>
-          <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
-            {activeConfig.subtitle}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-            <span className={`${chipClass} rounded-full px-3 py-1`}>Wallet: {walletChip}</span>
-            <span className={`${chipClass} rounded-full px-3 py-1`}>
-              Network: {networkLabel}
-            </span>
-            <span className={`${actionChipClass} rounded-full px-3 py-1`}>
-              {activeConfig.workspaceEyebrow}
-            </span>
+      <section className="mx-auto w-full max-w-[1580px] space-y-6">
+        {/* Hero */}
+        <article className={`${panelClass} rounded-2xl px-6 py-6 lg:px-8 lg:py-7`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+                {activeConfig.workspaceEyebrow} workspace
+              </p>
+              <h1 className={`mt-2 text-3xl font-bold tracking-tight ${titleClass}`}>
+                {profile?.displayName ? (
+                  <>Welcome back, {profile.displayName}</>
+                ) : (
+                  <>Dashboard</>
+                )}
+              </h1>
+              <p className={`mt-1.5 max-w-xl text-sm leading-6 ${mutedTextClass}`}>
+                {activeConfig.subtitle}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className={`${chipClass} rounded-full px-3 py-1`}>{walletChip}</span>
+              <span className={`${chipClass} rounded-full px-3 py-1`}>{networkLabel}</span>
+            </div>
           </div>
 
           {showEmployerList && showFreelancerList ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <span className={`text-[11px] uppercase tracking-[0.16em] ${tinyLabelClass}`}>
                 Workspace
               </span>
@@ -253,7 +383,7 @@ export default function DashboardPage() {
                       key={tab}
                       type="button"
                       onClick={() => setDualWorkspaceTab(tab)}
-                      className={`rounded-full px-3 py-1.5 capitalize transition ${
+                      className={`rounded-full px-4 py-1.5 capitalize transition ${
                         selected
                           ? isDarkTheme
                             ? "bg-violet-500/25 text-violet-50"
@@ -272,134 +402,125 @@ export default function DashboardPage() {
           ) : null}
         </article>
 
-        <div className="grid gap-5 sm:grid-cols-3">
-          {[
-            {
-              label: "Your jobs",
-              value: activeConfig.jobCount,
-              icon: ShieldCheck,
-            },
-            {
-              label: "Active disputes",
-              value: activeConfig.disputedCount,
-              icon: Scale,
-            },
-            {
-              label: "Total escrow",
-              value: `${formatUsdtValue(activeConfig.totalEscrow)} USDT`,
-              icon: Users,
-            },
-          ].map((stat) => (
-            <article key={stat.label} className={`${panelClass} rounded-xl p-5`}>
+        {/* Stat Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statCards.map((stat) => (
+            <article
+              key={stat.label}
+              className={`${panelClass} rounded-2xl border-l-[3px] ${stat.accentBorder} p-5`}
+            >
               <div className="flex items-center justify-between">
                 <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
                   {stat.label}
                 </p>
-                <span
-                  className={`${subtlePanelClass} inline-flex size-9 items-center justify-center rounded-lg`}
-                >
-                  <stat.icon size={16} className="text-violet-400" />
+                <span className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}>
+                  <stat.icon size={16} />
                 </span>
               </div>
-              <p className={`mt-3 text-2xl font-semibold tabular-nums ${titleClass}`}>
+              <p className={`mt-3 text-2xl font-bold tabular-nums ${titleClass}`}>
                 {stat.value}
+                {stat.suffix ? (
+                  <span className={`ml-1 text-sm font-medium ${mutedTextClass}`}>{stat.suffix}</span>
+                ) : null}
               </p>
             </article>
           ))}
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
-                  Quick actions
-                </p>
-                <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
-                  {activeView === "employer" ? "Employer tools" : "Freelancer tools"}
-                </h2>
+        {/* Jobs by Status — Visual Chart */}
+        <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
+          <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+            Status breakdown
+          </p>
+          <h2 className={`mt-1.5 text-xl font-bold tracking-tight ${titleClass}`}>
+            Jobs by status
+          </h2>
+
+          <div className="mt-6 flex flex-col items-center gap-8 sm:flex-row sm:items-start sm:gap-12">
+            <DonutChart jobs={activeConfig.jobs} isDark={isDarkTheme} />
+
+            <div className="flex-1">
+              {/* Horizontal bar legend */}
+              <div className="grid gap-3">
+                {([0, 1, 2, 3, 4, 5, 6] as EscrowJobStatus[]).map((s) => {
+                  const count = activeConfig.jobs.filter((j) => j.status === s).length;
+                  const pct = activeConfig.jobs.length > 0 ? (count / activeConfig.jobs.length) * 100 : 0;
+                  const colors = isDarkTheme ? STATUS_COLORS[s] : STATUS_COLORS_LIGHT[s];
+
+                  return (
+                    <div key={s} className="group">
+                      <div className="mb-1 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block size-2.5 rounded-full ${colors.dot}`} />
+                          <span className={`text-xs font-medium ${isDarkTheme ? "text-white/75" : "text-[#3a3f54]"}`}>
+                            {JOB_STATUS_LABEL[s]}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs tabular-nums font-semibold ${titleClass}`}>{count}</span>
+                          <span className={`text-[10px] tabular-nums ${tinyLabelClass}`}>
+                            {pct > 0 ? `${pct.toFixed(0)}%` : "—"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className={`h-1.5 w-full overflow-hidden rounded-full ${isDarkTheme ? "bg-white/[0.06]" : "bg-[#e8eaf3]"}`}>
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{
+                            width: `${Math.max(pct, 0)}%`,
+                            backgroundColor: STATUS_COLORS[s].ring,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              {activeConfig.quickActions.map((action) => (
-                <Link
-                  key={action.href}
-                  href={action.href}
-                  className={`${subtlePanelClass} flex items-center gap-3 rounded-xl p-4 transition hover:border-violet-300/40`}
-                >
-                  <span
-                    className={`${actionChipClass} inline-flex size-10 shrink-0 items-center justify-center rounded-lg`}
-                  >
-                    <action.icon size={17} />
-                  </span>
-                  <div>
-                    <p className={`text-sm font-semibold ${titleClass}`}>{action.label}</p>
-                    <p className={`mt-0.5 text-xs ${mutedTextClass}`}>{action.description}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </article>
+          </div>
+        </article>
 
-          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
-                  Status breakdown
-                </p>
-                <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
-                  Jobs by status
-                </h2>
-              </div>
-            </div>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {([0, 1, 2, 3, 4, 5, 6] as EscrowJobStatus[]).map((s) => {
-                const count = activeConfig.jobs.filter((j) => j.status === s).length;
-                return (
-                  <div key={s} className={`${subtlePanelClass} rounded-xl p-3 text-center`}>
-                    <p className={`text-xl font-semibold tabular-nums ${titleClass}`}>{count}</p>
-                    <p className={`mt-1 text-[10px] uppercase tracking-[0.14em] ${tinyLabelClass}`}>
-                      {JOB_STATUS_LABEL[s]}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </article>
-        </div>
-
+        {/* Job Queue */}
         {(activeView === "employer" && showEmployerList) ||
         (activeView === "freelancer" && showFreelancerList) ? (
-          <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
-            <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Job queue</p>
-            <h2 className={`mt-2 text-xl font-semibold tracking-tight ${titleClass}`}>
-              {activeConfig.queueTitle}
-            </h2>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className={`${chipClass} rounded-full px-3 py-1 text-xs`}>
+          <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>Job queue</p>
+                <h2 className={`mt-1.5 text-xl font-bold tracking-tight ${titleClass}`}>
+                  {activeConfig.queueTitle}
+                </h2>
+              </div>
+              <span className={`${actionChipClass} self-start rounded-full px-3.5 py-1.5 text-xs font-semibold tabular-nums`}>
                 {activeConfig.queueCountLabel}
               </span>
             </div>
 
             {activeConfig.isLoading ? (
-              <div className="mt-4 space-y-2">
+              <div className="mt-6 space-y-3">
                 {[0, 1, 2].map((i) => (
                   <div
                     key={i}
-                    className={`h-24 animate-pulse rounded-xl ${subtlePanelClass}`}
+                    className={`h-[88px] animate-pulse rounded-xl ${subtlePanelClass}`}
                   />
                 ))}
               </div>
             ) : activeConfig.isError ? (
-              <p className={`mt-4 text-sm ${isDarkTheme ? "text-red-300" : "text-red-600"}`}>
-                Could not load jobs from contract.
-              </p>
+              <div className={`mt-6 flex items-center gap-3 rounded-xl border px-5 py-4 ${isDarkTheme ? "border-red-400/20 bg-red-500/[0.06] text-red-300" : "border-red-200 bg-red-50 text-red-700"}`}>
+                <Scale size={18} />
+                <p className="text-sm">Could not load jobs from contract. Please check your connection.</p>
+              </div>
             ) : activeConfig.jobs.length === 0 ? (
-              <div className={`mt-4 flex flex-col items-center gap-4 rounded-xl py-10 ${subtlePanelClass}`}>
-                <BriefcaseBusiness size={36} className="text-violet-400/50" />
-                <p className={`max-w-sm text-center text-sm ${mutedTextClass}`}>
-                  {activeConfig.emptyMessage}
-                </p>
+              <div className={`mt-6 flex flex-col items-center gap-5 rounded-2xl py-14 ${subtlePanelClass}`}>
+                <span className={`inline-flex size-16 items-center justify-center rounded-2xl ${isDarkTheme ? "bg-violet-500/10" : "bg-violet-50"}`}>
+                  <BriefcaseBusiness size={28} className="text-violet-400/60" />
+                </span>
+                <div className="text-center">
+                  <p className={`text-sm font-medium ${titleClass}`}>No jobs yet</p>
+                  <p className={`mt-1.5 max-w-sm text-sm ${mutedTextClass}`}>
+                    {activeConfig.emptyMessage}
+                  </p>
+                </div>
                 <Link
                   href={activeConfig.emptyActionHref}
                   className={`inline-flex h-10 items-center rounded-xl px-5 text-sm font-semibold transition ${actionChipClass} hover:border-violet-300/50 hover:bg-violet-500/20`}
@@ -408,7 +529,7 @@ export default function DashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="mt-4 space-y-2">
+              <div className="mt-6 space-y-3">
                 {activeConfig.jobs.map((job) => (
                   <JobCard
                     counterpartyAddress={
