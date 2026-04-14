@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useVisibleInterval } from "@/hooks/use-visible-interval";
+import { useEmployerJobs } from "@/hooks/use-escrow-jobs";
 import { useParams, useRouter } from "next/navigation";
 import {
   useAccount,
@@ -17,6 +18,7 @@ import {
   declineJobOffer,
   downloadJobContractBlob,
   fetchJobById,
+  syncJobFromChain,
   type JobResponse,
 } from "@/lib/jobs";
 import { getStoredAuthSession } from "@/lib/auth";
@@ -57,7 +59,8 @@ export default function OfferDetailPage() {
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
   const [onchainError, setOnchainError] = useState("");
-  const [amountInput, setAmountInput] = useState("");
+  const [isSyncingOnChainJob, setIsSyncingOnChainJob] = useState(false);
+  const [syncedOnChainJobId, setSyncedOnChainJobId] = useState<string | null>(null);
 
   const profile = useMemo(() => {
     if (!isConnected || !address || typeof window === "undefined") return null;
@@ -145,6 +148,60 @@ export default function OfferDetailPage() {
     !!profile &&
     profile.role === "employer" &&
     job.employerWallet.toLowerCase() === profile.wallet.toLowerCase();
+
+  const { jobs: employerOnChainJobs } = useEmployerJobs({
+    walletAddress: isEmployerView && address ? (address as Address) : undefined,
+    enabled: Boolean(isEmployerView && address && chainId === 11155111),
+  });
+
+  const matchingOnChainJob = useMemo(() => {
+    if (!job) return null;
+    const normalizedHash = `0x${job.contractHash.replace(/^0x/i, "").toLowerCase()}`;
+    return (
+      employerOnChainJobs.find(
+        (item) => item.contractHash.toLowerCase() === normalizedHash
+      ) ?? null
+    );
+  }, [employerOnChainJobs, job]);
+
+  useEffect(() => {
+    async function syncExistingOnChainJob() {
+      if (!job || !matchingOnChainJob || !address) return;
+      if (syncedOnChainJobId === matchingOnChainJob.id.toString()) return;
+
+      const session = getStoredAuthSession();
+      if (
+        !session ||
+        session.walletAddress.toLowerCase() !== address.toLowerCase()
+      ) {
+        return;
+      }
+
+      setIsSyncingOnChainJob(true);
+      try {
+        await syncJobFromChain(session, {
+          onChainJobId: matchingOnChainJob.id.toString(),
+          employerWallet: job.employerWallet,
+          freelancerWallet: job.freelancerWallet,
+          amountUsdt: Number(job.amountUsdt),
+          contractHash: job.contractHash,
+          title: job.title,
+          description: job.description,
+        });
+        setSyncedOnChainJobId(matchingOnChainJob.id.toString());
+      } catch (err) {
+        setOnchainError(
+          err instanceof Error
+            ? err.message
+            : "Unable to sync the created on-chain job back into the app."
+        );
+      } finally {
+        setIsSyncingOnChainJob(false);
+      }
+    }
+
+    void syncExistingOnChainJob();
+  }, [address, job, matchingOnChainJob, syncedOnChainJobId]);
 
   const handleViewContract = async () => {
     if (!job || !address) return;
@@ -335,6 +392,12 @@ export default function OfferDetailPage() {
 
   const isPending = job.status === "PendingOffer" || job.status === "pendingoffer";
   const isAccepted = job.status === "Accepted" || job.status === "accepted";
+  const createOnChainDisabled =
+    !isAccepted ||
+    isTxPending ||
+    receipt.isLoading ||
+    Boolean(matchingOnChainJob) ||
+    isSyncingOnChainJob;
 
   return (
     <div className={pageClass}>
@@ -462,14 +525,17 @@ export default function OfferDetailPage() {
                 </p>
                 <button
                   type="button"
-                  disabled={
-                    !isAccepted ||
-                    isTxPending ||
-                    receipt.isLoading
-                  }
+                  disabled={createOnChainDisabled}
                   onClick={async () => {
                     if (!job || !address) return;
                     setOnchainError("");
+
+                    if (matchingOnChainJob) {
+                      setOnchainError(
+                        `This contract already has an on-chain job (#${matchingOnChainJob.id.toString()}).`
+                      );
+                      return;
+                    }
 
                     if (chainId !== 11155111) {
                       setOnchainError(
@@ -501,7 +567,14 @@ export default function OfferDetailPage() {
                   }}
                   className={primaryButtonClass}
                 >
-                  {isTxPending || receipt.isLoading ? (
+                  {matchingOnChainJob ? (
+                    "Job already created"
+                  ) : isSyncingOnChainJob ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Syncing job...
+                    </>
+                  ) : isTxPending || receipt.isLoading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating on-chain job...
@@ -530,8 +603,18 @@ export default function OfferDetailPage() {
                       : "border-emerald-200 bg-emerald-50 text-emerald-800"
                   }`}
                 >
-                  On-chain job created successfully. You can now see it on the Jobs page
-                  under your employer queue.
+                  On-chain job created successfully. The app is syncing it now so it appears in your jobs view.
+                </p>
+              ) : null}
+              {matchingOnChainJob ? (
+                <p
+                  className={`rounded-xl border p-3 text-xs ${
+                    isDarkTheme
+                      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-200"
+                      : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                  }`}
+                >
+                  This offer is already linked to on-chain job #{matchingOnChainJob.id.toString()}.
                 </p>
               ) : null}
               {onchainError ? (

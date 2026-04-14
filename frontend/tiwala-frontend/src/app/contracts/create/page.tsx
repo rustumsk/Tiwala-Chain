@@ -20,7 +20,6 @@ import {
   FileSignature,
   ArrowRight,
   Eye,
-  ChevronRight,
 } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
 import { API_BASE_URL } from "@/lib/auth";
@@ -39,8 +38,6 @@ type EvaluatedClause = {
 
 const STANDARD_CONFIDENTIALITY =
   "Both parties agree not to disclose confidential information, business data, credentials, or files shared during this contract without prior written consent.";
-
-const PAYMENT_TERMS_LABEL = "100% on completion";
 
 function walletLooksValid(wallet: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(wallet.trim());
@@ -72,7 +69,6 @@ function buildLegalContractBlocks(params: {
   startDate: string;
   endDate: string;
   totalAmountUsdt: string;
-  revisionRounds: string;
   deliverables: string[];
   additionalClauses: string[];
 }): LegalBlock[] {
@@ -85,7 +81,6 @@ function buildLegalContractBlocks(params: {
     startDate,
     endDate,
     totalAmountUsdt,
-    revisionRounds,
     deliverables,
     additionalClauses,
   } = params;
@@ -128,7 +123,7 @@ function buildLegalContractBlocks(params: {
     {
       kind: "labeled",
       label: "Consideration and Compensation.",
-      body: `The Client shall pay the Freelancer a total of ${totalAmountUsdt} USDT for the services described in Exhibit A, payable as follows: ${PAYMENT_TERMS_LABEL}. Up to ${revisionRounds} revision round(s) are included unless otherwise stated in Exhibit A. The performance period runs from ${formatDate(startDate)} through ${formatDate(endDate)}.`,
+      body: `The Client shall pay the Freelancer a total of ${totalAmountUsdt} USDT for the services described in Exhibit A. The performance period runs from ${formatDate(startDate)} through ${formatDate(endDate)}. Any scope change, additional review cycle, or schedule adjustment must be confirmed by both parties in writing.`,
     },
     {
       kind: "labeled",
@@ -223,7 +218,6 @@ export default function CreateContractPage() {
   // Contract payment fields
   const [totalAmountUsdt, setTotalAmountUsdt] = useState("");
   const [deliverables, setDeliverables] = useState<string[]>([""]);
-  const [revisionRounds, setRevisionRounds] = useState("");
 
   // Evaluation + download state
   const [formErrors, setFormErrors] = useState<string[]>([]);
@@ -277,9 +271,6 @@ export default function CreateContractPage() {
     if (deliverables.every((item) =>!item.trim())) {
       errors.push("At least one deliverable is required.");
     }
-    if (!(Number(revisionRounds) >= 0)) {
-      errors.push("Number of revision rounds must be 0 or greater.");
-    }
 
     setFormErrors(errors);
     return errors.length === 0;
@@ -297,7 +288,6 @@ export default function CreateContractPage() {
           startDate,
           endDate,
           totalAmountUsdt,
-          revisionRounds,
           deliverables,
           additionalClauses: allClausesForContract,
         })
@@ -311,7 +301,6 @@ export default function CreateContractPage() {
       startDate,
       endDate,
       totalAmountUsdt,
-      revisionRounds,
       deliverables,
       allClausesForContract,
     ]
@@ -484,7 +473,6 @@ export default function CreateContractPage() {
         startDate,
         endDate,
         totalAmountUsdt,
-        revisionRounds,
         deliverables,
         additionalClauses: allClausesForContract,
       });
@@ -643,7 +631,6 @@ export default function CreateContractPage() {
         startDate,
         endDate,
         totalAmountUsdt,
-        revisionRounds,
         deliverables,
         additionalClauses: allClausesForContract,
       });
@@ -860,20 +847,20 @@ export default function CreateContractPage() {
   const isDarkTheme = theme === "dark";
 
   const cardClass = isDarkTheme
-   ? "rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] shadow-[0_8px_30px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all duration-300 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]"
-    : "rounded-2xl border border-slate-200 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:shadow-[0_12px_40px_rgba(15,23,42,0.12)]";
+   ? "rounded-[28px] border border-white/10 bg-gradient-to-b from-[#111420] to-[#0a0c13] shadow-[0_22px_60px_rgba(0,0,0,0.38)] backdrop-blur-xl"
+    : "rounded-[28px] border border-[#e5e7ef] bg-white shadow-[0_20px_48px_rgba(15,23,42,0.08)]";
 
   const subtleCardClass = isDarkTheme
-   ? "rounded-xl border border-white/10 bg-white/[0.03] backdrop-blur-lg"
-    : "rounded-xl border border-slate-200 bg-slate-50/60";
+   ? "rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-lg"
+    : "rounded-2xl border border-[#e8ebf2] bg-[#f7f8fb]";
 
   const inputClass = isDarkTheme
-   ? "h-11 w-full rounded-xl border border-white/10 bg-black/30 px-4 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-violet-400/60 focus:bg-black/40 focus:ring-4 focus:ring-violet-500/10"
-    : "h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10";
+   ? "h-12 w-full rounded-2xl border border-white/10 bg-black/25 px-4 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-violet-400/60 focus:bg-black/35 focus:ring-4 focus:ring-violet-500/10"
+    : "h-12 w-full rounded-2xl border border-[#d9dfea] bg-[#fcfcfd] px-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10";
 
   const textareaClass = isDarkTheme
-   ? "w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-violet-400/60 focus:bg-black/40 focus:ring-4 focus:ring-violet-500/10"
-    : "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10";
+   ? "w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-white/30 focus:border-violet-400/60 focus:bg-black/35 focus:ring-4 focus:ring-violet-500/10"
+    : "w-full rounded-2xl border border-[#d9dfea] bg-[#fcfcfd] px-4 py-3 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 focus:border-violet-500 focus:bg-white focus:ring-4 focus:ring-violet-500/10";
 
   const labelClass = isDarkTheme
    ? "mb-2 block text-xs font-semibold uppercase tracking-wider text-white/70"
@@ -952,13 +939,12 @@ export default function CreateContractPage() {
   }
 
   return (
-    <div className={isDarkTheme? "min-h-screen bg-[#0a0b0f] text-white" : "min-h-screen bg-slate-50 text-slate-900"}>
-      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className={isDarkTheme? "min-h-screen bg-[#090b11] text-white" : "min-h-screen bg-[#f3f4f8] text-slate-900"}>
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* Header + Progress */}
-        <div className={`${cardClass} p-6 sm:p-8`}>
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex-1">
+        <div className={`${cardClass} overflow-hidden p-6 sm:p-8`}>
+          <div className="flex-1">
               <div className="flex items-center gap-3">
                 <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/30">
                   <FileSignature size={22} className="text-white" />
@@ -973,46 +959,43 @@ export default function CreateContractPage() {
                 </div>
               </div>
               <p className={`mt-3 max-w-2xl text-sm leading-relaxed ${mutedTextClass}`}>
-                Draft professional freelancing agreements with AI-powered fairness checks and blockchain-ready exports.
+                Draft a clean escrow-ready agreement, review it for fairness, and export a file that can be verified on-chain.
               </p>
-            </div>
-          </div>
-
-          {/* Animated Step Progress */}
-          <div className="mt-8">
-            <div className="flex items-center justify-between gap-2">
-              {steps.map((step, idx) => {
-                const Icon = step.icon;
-                const isActive = stepProgress >= step.num;
-                const isCurrent = stepProgress === step.num;
-                return (
-                  <div key={step.num} className="flex flex-1 items-center gap-2">
-                    <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-                      <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl transition-all duration-500 ${
-                        isActive
-                         ? "bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/30 scale-100"
-                          : isDarkTheme? "bg-white/5 border border-white/10 scale-95" : "bg-slate-100 border border-slate-200 scale-95"
-                      } ${isCurrent? "animate-pulse" : ""}`}>
-                        <Icon size={20} className={isActive? "text-white" : isDarkTheme? "text-white/40" : "text-slate-400"} />
+              <div className="mt-8">
+                <div className="flex items-center justify-between gap-2">
+                  {steps.map((step, idx) => {
+                    const Icon = step.icon;
+                    const isActive = stepProgress >= step.num;
+                    const isCurrent = stepProgress === step.num;
+                    return (
+                      <div key={step.num} className="flex flex-1 items-center gap-2">
+                        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+                          <div className={`flex size-11 shrink-0 items-center justify-center rounded-xl transition-all duration-500 ${
+                            isActive
+                             ? "bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/30 scale-100"
+                              : isDarkTheme? "bg-white/5 border border-white/10 scale-95" : "bg-white border border-slate-200 scale-95"
+                          } ${isCurrent? "animate-pulse" : ""}`}>
+                            <Icon size={20} className={isActive? "text-white" : isDarkTheme? "text-white/40" : "text-slate-400"} />
+                          </div>
+                          <div className="hidden sm:block">
+                            <p className={`text-xs font-semibold transition-colors duration-300 ${isActive? titleClass : mutedTextClass}`}>
+                              {step.title}
+                            </p>
+                            <p className={`text-xs ${tinyLabelClass}`}>{step.desc}</p>
+                          </div>
+                        </div>
+                        {idx < steps.length - 1 && (
+                          <div className={`h-0.5 flex-1 rounded-full transition-all duration-700 ${
+                            stepProgress > step.num
+                             ? "bg-gradient-to-r from-violet-500 to-violet-400"
+                              : isDarkTheme? "bg-white/10" : "bg-slate-200"
+                          }`} />
+                        )}
                       </div>
-                      <div className="hidden sm:block">
-                        <p className={`text-xs font-semibold transition-colors duration-300 ${isActive? titleClass : mutedTextClass}`}>
-                          {step.title}
-                        </p>
-                        <p className={`text-xs ${tinyLabelClass}`}>{step.desc}</p>
-                      </div>
-                    </div>
-                    {idx < steps.length - 1 && (
-                      <div className={`h-0.5 flex-1 rounded-full transition-all duration-700 ${
-                        stepProgress > step.num
-                         ? "bg-gradient-to-r from-violet-500 to-violet-400"
-                          : isDarkTheme? "bg-white/10" : "bg-slate-200"
-                      }`} />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
           </div>
         </div>
 
@@ -1050,89 +1033,97 @@ export default function CreateContractPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Job Title</label>
-              <input className={inputClass} onChange={(e) => setJobTitle(e.target.value)} value={jobTitle} placeholder="e.g. Brand Website Redesign" />
-            </div>
-            <div>
-              <label className={labelClass}>Employer Name / Company</label>
-              <input className={inputClass} onChange={(e) => setEmployerName(e.target.value)} value={employerName} placeholder="e.g. Acme Corp" />
-            </div>
-            <div>
-              <label className={labelClass}>Freelancer Name</label>
-              <input className={inputClass} onChange={(e) => setFreelancerName(e.target.value)} value={freelancerName} placeholder="e.g. Jane Doe" />
-            </div>
-            <div>
-              <label className={labelClass}>Freelancer Wallet</label>
-              <input className={`${inputClass} font-mono`} onChange={(e) => setFreelancerWallet(e.target.value)} placeholder="0x..." value={freelancerWallet} />
-            </div>
-              <div>
-                <label className={labelClass}>Start Date</label>
-                <input className={inputClass} onChange={(e) => setStartDate(e.target.value)} type="date" value={startDate} />
+          <div className="mt-6 space-y-6">
+            <div className="space-y-6">
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Job Title</label>
+                  <input className={inputClass} onChange={(e) => setJobTitle(e.target.value)} value={jobTitle} placeholder="e.g. Brand Website Redesign" />
+                </div>
+                <div>
+                  <label className={labelClass}>Employer Name / Company</label>
+                  <input className={inputClass} onChange={(e) => setEmployerName(e.target.value)} value={employerName} placeholder="e.g. Acme Corp" />
+                </div>
+                <div>
+                  <label className={labelClass}>Freelancer Name</label>
+                  <input className={inputClass} onChange={(e) => setFreelancerName(e.target.value)} value={freelancerName} placeholder="e.g. Jane Doe" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClass}>Freelancer Wallet</label>
+                  <input className={`${inputClass} font-mono`} onChange={(e) => setFreelancerWallet(e.target.value)} placeholder="0x..." value={freelancerWallet} />
+                </div>
               </div>
-              <div>
-                <label className={labelClass}>End Date</label>
-                <input className={inputClass} onChange={(e) => setEndDate(e.target.value)} type="date" value={endDate} />
-              </div>
-            </div>
-            <div className="mt-5">
-        <label className={labelClass}>Project Description</label>
-        <textarea className={`${textareaClass} min-h-32`} onChange={(e) => setProjectDescription(e.target.value)} value={projectDescription} placeholder="Describe the scope, goals, and key deliverables..." />
-      </div>
 
-      <div className={`mt-6 ${subtleCardClass} p-5`}>
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Confidentiality Clause</p>
-            <p className={`mt-1 text-sm ${mutedTextClass}`}>
-              Protect sensitive business information shared during the project.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
-                confidentialityEnabled
-                  ? isDarkTheme 
-                    ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30" 
-                    : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-300"
-                  : isDarkTheme 
-                    ? "bg-white/5 text-white/50 hover:bg-white/10" 
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-              onClick={() => setConfidentialityEnabled(true)}
-              type="button"
-            >
-              <CheckCircle2 size={15} />
-              Included
-            </button>
-            <button
-              className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
-                !confidentialityEnabled
-                  ? isDarkTheme 
-                    ? "bg-white/10 text-white/90 ring-1 ring-white/20" 
-                    : "bg-slate-200 text-slate-800 ring-1 ring-slate-300"
-                  : isDarkTheme 
-                    ? "bg-white/5 text-white/50 hover:bg-white/10" 
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-              }`}
-              onClick={() => setConfidentialityEnabled(false)}
-              type="button"
-            >
-              <X size={15} />
-              Excluded
-            </button>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Start Date</label>
+                  <input className={inputClass} onChange={(e) => setStartDate(e.target.value)} type="date" value={startDate} />
+                </div>
+                <div>
+                  <label className={labelClass}>End Date</label>
+                  <input className={inputClass} onChange={(e) => setEndDate(e.target.value)} type="date" value={endDate} />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Project Description</label>
+                <textarea className={`${textareaClass} min-h-36`} onChange={(e) => setProjectDescription(e.target.value)} value={projectDescription} placeholder="Describe the scope, outcomes, workflow, and any context the freelancer needs before starting." />
+              </div>
+            </div>
+
+            <div className={`${subtleCardClass} p-5`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${tinyLabelClass}`}>Confidentiality Clause</p>
+                    <p className={`mt-1 text-sm ${mutedTextClass}`}>
+                      Protect sensitive business information shared during the project.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
+                        confidentialityEnabled
+                          ? isDarkTheme 
+                            ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30" 
+                            : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-300"
+                          : isDarkTheme 
+                            ? "bg-white/5 text-white/50 hover:bg-white/10" 
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      }`}
+                      onClick={() => setConfidentialityEnabled(true)}
+                      type="button"
+                    >
+                      <CheckCircle2 size={15} />
+                      Included
+                    </button>
+                    <button
+                      className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-all ${
+                        !confidentialityEnabled
+                          ? isDarkTheme 
+                            ? "bg-white/10 text-white/90 ring-1 ring-white/20" 
+                            : "bg-slate-200 text-slate-800 ring-1 ring-slate-300"
+                          : isDarkTheme 
+                            ? "bg-white/5 text-white/50 hover:bg-white/10" 
+                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      }`}
+                      onClick={() => setConfidentialityEnabled(false)}
+                      type="button"
+                    >
+                      <X size={15} />
+                      Excluded
+                    </button>
+                  </div>
+                </div>
+                {confidentialityEnabled ? (
+                  <div className={`mt-4 rounded-2xl border p-4 ${isDarkTheme ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"}`}>
+                    <p className={`text-sm leading-relaxed ${mutedTextClass}`}>
+                      {STANDARD_CONFIDENTIALITY}
+                    </p>
+                  </div>
+                ) : null}
+            </div>
           </div>
         </div>
-        {confidentialityEnabled ? (
-          <div className={`mt-4 rounded-xl border p-4 ${isDarkTheme ? "border-white/10 bg-black/20" : "border-slate-200 bg-slate-50"}`}>
-            <p className={`text-sm leading-relaxed ${mutedTextClass}`}>
-              {STANDARD_CONFIDENTIALITY}
-            </p>
-          </div>
-        ) : null}
-      </div>
-    </div>
 
     {/* Section 2: Compensation & Deliverables */}
     <div className={`${cardClass} mt-5 p-6 sm:p-8`}>
@@ -1148,68 +1139,52 @@ export default function CreateContractPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid gap-5 sm:grid-cols-2">
+      <div className="mt-6">
         <div>
           <label className={labelClass}>Total Amount (USDT)</label>
           <input className={inputClass} min="0" onChange={(e) => setTotalAmountUsdt(e.target.value)} step="0.01" type="number" value={totalAmountUsdt} placeholder="0.00" />
-        </div>
-        <div>
-          <label className={labelClass}>Revision Rounds</label>
-          <input className={inputClass} min="0" onChange={(e) => setRevisionRounds(e.target.value)} type="number" value={revisionRounds} placeholder="e.g. 2" />
-        </div>
-      </div>
 
-      <div className="mt-5">
-        <label className={labelClass}>Payment Terms</label>
-        <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium ${
-          isDarkTheme 
-            ? "bg-violet-500/10 text-violet-300 ring-1 ring-violet-400/20" 
-            : "bg-violet-50 text-violet-700 ring-1 ring-violet-200"
-        }`}>
-          <ShieldCheck size={16} />
-          {PAYMENT_TERMS_LABEL}
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
-          <label className={labelClass + " mb-0"}>Deliverables</label>
-          <button
-            className={ghostBtnClass}
-            onClick={() => setDeliverables((prev) => [...prev, ""])}
-            type="button"
-          >
-            <Plus size={14} />
-            Add Deliverable
-          </button>
-        </div>
-        <div className="space-y-3">
-          {deliverables.map((item, index) => (
-            <div className="flex items-start gap-3" key={`deliverable-${index}`}>
-              <span className={`mt-3 flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
-                isDarkTheme ? "bg-white/5 text-white/60" : "bg-slate-100 text-slate-600"
-              }`}>
-                {index + 1}
-              </span>
-              <textarea 
-                className={`${textareaClass} min-h-[80px] flex-1`} 
-                onChange={(e) => updateArrayValue(setDeliverables, index, e.target.value)} 
-                value={item}
-                placeholder="Describe this deliverable..."
-              />
+          <div className="mt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <label className={labelClass + " mb-0"}>Deliverables</label>
               <button
-                className={`mt-2 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-all ${
-                  isDarkTheme 
-                    ? "text-white/30 hover:bg-red-500/10 hover:text-red-400" 
-                    : "text-slate-400 hover:bg-red-50 hover:text-red-600"
-                }`}
-                onClick={() => removeArrayValue(setDeliverables, index)}
+                className={ghostBtnClass}
+                onClick={() => setDeliverables((prev) => [...prev, ""])}
                 type="button"
               >
-                <Trash2 size={16} />
+                <Plus size={14} />
+                Add Deliverable
               </button>
             </div>
-          ))}
+            <div className="space-y-3">
+              {deliverables.map((item, index) => (
+                <div className="flex items-start gap-3" key={`deliverable-${index}`}>
+                  <span className={`mt-3 flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold ${
+                    isDarkTheme ? "bg-white/5 text-white/60" : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {index + 1}
+                  </span>
+                  <textarea 
+                    className={`${textareaClass} min-h-[84px] flex-1`} 
+                    onChange={(e) => updateArrayValue(setDeliverables, index, e.target.value)} 
+                    value={item}
+                    placeholder="Describe a concrete delivery item, output, or milestone handoff."
+                  />
+                  <button
+                    className={`mt-2 inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-all ${
+                      isDarkTheme 
+                        ? "text-white/30 hover:bg-red-500/10 hover:text-red-400" 
+                        : "text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    }`}
+                    onClick={() => removeArrayValue(setDeliverables, index)}
+                    type="button"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1543,7 +1518,7 @@ export default function CreateContractPage() {
             </button>
             <div className={`flex items-start gap-2 text-xs ${isDarkTheme ? "text-amber-300/90" : "text-amber-700"}`}>
               <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <p>You'll need this hash when creating a job on TiwalaChain to verify the contract.</p>
+              <p>You&apos;ll need this hash when creating a job on TiwalaChain to verify the contract.</p>
             </div>
           </div>
         </div>
