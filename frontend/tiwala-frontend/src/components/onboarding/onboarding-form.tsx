@@ -63,7 +63,7 @@ export default function OnboardingForm() {
             return;
           }
           syncProfileFromBackendUser(user);
-          router.replace(user.role === "admin" ? "/admin" : "/dashboard");
+          router.replace("/dashboard");
           return;
         }
 

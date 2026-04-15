@@ -76,7 +76,6 @@ export default function WalletRouteGate() {
 
         if (user.displayName) {
           syncProfileFromBackendUser(user);
-          router.replace(user.role === "admin" ? "/admin" : "/dashboard");
           return;
         }
       })

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Info, Sparkles } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
 import type { ParsedClause } from "@/lib/ai-parsing";
 
@@ -154,6 +154,28 @@ export default function ClauseAnalysis({
             >
               {clause.title}
             </p>
+
+            {!clause.isFair && clause.reason && (
+              <div
+                className={`mt-3 flex items-start gap-2 rounded-lg px-3 py-2 ${
+                  isDarkTheme
+                    ? "bg-amber-400/10 ring-1 ring-amber-400/20"
+                    : "bg-amber-50 ring-1 ring-amber-200"
+                }`}
+              >
+                <Info
+                  size={13}
+                  className={`mt-0.5 shrink-0 ${isDarkTheme ? "text-amber-300" : "text-amber-600"}`}
+                />
+                <p
+                  className={`text-xs leading-snug ${
+                    isDarkTheme ? "text-amber-200/90" : "text-amber-800"
+                  }`}
+                >
+                  {clause.reason}
+                </p>
+              </div>
+            )}
 
             {clause.issue && (
               <div

@@ -45,9 +45,6 @@ export default function WalletButton({
   const { signMessageAsync } = useSignMessage();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState("");
-  const [autoAttemptedWallet, setAutoAttemptedWallet] = useState<string | null>(
-    null
-  );
 
   const authSnapshot = useSyncExternalStore(
     (onStoreChange) => {
@@ -175,21 +172,6 @@ export default function WalletButton({
       sharedSignInPromise = null;
     }
   }, [address, chainId, redirectAfterAuth, signMessageAsync]);
-
-  useEffect(() => {
-    if (!address) {
-      setAutoAttemptedWallet(null);
-      return;
-    }
-
-    const normalizedAddress = address.toLowerCase();
-    if (isAuthenticatedForWallet || autoAttemptedWallet === normalizedAddress) {
-      return;
-    }
-
-    setAutoAttemptedWallet(normalizedAddress);
-    void handleWalletSignIn(true);
-  }, [address, autoAttemptedWallet, handleWalletSignIn, isAuthenticatedForWallet]);
 
   return (
     <div className="flex flex-col items-end gap-2">

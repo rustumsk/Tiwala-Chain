@@ -4,6 +4,8 @@ export type ParsedClause = {
   title: string;
   isFair: boolean;
   confidence: number | null;
+  /** Short one-sentence explanation of why the clause is flagged (null for fair clauses). */
+  reason?: string;
   suggestion?: string;
   issue?: string;
   suggestedRewrite?: string;
@@ -60,6 +62,9 @@ export function extractClauses(payload: AIResponse): ParsedClause[] {
         confidence = Math.round(Math.max(0, Math.min(100, n)));
       }
 
+      const reason =
+        (typeof r.reason === "string" && r.reason) || undefined;
+
       const suggestion =
         (typeof r.suggestion === "string" && r.suggestion) ||
         (typeof r.recommendation === "string" && r.recommendation) ||
@@ -80,6 +85,7 @@ export function extractClauses(payload: AIResponse): ParsedClause[] {
         title,
         isFair,
         confidence,
+        reason,
         suggestion,
         issue,
         suggestedRewrite,

@@ -123,7 +123,7 @@ export default function ActionButtons({
         }
 
         const currentAllowance =
-          typeof allowanceQuery.data === "bigint" ? allowanceQuery.data : 0n;
+          typeof allowanceQuery.data === "bigint" ? allowanceQuery.data : BigInt(0);
         if (currentAllowance < jobAmount) {
           setLocalInfo("Approval required: confirm USDT approve first...");
           const approveHash = await writeContractAsync({
@@ -243,7 +243,7 @@ export default function ActionButtons({
 
   return (
     <div
-      className={`border p-5 ${
+      className={`rounded-2xl border p-5 ${
         isDarkTheme
           ? "border-white/12 bg-black/28"
           : "border-[#e4e8f2] bg-white shadow-[0_10px_26px_rgba(40,50,90,0.06)]"

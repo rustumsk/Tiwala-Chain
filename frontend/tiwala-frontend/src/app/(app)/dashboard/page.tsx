@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   BriefcaseBusiness,
@@ -10,14 +10,20 @@ import {
 } from "lucide-react";
 import { useAccount, useChainId } from "wagmi";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
+import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import JobCard from "@/components/jobs/job-card";
 import { useEmployerJobs, useFreelancerJobs } from "@/hooks/use-escrow-jobs";
 import { usePersistedSessionString } from "@/hooks/use-persisted-session-string";
+import { getStoredAuthSession } from "@/lib/auth";
 import {
   JOB_STATUS_LABEL,
   type EscrowJobStatus,
 } from "@/lib/contract";
+import { fetchUnreadNotificationCount } from "@/lib/notifications";
+import { fetchMyPostingStats } from "@/lib/postings";
 import { getStoredProfile, type LocalUserProfile } from "@/lib/profile";
+import { fetchMyProposalStats } from "@/lib/proposals";
+import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
 import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
@@ -299,6 +305,65 @@ export default function DashboardPage() {
 
   const walletChip = address ? shortAddr(address) : "N/A";
   const networkLabel = chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`;
+  const [employerPostingStats, setEmployerPostingStats] = useState({
+    openPostings: 0,
+    newProposals: 0,
+  });
+  const [freelancerProposalStats, setFreelancerProposalStats] = useState({
+    activeApplications: 0,
+    unreadReplies: 0,
+  });
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  const loadMarketplaceStats = useCallback(
+    async (silent = false) => {
+      if (!address) return;
+      const session = getStoredAuthSession();
+      if (!session || session.walletAddress.toLowerCase() !== address.toLowerCase()) {
+        return;
+      }
+
+      try {
+        const tasks: Promise<unknown>[] = [
+          fetchUnreadNotificationCount(session).then((value) =>
+            setNotificationCount(value.count)
+          ),
+        ];
+
+        if (showEmployerList) {
+          tasks.push(
+            fetchMyPostingStats(session).then((value) => setEmployerPostingStats(value))
+          );
+        }
+
+        if (showFreelancerList) {
+          tasks.push(
+            fetchMyProposalStats(session).then((value) => setFreelancerProposalStats(value))
+          );
+        }
+
+        await Promise.all(tasks);
+      } catch {
+        if (!silent) {
+          setNotificationCount(0);
+        }
+      }
+    },
+    [address, showEmployerList, showFreelancerList]
+  );
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void loadMarketplaceStats(false);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [loadMarketplaceStats]);
+
+  useVisibleInterval(
+    () => void loadMarketplaceStats(true),
+    API_POLL_INTERVAL_MS,
+    Boolean(address)
+  );
 
   const statCards = [
     {
@@ -338,6 +403,37 @@ export default function DashboardPage() {
       iconBg: isDarkTheme ? "bg-blue-500/15 text-blue-300" : "bg-blue-100 text-blue-600",
     },
   ];
+
+  const marketplaceCards =
+    activeView === "employer"
+      ? [
+          {
+            label: "Open postings",
+            value: employerPostingStats.openPostings,
+            href: "/postings",
+            linkLabel: "Manage postings",
+          },
+          {
+            label: "New proposals",
+            value: employerPostingStats.newProposals,
+            href: "/postings",
+            linkLabel: "Review applicants",
+          },
+        ]
+      : [
+          {
+            label: "Active applications",
+            value: freelancerProposalStats.activeApplications,
+            href: "/applications",
+            linkLabel: "Open applications",
+          },
+          {
+            label: "Unread replies",
+            value: Math.max(freelancerProposalStats.unreadReplies, notificationCount),
+            href: "/applications",
+            linkLabel: "Check conversations",
+          },
+        ];
 
   return (
     <div className={pageClass}>
@@ -428,6 +524,30 @@ export default function DashboardPage() {
         </div>
 
         {/* Jobs by Status — Visual Chart */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {marketplaceCards.map((card) => (
+            <article key={card.label} className={`${panelClass} rounded-2xl p-5`}>
+              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+                Marketplace
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <div>
+                  <p className={`text-sm ${mutedTextClass}`}>{card.label}</p>
+                  <p className={`mt-2 text-2xl font-bold tabular-nums ${titleClass}`}>
+                    {card.value}
+                  </p>
+                </div>
+                <Link
+                  href={card.href}
+                  className={`${actionChipClass} inline-flex h-10 items-center rounded-xl px-4 text-sm font-semibold`}
+                >
+                  {card.linkLabel}
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+
         <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
           <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
             Status breakdown

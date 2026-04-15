@@ -11,7 +11,6 @@ import {
   FileText,
   Home,
   LayoutDashboard,
-  LinkIcon,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -23,10 +22,12 @@ import {
 } from "lucide-react";
 import AppIcon from "@/resource/icon.png";
 import WalletButton from "@/components/blockchain/wallet-button";
+import NotificationBell from "@/components/layout/notification-bell";
 import {
   AppThemeProvider,
   type AppTheme,
 } from "@/components/layout/theme-context";
+import { SESSION_STRING_UPDATED_EVENT } from "@/hooks/use-persisted-session-string";
 import {
   clearStoredProfile,
   PROFILE_UPDATED_EVENT,
@@ -48,8 +49,23 @@ type RouteShellProps = {
 
 const THEME_STORAGE_KEY = "tiwala:theme";
 
-function getAppLinks(role?: LocalUserProfile["role"]) {
-  const canCreateEmployerResources = role === "employer";
+type AppLink = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+  category: string;
+  matches: (pathname: string) => boolean;
+};
+
+function getAppLinks(
+  role?: LocalUserProfile["role"],
+  workspaceView: "employer" | "freelancer" = "employer"
+): AppLink[] {
+  const effectiveRole = role === "both" ? workspaceView : role;
+  /** Employer tools stay available for `both` even when the dashboard tab is "freelancer". */
+  const canCreateEmployerResources =
+    role === "employer" || role === "both";
+  const canViewApplications = effectiveRole === "freelancer";
   const isAdmin = role === "admin";
 
   if (isAdmin) {
@@ -58,24 +74,28 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
         href: "/admin",
         label: "Admin Dashboard",
         icon: ShieldCheck,
+        category: "Admin",
         matches: (pathname: string) => pathname === "/admin",
       },
       {
         href: "/admin/users",
         label: "User Management",
         icon: Users,
+        category: "Admin",
         matches: (pathname: string) => pathname === "/admin/users",
       },
       {
         href: "/admin/disputes",
         label: "Disputes",
         icon: Scale,
+        category: "Admin",
         matches: (pathname: string) => pathname === "/admin/disputes",
       },
       {
         href: "/settings/profile",
         label: "Profile Settings",
         icon: Settings,
+        category: "Account",
         matches: (pathname: string) => pathname.startsWith("/settings"),
       },
     ];
@@ -86,12 +106,34 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
       href: "/dashboard",
       label: "Dashboard",
       icon: LayoutDashboard,
+      category: "Workspace",
       matches: (pathname: string) => pathname === "/dashboard",
     },
+    {
+      href: "/postings",
+      label: canCreateEmployerResources ? "Postings" : "Browse Postings",
+      icon: BriefcaseBusiness,
+      category: "Work",
+      matches: (pathname: string) =>
+        pathname === "/postings" ||
+        (pathname.startsWith("/postings/") && pathname !== "/postings/create"),
+    },
+    ...(canViewApplications
+      ? [
+          {
+            href: "/applications",
+            label: "Applications",
+            icon: FileText,
+            category: "Work",
+            matches: (pathname: string) => pathname === "/applications",
+          },
+        ]
+      : []),
     {
       href: "/offers",
       label: "Job Offers",
       icon: BriefcaseBusiness,
+      category: "Work",
       matches: (pathname: string) =>
         pathname === "/offers" || pathname.startsWith("/offers/"),
     },
@@ -99,6 +141,7 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
       href: "/jobs",
       label: "Jobs",
       icon: BriefcaseBusiness,
+      category: "Work",
       matches: (pathname: string) =>
         pathname === "/jobs" ||
         (pathname.startsWith("/jobs/") && pathname !== "/jobs/create"),
@@ -106,15 +149,24 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
     ...(canCreateEmployerResources
       ? [
           {
+            href: "/postings/create",
+            label: "Create Posting",
+            icon: FilePlus2,
+            category: "Create",
+            matches: (pathname: string) => pathname === "/postings/create",
+          },
+          {
             href: "/jobs/create",
             label: "Create Job",
             icon: FilePlus2,
+            category: "Create",
             matches: (pathname: string) => pathname === "/jobs/create",
           },
           {
             href: "/contracts/create",
             label: "Contract Builder",
             icon: FileText,
+            category: "Create",
             matches: (pathname: string) => pathname.startsWith("/contracts"),
           },
         ]
@@ -123,16 +175,22 @@ function getAppLinks(role?: LocalUserProfile["role"]) {
       href: "/settings/profile",
       label: "Profile Settings",
       icon: Settings,
+      category: "Account",
       matches: (pathname: string) => pathname.startsWith("/settings"),
     },
   ];
 }
 
-const homeSections = [
-  { href: "#hero", label: "Home" },
-  { href: "#features", label: "Features" },
-  { href: "#how-it-works", label: "How It Works" },
-  { href: "#cta", label: "Get Started" },
+type HomeNavItem =
+  | { kind: "section"; href: string; label: string }
+  | { kind: "route"; href: string; label: string };
+
+const homeSections: HomeNavItem[] = [
+  { kind: "section", href: "#hero", label: "Home" },
+  { kind: "section", href: "#features", label: "Features" },
+  { kind: "section", href: "#how-it-works", label: "How It Works" },
+  { kind: "route", href: "/public", label: "Public Services" },
+  { kind: "section", href: "#cta", label: "Get Started" },
 ];
 
 function scrollToSection(id: string) {
@@ -141,7 +199,18 @@ function scrollToSection(id: string) {
 }
 
 function formatTitleFromPath(pathname: string) {
+  if (pathname === "/public") return "Public Services";
+  if (pathname === "/public/postings") return "Public Job Postings";
+  if (pathname.startsWith("/public/postings/")) return "Public Posting Detail";
+  if (pathname === "/public/contracts") return "Public Contract Tools";
+  if (pathname === "/public/contracts/verify") return "Public Contract Verification";
+  if (pathname === "/public/ai-review") return "Public AI Review";
   if (pathname === "/dashboard") return "Dashboard";
+  if (pathname === "/postings") return "Job Postings";
+  if (pathname === "/postings/create") return "Create Posting";
+  if (pathname.endsWith("/proposals")) return "Proposal Review";
+  if (pathname.startsWith("/postings/")) return "Posting Detail";
+  if (pathname === "/applications") return "Applications";
   if (pathname === "/jobs") return "Jobs";
   if (pathname === "/jobs/create") return "Create Job";
   if (pathname.startsWith("/jobs/")) return `Job ${pathname.split("/").at(-1)}`;
@@ -163,6 +232,11 @@ function getProfileStorageRaw() {
   return window.localStorage.getItem("tiwala:user-profile");
 }
 
+function getDashboardWorkspaceStorageRaw() {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem("tiwala:dashboard:workspaceTab");
+}
+
 function getInitialTheme(): AppTheme {
   if (typeof window === "undefined") return "light";
   const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
@@ -175,7 +249,7 @@ function getInitialTheme(): AppTheme {
 export default function RouteShell({ children }: RouteShellProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const chainId = useChainId();
   const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
   const [sidebarHidden, setSidebarHidden] = useState(() => {
@@ -243,12 +317,46 @@ export default function RouteShell({ children }: RouteShellProps) {
     return session;
   }, [authSnapshot]);
 
+  const workspaceSnapshot = useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === "undefined") return () => undefined;
+      window.addEventListener(SESSION_STRING_UPDATED_EVENT, onStoreChange);
+      window.addEventListener("storage", onStoreChange);
+      return () => {
+        window.removeEventListener(SESSION_STRING_UPDATED_EVENT, onStoreChange);
+        window.removeEventListener("storage", onStoreChange);
+      };
+    },
+    getDashboardWorkspaceStorageRaw,
+    () => "employer"
+  );
+
+  const activeWorkspaceView = useMemo<"employer" | "freelancer">(
+    () => (workspaceSnapshot === "freelancer" ? "freelancer" : "employer"),
+    [workspaceSnapshot]
+  );
+
   const isAuthenticated =
     !!authSession &&
     !!address &&
     authSession.walletAddress.toLowerCase() === address.toLowerCase();
 
-  const appLinks = useMemo(() => getAppLinks(profile?.role), [profile?.role]);
+  const appLinks = useMemo(
+    () => getAppLinks(profile?.role, activeWorkspaceView),
+    [activeWorkspaceView, profile?.role]
+  );
+  const appLinkGroups = useMemo(() => {
+    const groups: Array<{ category: string; links: AppLink[] }> = [];
+    for (const link of appLinks) {
+      const prev = groups.at(-1);
+      if (!prev || prev.category !== link.category) {
+        groups.push({ category: link.category, links: [link] });
+      } else {
+        prev.links.push(link);
+      }
+    }
+    return groups;
+  }, [appLinks]);
 
   const lastVerifiedRef = useRef<string | null>(null);
 
@@ -269,7 +377,18 @@ export default function RouteShell({ children }: RouteShellProps) {
   useEffect(() => {
     if (!isAppRoute) return;
 
+    // Avoid bouncing off app routes while wagmi restores the session (address is briefly undefined).
+    if (isReconnecting || isConnecting) {
+      return;
+    }
+
     if (!isConnected || !address) {
+      // Wallet was disconnected (e.g. user clicked logout in wallet modal).
+      // Clear stale auth/profile and return user to landing page.
+      if (authSession) {
+        clearAuthSession();
+        clearStoredProfile();
+      }
       router.replace("/");
       return;
     }
@@ -327,6 +446,8 @@ export default function RouteShell({ children }: RouteShellProps) {
     isAppRoute,
     isAuthenticated,
     isConnected,
+    isConnecting,
+    isReconnecting,
     router,
   ]);
 
@@ -439,30 +560,56 @@ export default function RouteShell({ children }: RouteShellProps) {
               <div className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-6 md:flex">
                 {isHome ? (
                   homeSections.map((link) => (
-                    <button
-                      key={link.href}
-                      onClick={() => scrollToSection(link.href)}
-                      className={`text-sm transition-colors duration-200 ${
+                    link.kind === "section" ? (
+                      <button
+                        key={link.href}
+                        onClick={() => scrollToSection(link.href)}
+                        className={`text-sm transition-colors duration-200 ${
+                          isDarkTheme
+                            ? "text-white/50 hover:text-white/90"
+                            : "text-[#666b80] hover:text-[#171a24]"
+                        }`}
+                      >
+                        {link.label}
+                      </button>
+                    ) : (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`text-sm transition-colors duration-200 ${
+                          isDarkTheme
+                            ? "text-white/50 hover:text-white/90"
+                            : "text-[#666b80] hover:text-[#171a24]"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    )
+                  ))
+                ) : (
+                  <div className="flex items-center gap-5">
+                    <Link
+                      href="/"
+                      className={`inline-flex items-center gap-2 text-sm transition-colors ${
                         isDarkTheme
-                          ? "text-white/50 hover:text-white/90"
+                          ? "text-white/60 hover:text-white"
                           : "text-[#666b80] hover:text-[#171a24]"
                       }`}
                     >
-                      {link.label}
-                    </button>
-                  ))
-                ) : (
-                  <Link
-                    href="/"
-                    className={`inline-flex items-center gap-2 text-sm transition-colors ${
-                      isDarkTheme
-                        ? "text-white/60 hover:text-white"
-                        : "text-[#666b80] hover:text-[#171a24]"
-                    }`}
-                  >
-                    <Home size={14} />
-                    Back to Home
-                  </Link>
+                      <Home size={14} />
+                      Back to Home
+                    </Link>
+                    <Link
+                      href="/public"
+                      className={`text-sm transition-colors ${
+                        isDarkTheme
+                          ? "text-white/60 hover:text-white"
+                          : "text-[#666b80] hover:text-[#171a24]"
+                      }`}
+                    >
+                      Public Services
+                    </Link>
+                  </div>
                 )}
               </div>
 
@@ -591,75 +738,98 @@ export default function RouteShell({ children }: RouteShellProps) {
                 </button>
 
                 <nav className="flex w-full flex-1 flex-col items-center gap-1">
-                  {appLinks.map(({ href, label, icon: Icon, matches }) => {
+                  {appLinks.map(({ href, label, icon: Icon, matches }, idx) => {
                     const active = matches(pathname);
+                    const prevCategory = idx > 0 ? appLinks[idx - 1]?.category : null;
+                    const showDivider = prevCategory && prevCategory !== appLinks[idx].category;
                     return (
-                      <Link
-                        key={label}
-                        href={href}
-                        title={label}
-                        className={`relative inline-flex size-10 items-center justify-center rounded-xl transition-all duration-200 ${
-                          active
-                            ? isDarkTheme
-                              ? "bg-violet-500/15 text-violet-300"
-                              : "bg-violet-100 text-violet-700"
-                            : isDarkTheme
-                              ? "text-white/40 hover:bg-white/[0.05] hover:text-white/75"
-                              : "text-[#8b90a6] hover:bg-[#eceef5] hover:text-[#3d4460]"
-                        }`}
-                      >
-                        {active ? (
-                          <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${isDarkTheme ? "bg-violet-400" : "bg-violet-500"}`} />
+                      <div key={label} className="w-full">
+                        {showDivider ? (
+                          <div
+                            className={`mx-auto my-2 h-px w-6 ${
+                              isDarkTheme ? "bg-white/10" : "bg-[#e3e7f1]"
+                            }`}
+                          />
                         ) : null}
-                        <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-                      </Link>
+                        <Link
+                          href={href}
+                          title={label}
+                          className={`relative inline-flex size-10 items-center justify-center rounded-xl transition-all duration-200 ${
+                            active
+                              ? isDarkTheme
+                                ? "bg-violet-500/15 text-violet-300"
+                                : "bg-violet-100 text-violet-700"
+                              : isDarkTheme
+                                ? "text-white/40 hover:bg-white/[0.05] hover:text-white/75"
+                                : "text-[#8b90a6] hover:bg-[#eceef5] hover:text-[#3d4460]"
+                          }`}
+                        >
+                          {active ? (
+                            <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${isDarkTheme ? "bg-violet-400" : "bg-violet-500"}`} />
+                          ) : null}
+                          <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                        </Link>
+                      </div>
                     );
                   })}
                 </nav>
               </div>
             ) : (
               <div className="flex flex-1 flex-col overflow-y-auto px-3 pt-5">
-                <p className={`mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${isDarkTheme ? "text-white/30" : "text-[#9299ae]"}`}>
+                <p className={`mb-3 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${isDarkTheme ? "text-white/30" : "text-[#9299ae]"}`}>
                   Navigation
                 </p>
-                <nav className="space-y-0.5">
-                  {appLinks.map(({ href, label, icon: Icon, matches }) => {
-                    const active = matches(pathname);
-                    return (
-                      <Link
-                        key={label}
-                        href={href}
-                        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
-                          active
-                            ? isDarkTheme
-                              ? "bg-violet-500/12 text-white"
-                              : "bg-violet-50 text-violet-800"
-                            : isDarkTheme
-                              ? "text-white/50 hover:bg-white/[0.04] hover:text-white/80"
-                              : "text-[#6b7089] hover:bg-[#eef0f7] hover:text-[#2e3450]"
+                <div className="space-y-4">
+                  {appLinkGroups.map((group) => (
+                    <div key={group.category}>
+                      <p
+                        className={`mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                          isDarkTheme ? "text-white/25" : "text-[#9aa0b4]"
                         }`}
                       >
-                        {active ? (
-                          <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${isDarkTheme ? "bg-violet-400" : "bg-violet-500"}`} />
-                        ) : null}
-                        <span
-                          className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                            active
-                              ? isDarkTheme
-                                ? "bg-violet-400/15 text-violet-300"
-                                : "bg-violet-100 text-violet-700"
-                              : isDarkTheme
-                                ? "text-white/45 group-hover:text-white/70"
-                                : "text-[#8b90a6] group-hover:text-[#5c6078]"
-                          }`}
-                        >
-                          <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
-                        </span>
-                        <span>{label}</span>
-                      </Link>
-                    );
-                  })}
-                </nav>
+                        {group.category}
+                      </p>
+                      <nav className="space-y-0.5">
+                        {group.links.map(({ href, label, icon: Icon, matches }) => {
+                          const active = matches(pathname);
+                          return (
+                            <Link
+                              key={label}
+                              href={href}
+                              className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
+                                active
+                                  ? isDarkTheme
+                                    ? "bg-violet-500/12 text-white"
+                                    : "bg-violet-50 text-violet-800"
+                                  : isDarkTheme
+                                    ? "text-white/50 hover:bg-white/[0.04] hover:text-white/80"
+                                    : "text-[#6b7089] hover:bg-[#eef0f7] hover:text-[#2e3450]"
+                              }`}
+                            >
+                              {active ? (
+                                <span className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full ${isDarkTheme ? "bg-violet-400" : "bg-violet-500"}`} />
+                              ) : null}
+                              <span
+                                className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg ${
+                                  active
+                                    ? isDarkTheme
+                                      ? "bg-violet-400/15 text-violet-300"
+                                      : "bg-violet-100 text-violet-700"
+                                    : isDarkTheme
+                                      ? "text-white/45 group-hover:text-white/70"
+                                      : "text-[#8b90a6] group-hover:text-[#5c6078]"
+                                }`}
+                              >
+                                <Icon size={17} strokeWidth={active ? 2.2 : 1.8} />
+                              </span>
+                              <span>{label}</span>
+                            </Link>
+                          );
+                        })}
+                      </nav>
+                    </div>
+                  ))}
+                </div>
 
                 <div className={`mt-auto pb-4 pt-4`}>
                   <div
@@ -754,6 +924,11 @@ export default function RouteShell({ children }: RouteShellProps) {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
+                  <NotificationBell
+                    address={address}
+                    profile={profile}
+                    isDarkTheme={isDarkTheme}
+                  />
                   {themeToggleButton}
                   <WalletButton />
                 </div>
@@ -764,27 +939,45 @@ export default function RouteShell({ children }: RouteShellProps) {
                   isDarkTheme ? "scrollbar-thin-dark" : "scrollbar-thin-light"
                 }`}
               >
-                {appLinks.map(({ href, label, icon: Icon, matches }) => {
-                  const active = matches(pathname);
-                  return (
-                    <Link
-                      key={label}
-                      href={href}
-                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200 ${
-                        active
-                          ? isDarkTheme
-                            ? "border-violet-400/30 bg-violet-500/15 text-violet-200 shadow-[0_0_8px_rgba(139,92,246,0.12)]"
-                            : "border-violet-300 bg-violet-100 text-violet-800"
-                          : isDarkTheme
-                            ? "border-white/[0.07] bg-white/[0.03] text-white/50 hover:border-white/15 hover:text-white/75"
-                            : "border-[#e4e7f1] bg-white text-[#6b7089] hover:border-violet-200 hover:text-[#3d4460]"
+                {appLinkGroups.map((group, idx) => (
+                  <div key={group.category} className="flex items-center gap-1.5">
+                    <span
+                      className={`px-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                        isDarkTheme ? "text-white/30" : "text-[#9aa0b4]"
                       }`}
                     >
-                      <Icon size={13} />
-                      {label}
-                    </Link>
-                  );
-                })}
+                      {group.category}
+                    </span>
+                    {group.links.map(({ href, label, icon: Icon, matches }) => {
+                      const active = matches(pathname);
+                      return (
+                        <Link
+                          key={label}
+                          href={href}
+                          className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200 ${
+                            active
+                              ? isDarkTheme
+                                ? "border-violet-400/30 bg-violet-500/15 text-violet-200 shadow-[0_0_8px_rgba(139,92,246,0.12)]"
+                                : "border-violet-300 bg-violet-100 text-violet-800"
+                              : isDarkTheme
+                                ? "border-white/[0.07] bg-white/[0.03] text-white/50 hover:border-white/15 hover:text-white/75"
+                                : "border-[#e4e7f1] bg-white text-[#6b7089] hover:border-violet-200 hover:text-[#3d4460]"
+                          }`}
+                        >
+                          <Icon size={13} />
+                          {label}
+                        </Link>
+                      );
+                    })}
+                    {idx < appLinkGroups.length - 1 ? (
+                      <span
+                        className={`mx-1 h-4 w-px ${
+                          isDarkTheme ? "bg-white/10" : "bg-[#dfe3ef]"
+                        }`}
+                      />
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </header>
 

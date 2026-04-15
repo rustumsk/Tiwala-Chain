@@ -24,7 +24,7 @@ export default function JobTimeline({ status, mode = "dark" }: JobTimelineProps)
 
   return (
     <div
-      className={`border p-5 ${
+      className={`rounded-2xl border p-5 ${
         isDarkTheme
           ? "border-white/12 bg-black/28"
           : "border-[#e4e8f2] bg-white shadow-[0_10px_26px_rgba(40,50,90,0.06)]"

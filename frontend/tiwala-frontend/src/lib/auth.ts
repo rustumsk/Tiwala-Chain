@@ -3,9 +3,12 @@ import { saveStoredProfile, type LocalUserProfile, type UserRole } from "@/lib/p
 const AUTH_STORAGE_KEY = "tiwala:auth-session";
 export const AUTH_UPDATED_EVENT = "tiwala:auth-updated";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") ??
-  "http://localhost:5067";
+const resolvedApiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "");
+if (!resolvedApiBaseUrl && process.env.NODE_ENV !== "development") {
+  throw new Error("Missing required env: NEXT_PUBLIC_API_BASE_URL");
+}
+
+export const API_BASE_URL = resolvedApiBaseUrl ?? "http://localhost:5067";
 
 export type BackendUser = {
   id: number;

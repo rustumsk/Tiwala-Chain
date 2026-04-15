@@ -9,11 +9,13 @@ export type JobResponse = {
   title: string;
   description: string | null;
   status: JobStatus | string;
-   amountUsdt: number;
+  amountUsdt: number;
   contractKey: string;
   contractHash: string;
   createdAt: string;
   updatedAt: string | null;
+  postingId?: number | null;
+  proposalId?: number | null;
 };
 
 export type UploadResult = {
@@ -324,4 +326,3 @@ export async function recordJobDispute(
   }
   return (await response.json()) as JobDisputeResponse;
 }
-

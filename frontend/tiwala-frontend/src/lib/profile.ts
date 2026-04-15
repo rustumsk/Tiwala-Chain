@@ -10,10 +10,14 @@ export type LocalUserProfile = {
 const PROFILE_STORAGE_KEY = "tiwala:user-profile";
 export const PROFILE_UPDATED_EVENT = "tiwala:profile-updated";
 
-export function getStoredProfile(): LocalUserProfile | null {
+/** Raw JSON from localStorage; for `useSyncExternalStore` subscribers. */
+export function getProfileStorageRaw(): string | null {
   if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(PROFILE_STORAGE_KEY);
+}
 
-  const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+export function getStoredProfile(): LocalUserProfile | null {
+  const raw = getProfileStorageRaw();
   if (!raw) return null;
 
   try {
