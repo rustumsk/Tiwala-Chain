@@ -2,10 +2,40 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Text.Json;
 using System.Text;
 using System.Threading.RateLimiting;
+using DotNetEnv;
+
+// Load environment variables from .env before building configuration so
+// ASPNETCORE_ENVIRONMENT and other settings are available during startup.
+try
+{
+    Env.TraversePath().Load();
+}
+catch
+{
+    // Never fail startup purely because .env is missing in non-local setups.
+}
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddEnvironmentVariables();
+var isLocal = builder.Environment.IsDevelopment();
+
+static string RequireConfig(IConfiguration configuration, string key, bool isLocal, string? localFallback = null)
+{
+    var value = configuration[key];
+    if (!string.IsNullOrWhiteSpace(value))
+    {
+        return value;
+    }
+    if (isLocal && !string.IsNullOrWhiteSpace(localFallback))
+    {
+        return localFallback;
+    }
+
+    throw new InvalidOperationException($"Missing required configuration: {key}");
+}
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -16,17 +46,122 @@ builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-
-    options.AddPolicy("public-contracts", httpContext =>
+    options.OnRejected = async (context, cancellationToken) =>
     {
-        // Simple per-IP fixed window limit for unauthenticated public endpoints.
-        // If you're behind a proxy/CDN later, ensure forwarded headers are configured.
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
+
+        context.HttpContext.Response.ContentType = "application/json";
+        var payload = JsonSerializer.Serialize(new
+        {
+            error = "rate_limited",
+            message = "Too many requests. Please try again later.",
+        });
+
+        await context.HttpContext.Response.WriteAsync(payload, cancellationToken);
+    };
+
+    options.AddPolicy("public-postings-browse", httpContext =>
+    {
         var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: ip,
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 12,
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("public-contract-verify", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"contract-verify:{ip}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("public-ai-review", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"public-ai-review:{ip}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromDays(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("postings-browse", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"browse:{ip}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("postings-create", httpContext =>
+    {
+        var subject = httpContext.User?.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("nameid")?.Value ?? "authenticated"
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"postings-create:{subject}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("proposals-create", httpContext =>
+    {
+        var subject = httpContext.User?.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("nameid")?.Value ?? "authenticated"
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"proposals-create:{subject}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
+    options.AddPolicy("messages-send", httpContext =>
+    {
+        var subject = httpContext.User?.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("nameid")?.Value ?? "authenticated"
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"messages-send:{subject}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 40,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true,
@@ -34,8 +169,20 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-var aiServiceUrl = builder.Configuration["AiService:BaseUrl"] ?? "http://localhost:8000/";
-var aiServiceTimeoutSeconds = builder.Configuration.GetValue("AiService:TimeoutSeconds", 30);
+var aiServiceUrl = RequireConfig(builder.Configuration, "AiService:BaseUrl", isLocal, "http://localhost:8000/");
+var aiServiceTimeoutSecondsRaw = builder.Configuration.GetValue<int?>("AiService:TimeoutSeconds");
+var aiServiceTimeoutSeconds = aiServiceTimeoutSecondsRaw.GetValueOrDefault();
+if (aiServiceTimeoutSeconds <= 0)
+{
+    if (isLocal)
+    {
+        aiServiceTimeoutSeconds = 30;
+    }
+    else
+    {
+        throw new InvalidOperationException("Missing required configuration: AiService:TimeoutSeconds");
+    }
+}
 builder.Services.AddHttpClient("AiService", client =>
 {
     client.BaseAddress = new Uri(aiServiceUrl);
@@ -62,12 +209,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Missing Jwt:Key configuration.");
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException("Missing Jwt:Issuer configuration.");
-var jwtAudience = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException("Missing Jwt:Audience configuration.");
+var jwtKey = RequireConfig(builder.Configuration, "Jwt:Key", isLocal, "replace-this-dev-jwt-key-with-a-long-random-secret");
+var jwtIssuer = RequireConfig(builder.Configuration, "Jwt:Issuer", isLocal, "TiwalaChain.API");
+var jwtAudience = RequireConfig(builder.Configuration, "Jwt:Audience", isLocal, "TiwalaChain.Frontend");
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 
 builder.Services
@@ -88,6 +232,12 @@ builder.Services
     });
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    connectionString = isLocal
+        ? "Host=localhost;Database=tiwalachain;Username=postgres;Password=postgres"
+        : throw new InvalidOperationException("Missing required configuration: ConnectionStrings:DefaultConnection");
+}
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 

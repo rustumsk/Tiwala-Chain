@@ -38,6 +38,8 @@ public class Job
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
+    public int? PostingId { get; set; }
+    public int? ProposalId { get; set; }
 }
 
 public enum JobStatus

@@ -570,7 +570,9 @@ public sealed class JobsController : ControllerBase
             job.ContractKey,
             job.ContractHash,
             job.CreatedAt,
-            job.UpdatedAt
+            job.UpdatedAt,
+            job.PostingId,
+            job.ProposalId
         );
     }
 
@@ -647,7 +649,9 @@ public sealed record JobResponse(
     string ContractKey,
     string ContractHash,
     DateTime CreatedAt,
-    DateTime? UpdatedAt
+    DateTime? UpdatedAt,
+    int? PostingId,
+    int? ProposalId
 );
 
 public sealed record RecordJobDisputeRequest(
@@ -664,4 +668,3 @@ public sealed record JobDisputeResponse(
     string ReasonLabel,
     string? Details,
     DateTime CreatedAt);
-
