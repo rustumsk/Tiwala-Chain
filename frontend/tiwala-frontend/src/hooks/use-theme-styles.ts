@@ -27,12 +27,12 @@ export function useThemeStyles() {
       : "border border-violet-200 bg-violet-50 text-violet-700";
 
     const inputClass = isDarkTheme
-      ? "h-11 w-full rounded-xl border border-white/14 bg-black/40 px-4 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50"
-      : "h-11 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400";
+      ? "h-11 w-full rounded-xl border border-white/14 bg-black/40 px-4 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50 [color-scheme:dark]"
+      : "h-11 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400 [color-scheme:light]";
 
     const textareaClass = isDarkTheme
-      ? "min-h-28 w-full rounded-xl border border-white/14 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50"
-      : "min-h-28 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 py-3 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400";
+      ? "min-h-28 w-full rounded-xl border border-white/14 bg-black/40 px-4 py-3 text-white outline-none transition placeholder:text-white/40 focus:border-violet-400/50 [color-scheme:dark]"
+      : "min-h-28 w-full rounded-xl border border-[#e1e4f0] bg-white px-4 py-3 text-[#11131b] outline-none transition placeholder:text-[#73788b] focus:border-violet-400 [color-scheme:light]";
 
     return {
       theme,

@@ -118,7 +118,7 @@ export default function Home() {
         className="relative flex min-h-[calc(100vh-64px)] flex-col overflow-hidden px-6"
         style={{ scrollSnapAlign: "start", scrollMarginTop: "64px" }}
       >
-        {/* Bowtie beam — softened for eye comfort */}
+        {/* Animated bowtie beam — gentle wave + breathing */}
         <svg
           className="pointer-events-none absolute inset-0 h-full w-full"
           xmlns="http://www.w3.org/2000/svg"
@@ -126,15 +126,12 @@ export default function Home() {
           viewBox="0 0 1000 700"
         >
           <defs>
-            {/* Wide ambient glow */}
             <filter id="aura" x="-60%" y="-60%" width="220%" height="220%">
               <feGaussianBlur stdDeviation="62" />
             </filter>
-            {/* Mid-level beam body */}
             <filter id="core" x="-30%" y="-30%" width="160%" height="160%">
               <feGaussianBlur stdDeviation="15" />
             </filter>
-            {/* Tight highlight — crisp bright edge */}
             <filter id="highlight" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="5" />
             </filter>
@@ -153,18 +150,114 @@ export default function Home() {
             </linearGradient>
           </defs>
 
-          {/* ~63% tall at edges (y=130–570), narrows to ~7% at center tip (y=324–376) */}
-          {/* Layer 1 — wide ambient aura */}
-          <polygon points="0,130 512,324 512,376 0,570"      fill="url(#lg-left)"   filter="url(#aura)"      opacity="0.50" />
-          <polygon points="1000,130 488,324 488,376 1000,570" fill="url(#lg-right)"  filter="url(#aura)"      opacity="0.50" />
+          {/* Left beam — aura layer */}
+          <path fill="url(#lg-left)" filter="url(#aura)" opacity="0.50">
+            <animate
+              attributeName="d"
+              dur="8s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z;
+                M0,145 C180,230 340,295 512,330 L512,370 C340,405 180,470 0,555 Z;
+                M0,120 C160,180 360,320 512,320 L512,380 C360,380 160,520 0,580 Z;
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z
+              "
+            />
+          </path>
+          {/* Right beam — aura layer */}
+          <path fill="url(#lg-right)" filter="url(#aura)" opacity="0.50">
+            <animate
+              attributeName="d"
+              dur="9s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z;
+                M1000,120 C820,180 660,320 488,318 L488,382 C660,380 820,520 1000,580 Z;
+                M1000,148 C840,235 645,290 488,332 L488,368 C645,410 840,465 1000,552 Z;
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z
+              "
+            />
+          </path>
 
-          {/* Layer 2 — beam body */}
-          <polygon points="0,130 512,324 512,376 0,570"      fill="url(#lg-left)"   filter="url(#core)"      opacity="0.84" />
-          <polygon points="1000,130 488,324 488,376 1000,570" fill="url(#lg-right)"  filter="url(#core)"      opacity="0.84" />
+          {/* Left beam — core body */}
+          <path fill="url(#lg-left)" filter="url(#core)" opacity="0.84">
+            <animate
+              attributeName="d"
+              dur="8s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z;
+                M0,145 C180,230 340,295 512,330 L512,370 C340,405 180,470 0,555 Z;
+                M0,120 C160,180 360,320 512,320 L512,380 C360,380 160,520 0,580 Z;
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z
+              "
+            />
+          </path>
+          {/* Right beam — core body */}
+          <path fill="url(#lg-right)" filter="url(#core)" opacity="0.84">
+            <animate
+              attributeName="d"
+              dur="9s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z;
+                M1000,120 C820,180 660,320 488,318 L488,382 C660,380 820,520 1000,580 Z;
+                M1000,148 C840,235 645,290 488,332 L488,368 C645,410 840,465 1000,552 Z;
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z
+              "
+            />
+          </path>
 
-          {/* Layer 3 — tight highlight for crisp edge */}
-          <polygon points="0,130 512,324 512,376 0,570"      fill="url(#lg-left)"   filter="url(#highlight)" opacity="0.46" />
-          <polygon points="1000,130 488,324 488,376 1000,570" fill="url(#lg-right)"  filter="url(#highlight)" opacity="0.46" />
+          {/* Left beam — highlight edge */}
+          <path fill="url(#lg-left)" filter="url(#highlight)" opacity="0.46">
+            <animate
+              attributeName="d"
+              dur="8s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z;
+                M0,145 C180,230 340,295 512,330 L512,370 C340,405 180,470 0,555 Z;
+                M0,120 C160,180 360,320 512,320 L512,380 C360,380 160,520 0,580 Z;
+                M0,130 C170,200 350,310 512,324 L512,376 C350,390 170,500 0,570 Z
+              "
+            />
+          </path>
+          {/* Right beam — highlight edge */}
+          <path fill="url(#lg-right)" filter="url(#highlight)" opacity="0.46">
+            <animate
+              attributeName="d"
+              dur="9s"
+              repeatCount="indefinite"
+              calcMode="spline"
+              keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+              values="
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z;
+                M1000,120 C820,180 660,320 488,318 L488,382 C660,380 820,520 1000,580 Z;
+                M1000,148 C840,235 645,290 488,332 L488,368 C645,410 840,465 1000,552 Z;
+                M1000,130 C830,200 650,310 488,324 L488,376 C650,390 830,500 1000,570 Z
+              "
+            />
+          </path>
+
+          {/* Breathing opacity pulse on the entire beam group */}
+          <animate
+            attributeName="opacity"
+            values="1;0.85;0.92;1"
+            dur="6s"
+            repeatCount="indefinite"
+            calcMode="spline"
+            keySplines="0.45 0 0.55 1; 0.45 0 0.55 1; 0.45 0 0.55 1"
+          />
         </svg>
 
         {/* Centered hero content */}
@@ -176,7 +269,7 @@ export default function Home() {
           <h1 className="reveal reveal-d1 max-w-2xl text-5xl font-bold leading-[1.1] tracking-tight text-white md:text-6xl">
             Trust-first freelancing,
             <br />
-            <span className="text-black-500">on-chain.</span>
+            <span className="text-violet-300">on-chain.</span>
           </h1>
 
           <p className="reveal reveal-d2 mt-5 max-w-md text-sm font-medium leading-relaxed text-white/80 [text-shadow:0_1px_12px_rgba(0,0,0,0.6)]">

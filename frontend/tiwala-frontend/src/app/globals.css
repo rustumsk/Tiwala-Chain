@@ -22,6 +22,27 @@ html {
   scroll-padding-top: 64px;
 }
 
+/* Native form control color-scheme tuning */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select {
+  color-scheme: light;
+}
+
+/* Native select popups are OS-rendered and can ignore theme colors.
+   Keep option rows high-contrast across both light/dark themes. */
+option,
+optgroup {
+  background-color: #ffffff;
+  color: #111827;
+}
+
 .landing-page {
   scroll-snap-type: y mandatory;
 }

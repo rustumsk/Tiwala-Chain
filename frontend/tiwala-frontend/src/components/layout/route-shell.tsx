@@ -359,6 +359,13 @@ export default function RouteShell({ children }: RouteShellProps) {
   }, [appLinks]);
 
   const lastVerifiedRef = useRef<string | null>(null);
+  const hadConnectedWalletRef = useRef(false);
+
+  useEffect(() => {
+    if (isConnected && address) {
+      hadConnectedWalletRef.current = true;
+    }
+  }, [address, isConnected]);
 
   const toggleTheme = () => {
     setTheme((current) => (current === "dark" ? "light" : "dark"));
@@ -383,11 +390,17 @@ export default function RouteShell({ children }: RouteShellProps) {
     }
 
     if (!isConnected || !address) {
-      // Wallet was disconnected (e.g. user clicked logout in wallet modal).
-      // Clear stale auth/profile and return user to landing page.
-      if (authSession) {
+      // If this tab had a connected wallet before and now it's disconnected,
+      // treat it as an explicit logout/disconnect.
+      if (authSession && hadConnectedWalletRef.current) {
         clearAuthSession();
         clearStoredProfile();
+      }
+      // During a hard refresh, wagmi can briefly have no address before restoring.
+      // Keep the user on app routes while an auth session exists and no explicit
+      // disconnect happened in this tab runtime.
+      if (authSession && !hadConnectedWalletRef.current) {
+        return;
       }
       router.replace("/");
       return;
