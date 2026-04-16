@@ -251,6 +251,7 @@ export default function RouteShell({ children }: RouteShellProps) {
   const { address, isConnected, isConnecting, isReconnecting } = useAccount();
   const chainId = useChainId();
   const [theme, setTheme] = useState<AppTheme>(() => getInitialTheme());
+  const [hasMounted, setHasMounted] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("tiwala:sidebar-hidden") === "true";
@@ -362,6 +363,10 @@ export default function RouteShell({ children }: RouteShellProps) {
   const hadConnectedWalletRef = useRef(false);
 
   useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (isConnected && address) {
       hadConnectedWalletRef.current = true;
     }
@@ -383,6 +388,7 @@ export default function RouteShell({ children }: RouteShellProps) {
 
   useEffect(() => {
     if (!isAppRoute) return;
+    if (!hasMounted) return;
 
     // Avoid bouncing off app routes while wagmi restores the session (address is briefly undefined).
     if (isReconnecting || isConnecting) {
@@ -458,6 +464,7 @@ export default function RouteShell({ children }: RouteShellProps) {
   }, [
     address,
     authSession,
+    hasMounted,
     isAppRoute,
     isAuthenticated,
     isConnected,
@@ -467,6 +474,7 @@ export default function RouteShell({ children }: RouteShellProps) {
   ]);
 
   useEffect(() => {
+    if (!hasMounted) return;
     if (!isUnauthorized || !isConnected || !address || !isAuthenticated) {
       return;
     }
@@ -508,6 +516,7 @@ export default function RouteShell({ children }: RouteShellProps) {
   }, [
     address,
     authSession,
+    hasMounted,
     isAuthenticated,
     isConnected,
     isUnauthorized,
@@ -630,18 +639,19 @@ export default function RouteShell({ children }: RouteShellProps) {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
                 {isAuthenticated ? (
                   <Link
                     href={authenticatedDestination}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition ${
+                    className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2 ${
                       isDarkTheme
                         ? "border-violet-300/30 bg-violet-500/10 text-violet-200 hover:border-violet-200/60 hover:bg-violet-500/20"
                         : "border-violet-300 bg-violet-50 text-violet-800 hover:border-violet-400"
                     }`}
+                    aria-label="Dashboard"
                   >
                     <LayoutDashboard size={14} />
-                    Dashboard
+                    <span className="hidden sm:inline">Dashboard</span>
                   </Link>
                 ) : null}
                 {themeToggleButton}
