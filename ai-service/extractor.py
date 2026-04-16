@@ -6,9 +6,6 @@ from docx import Document
 
 
 def extract_text(file_bytes: bytes, filename: str) -> str:
-    """
-    Extract plain text from PDF or DOCX file bytes.
-    """
     if filename.endswith(".pdf"):
         return extract_from_pdf(file_bytes)
     elif filename.endswith(".docx"):
@@ -18,18 +15,23 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
 
 
 def extract_from_pdf(file_bytes: bytes) -> str:
-    """Extract text from PDF bytes using pdfplumber."""
     text = []
     with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
         for page in pdf.pages:
-            page_text = page.extract_text()
+            # Filter out headers/footers by only keeping text in the main body bbox.
+            # Strategy: crop away the top ~8% and bottom ~8% of each page where
+            # running headers and page numbers typically live.
+            w = float(page.width)
+            h = float(page.height)
+            margin_v = h * 0.08
+            body = page.within_bbox((0, margin_v, w, h - margin_v))
+            page_text = body.extract_text()
             if page_text:
                 text.append(page_text)
     return "\n".join(text)
 
 
 def extract_from_docx(file_bytes: bytes) -> str:
-    """Extract text from DOCX bytes using python-docx."""
     doc = Document(io.BytesIO(file_bytes))
     text = []
     for paragraph in doc.paragraphs:
@@ -38,18 +40,29 @@ def extract_from_docx(file_bytes: bytes) -> str:
     return "\n".join(text)
 
 
+# ---------------------------------------------------------------------------
+# Structural markers
+# ---------------------------------------------------------------------------
+
+# Top-level clause starters: Section N, Article X, numbered "1." / "1.1." etc.,
+# roman numerals at the top level (I., II., …).
+#
+# INTENTIONALLY EXCLUDED from this regex:
+#   • (a) / (b) / (i) / (ii) — parenthesised lettered/roman sub-items
+#   • a) / b)                  — unparenthesised lettered sub-items
+# These are treated as line continuations so they don't produce
+# tiny, unclassifiable fragment clauses.
 CLAUSE_START_RE = re.compile(
     r"""^(
         Section\s+\d+(?:\.\d+)*[\.:]?\s+|
         Article\s+[IVXLCM]+[\.:]?\s+|
         \d+(?:\.\d+)*[\.\)]\s+|
-        \((?:[a-z]|\d{1,2}|[ivx]{1,4})\)\s+|
-        [a-zA-Z]\)\s+|
         [IVXLCM]+\.\s+
     )""",
     re.IGNORECASE | re.VERBOSE,
 )
 
+# Subset used to detect where the preamble ends and substantive clauses begin.
 SUBSTANTIVE_CLAUSE_START_RE = re.compile(
     r"""^(
         Section\s+\d+(?:\.\d+)*[\.:]?\s+|
@@ -72,6 +85,20 @@ SIGNATURE_SPLIT_RE = re.compile(
     r"\b(client signature|freelancer signature|authorized signatory|in witness whereof|witness(?:es)?)\b",
     re.IGNORECASE,
 )
+
+# Sentence-boundary regex: period followed by whitespace then an uppercase letter
+# or an opening bracket/quote — characteristic of a new legal sentence.
+# We use a lookbehind that requires the character before the period to be a
+# lowercase letter, digit, closing paren, or closing quote so that we avoid
+# splitting on numeric "1." prefixes or all-caps abbreviation endings.
+_SENTENCE_BREAK_RE = re.compile(r'(?<=[a-z\d\)"\u2019])\.\s+(?=[A-Z\(\"])')
+
+# Dense-paragraph threshold: chunks longer than this will undergo secondary
+# sentence-boundary splitting.
+_DENSE_THRESHOLD = 600
+
+# Target size for sentence-grouped sub-chunks after secondary splitting.
+_SENTENCE_CHUNK_TARGET = 400
 
 
 def _normalize_for_split(text: str) -> str:
@@ -105,17 +132,54 @@ def _clean_line(line: str) -> str:
 
 def _split_embedded_starts(paragraph: str) -> List[str]:
     """
-    Split clauses when numbering appears mid-line (common in flattened PDF text).
+    Split clauses when TOP-LEVEL numbering (Section/Article/numeric) appears
+    mid-line — common in flattened PDF text.
+    Sub-items like (a)/(b)/(i) are deliberately excluded to prevent over-splitting.
     """
     parts = re.split(
-        r"(?:(?<=^)|(?<=[.;:]))\s+(?=(?:Section\s+\d+(?:\.\d+)*|Article\s+[IVXLCM]+|\d+(?:\.\d+)*[\.\)]|\((?:[a-z]|\d{1,2}|[ivx]{1,4})\)|[a-zA-Z]\)|[IVXLCM]+\.))",
+        r"(?:(?<=^)|(?<=[.;:]))\s+(?=(?:Section\s+\d+(?:\.\d+)*|Article\s+[IVXLCM]+|\d+(?:\.\d+)*[\.\)]))",
         paragraph,
         flags=re.IGNORECASE,
     )
     return [p.strip() for p in parts if p.strip()]
 
 
-def _merge_short_fragments(chunks: List[str], min_len: int = 35) -> List[str]:
+def _secondary_split(text: str) -> List[str]:
+    """
+    Break a dense paragraph at sentence boundaries into sub-chunks of
+    approximately _SENTENCE_CHUNK_TARGET characters.
+
+    Algorithm: scan sentence-break positions; whenever accumulated length
+    since the last cut exceeds the target, cut at the current boundary.
+    This preserves complete sentences rather than cutting mid-sentence.
+    """
+    if len(text) <= _DENSE_THRESHOLD:
+        return [text]
+
+    # Collect the positions where a new sentence starts (end of the match).
+    break_positions = [m.end() for m in _SENTENCE_BREAK_RE.finditer(text)]
+    if not break_positions:
+        return [text]
+
+    chunks: List[str] = []
+    start = 0
+    for bp in break_positions:
+        if bp - start >= _SENTENCE_CHUNK_TARGET:
+            chunk = text[start:bp].rstrip()
+            if chunk:
+                chunks.append(chunk)
+            start = bp
+
+    tail = text[start:].strip()
+    if tail:
+        chunks.append(tail)
+
+    # If splitting produced nothing useful, return the original.
+    return [c for c in chunks if c] or [text]
+
+
+def _merge_short_fragments(chunks: List[str], min_len: int = 100) -> List[str]:
+    """Merge fragments shorter than min_len characters into the previous chunk."""
     merged: List[str] = []
     for chunk in chunks:
         chunk = chunk.strip()
@@ -128,10 +192,11 @@ def _merge_short_fragments(chunks: List[str], min_len: int = 35) -> List[str]:
     return merged
 
 
-def _merge_heading_into_next(chunks: List[str], max_len: int = 30) -> List[str]:
+def _merge_heading_into_next(chunks: List[str], max_len: int = 50) -> List[str]:
     """
     Merge short structural headings into the following clause body.
-    Example: "2. Services." + "2.1 Contractor shall..." -> combined clause.
+    Example: "2. Services." merged with "2.1 Contractor shall…"
+    Raised max_len from 30 → 50 to also catch slightly longer heading lines.
     """
     merged: List[str] = []
     i = 0
@@ -163,10 +228,7 @@ def _split_preamble(chunks: List[str]) -> tuple[List[str], List[str]]:
 
 
 def _split_signature_block(chunks: List[str], min_clause_len: int = 20) -> tuple[List[str], str]:
-    """
-    Split trailing signature block from clause chunks.
-    Returns (cleaned_clauses, signature_block_text).
-    """
+    """Split trailing signature block from clause chunks."""
     cleaned: List[str] = []
     signature_parts: List[str] = []
     signature_mode = False
@@ -184,7 +246,6 @@ def _split_signature_block(chunks: List[str], min_clause_len: int = 20) -> tuple
         if match:
             before = current[: match.start()].strip()
             after = current[match.start() :].strip()
-
             if len(before) > min_clause_len:
                 cleaned.append(before)
             if after:
@@ -200,7 +261,16 @@ def _split_signature_block(chunks: List[str], min_clause_len: int = 20) -> tuple
 
 
 def _extract_clause_chunks(text: str) -> List[str]:
-    """Extract raw clause-like chunks from normalized text."""
+    """
+    Extract raw clause-like chunks from normalized text.
+
+    Pipeline:
+      1. Structural split on numbered/titled markers (sub-items excluded).
+      2. Re-split any embedded marker runs on the same line.
+      3. Merge short structural headings into the following body.
+      4. Secondary sentence-boundary split on remaining dense chunks (> 600 chars).
+      5. Merge residual short fragments (< 100 chars).
+    """
     normalized = _normalize_for_split(text)
     if not normalized:
         return []
@@ -223,28 +293,34 @@ def _extract_clause_chunks(text: str) -> List[str]:
             current = line
             continue
 
-        # Start a new clause when we detect explicit legal structure.
         if _is_clause_start(line):
             clauses.append(current.strip())
             current = line
             continue
 
-        # Otherwise, treat line as a wrapped continuation.
+        # Continuation: join hyphen-split words, then append.
         if current.endswith("-"):
             current = f"{current[:-1]}{line.lstrip()}"
-        elif current.endswith((",", ";", ":", "(")) or CONTINUATION_WORD_RE.match(line):
-            current = f"{current} {line}"
         else:
             current = f"{current} {line}"
 
     if current:
         clauses.append(current.strip())
 
+    # Re-split flattened embedded clause starts (top-level only).
     expanded: List[str] = []
     for clause in clauses:
         expanded.extend(_split_embedded_starts(clause))
 
-    return _merge_heading_into_next(expanded, max_len=30)
+    # Merge lone short headings into their following body.
+    headed = _merge_heading_into_next(expanded, max_len=50)
+
+    # Secondary sentence-boundary split for dense paragraphs.
+    sentence_split: List[str] = []
+    for chunk in headed:
+        sentence_split.extend(_secondary_split(chunk))
+
+    return sentence_split
 
 
 def split_into_clauses_with_sections(text: str) -> Dict[str, object]:
@@ -261,7 +337,7 @@ def split_into_clauses_with_sections(text: str) -> Dict[str, object]:
         return {"preamble": "", "clauses": [], "signature_block": ""}
 
     preamble_chunks, substantive_chunks = _split_preamble(chunks)
-    merged = _merge_short_fragments(substantive_chunks, min_len=35)
+    merged = _merge_short_fragments(substantive_chunks, min_len=100)
     cleaned_clauses, signature_block = _split_signature_block(merged, min_clause_len=20)
 
     preamble = "\n".join(preamble_chunks).strip()
@@ -276,7 +352,7 @@ def split_into_clauses(text: str) -> list:
     """
     Contract-aware clause splitting.
     Prioritizes legal structure markers (sections, numbering, headings)
-    and treats wrapped lines as clause continuations.
+    and treats wrapped lines and sub-items as clause continuations.
     """
     sections = split_into_clauses_with_sections(text)
     return list(sections["clauses"])

@@ -3,10 +3,38 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
+import os
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover
+    load_dotenv = None
 
 from model import load_model, analyze_clauses
 from extractor import extract_text, split_into_clauses
 from llm_suggestions import ask_llm_question
+
+
+def _load_local_env() -> None:
+    env_path = Path(__file__).resolve().parent / ".env"
+    if not env_path.exists() or load_dotenv is None:
+        return
+    load_dotenv(dotenv_path=env_path, override=False)
+
+
+_load_local_env()
+
+APP_ENV = os.getenv("APP_ENV", "local").strip().lower()
+IS_LOCAL = APP_ENV in {"local", "development", "dev"}
+
+cors_origins_raw = os.getenv("AI_CORS_ALLOWED_ORIGINS")
+if cors_origins_raw:
+    AI_CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+elif IS_LOCAL:
+    AI_CORS_ALLOWED_ORIGINS = ["*"]
+else:
+    raise RuntimeError("Missing required env: AI_CORS_ALLOWED_ORIGINS")
 
 app = FastAPI(
     title="TiwalaChain AI Service",
@@ -14,10 +42,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Temporary development setting: allow all browser origins.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=AI_CORS_ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -31,8 +58,9 @@ class TextRequest(BaseModel):
 
 class ClauseResult(BaseModel):
     clause: str
-    label: str        
+    label: str
     confidence: float
+    reason: Optional[str] = None
     suggestion: str
     suggestion_source: str = "rule"
     issue: Optional[str] = None
@@ -132,6 +160,7 @@ def build_response(results: List[dict]) -> EvaluationResponse:
             clause=r["clause"],
             label=r["label"],
             confidence=r["confidence"],
+            reason=r.get("reason"),
             suggestion=r["suggestion"],
             suggestion_source=r.get("suggestion_source", "rule"),
             issue=r.get("issue"),
@@ -149,4 +178,13 @@ def build_response(results: List[dict]) -> EvaluationResponse:
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    host = os.getenv("AI_HOST", "0.0.0.0" if IS_LOCAL else "").strip()
+    port_raw = os.getenv("AI_PORT", "8000" if IS_LOCAL else "").strip()
+    reload_flag = os.getenv("AI_RELOAD", "1" if IS_LOCAL else "0").strip().lower() in {"1", "true", "yes", "on"}
+
+    if not host:
+        raise RuntimeError("Missing required env: AI_HOST")
+    if not port_raw:
+        raise RuntimeError("Missing required env: AI_PORT")
+
+    uvicorn.run("main:app", host=host, port=int(port_raw), reload=reload_flag)

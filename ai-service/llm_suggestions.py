@@ -117,7 +117,7 @@ def _build_messages(batch: List[dict]) -> list:
 def _build_review_messages(batch: List[dict]) -> list:
     system = (
         "You are a legal contract fairness reviewer for freelance and client agreements. "
-        "Classify each clause as fair or unfair based on whether the obligations and rights are balanced. "
+        "Classify each clause as fair or unfair based on whether obligations and rights are balanced. "
         "Mark clauses as unfair when they impose one-sided obligations, allow unlimited out-of-scope work, "
         "create unreasonable restrictions unrelated to the agreed deliverables, or remove basic protections "
         "without a balanced justification. Respond strictly in JSON."
@@ -126,10 +126,15 @@ def _build_review_messages(batch: List[dict]) -> list:
     payload = {
         "instructions": [
             "For each clause item, decide whether it is fair or unfair.",
-            "If a clause is unfair, explain the core issue briefly and provide a concise replacement clause.",
-            "If a clause is fair, keep the issue empty and provide a short confirmation suggestion.",
-            "Return only valid JSON array: "
-            "[{\"index\": number, \"label\": \"fair\" | \"unfair\", \"issue\": string, \"suggestion\": string}].",
+            "Provide a 'reason': one direct sentence stating the specific legal risk or imbalance detected "
+            "(e.g. 'Allows unilateral termination without notice or cure period.'). "
+            "For fair clauses, set reason to an empty string.",
+            "If a clause is unfair, provide an 'issue': a brief multi-sentence explanation of the problem.",
+            "If a clause is fair, keep 'issue' as an empty string.",
+            "Provide a 'suggestion': a concise replacement clause or fix recommendation.",
+            "Return only a valid JSON array with this exact shape: "
+            "[{\"index\": number, \"label\": \"fair\" | \"unfair\", "
+            "\"reason\": string, \"issue\": string, \"suggestion\": string}].",
         ],
         "items": batch,
     }
@@ -501,6 +506,7 @@ def _generate_llm_reviews_once(batch: List[dict]) -> List[dict | None]:
                 continue
             idx = entry.get("index")
             label = entry.get("label")
+            reason = entry.get("reason", "")
             issue = entry.get("issue", "")
             suggestion = entry.get("suggestion", "")
             if (
@@ -510,6 +516,7 @@ def _generate_llm_reviews_once(batch: List[dict]) -> List[dict | None]:
             ):
                 mapped[idx] = {
                     "label": label.strip().lower(),
+                    "reason": reason.strip() if isinstance(reason, str) else "",
                     "issue": issue.strip() if isinstance(issue, str) else "",
                     "suggestion": suggestion.strip() if isinstance(suggestion, str) else "",
                 }

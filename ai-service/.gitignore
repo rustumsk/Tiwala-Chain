@@ -1,0 +1,54 @@
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# Pytest
+.pytest_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Model training outputs (large binary checkpoints)
+model_output/
+
+# Fine-tuned model weights (committed separately or via LFS)
+fine_tuned_model/
+
+# Sample / generated documents (local testing only)
+sample_documents/
+
+# Generated PDF scripts (dev utilities)
+scripts/
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+*.ipynb
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Type checking
+.mypy_cache/
+.pytype/
