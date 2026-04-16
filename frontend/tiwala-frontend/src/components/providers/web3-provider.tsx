@@ -19,9 +19,8 @@ const THEME_KEY = "tiwala:theme";
 function getInitialIsDark() {
   if (typeof window === "undefined") return true;
   const stored = window.localStorage.getItem(THEME_KEY);
-  if (stored === "light") return false;
   if (stored === "dark") return true;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return true;
 }
 
 export default function Web3Provider({ children }: Props) {

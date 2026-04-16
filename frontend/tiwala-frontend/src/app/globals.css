@@ -3,6 +3,7 @@
 :root {
   --background: #080010;
   --foreground: #f1f0f5;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -210,38 +211,50 @@ body {
 
 /* Onboarding page + card theming */
 :root[data-theme="light"] .onboarding-page {
-  background: #f3f4f9 !important;
-  color: #171b28 !important;
+  background: #080010 !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="light"] .onboarding-page .pointer-events-none {
-  opacity: 0.55;
+  opacity: 1;
 }
 
 :root[data-theme="light"] .onboarding-form-card {
-  border-color: #e3e7f2 !important;
-  background: #ffffff !important;
-  box-shadow: 0 12px 30px rgba(45, 56, 92, 0.08) !important;
-  backdrop-filter: none !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(16, 7, 32, 0.75) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 24px 80px rgba(120, 70, 220, 0.18) !important;
+  backdrop-filter: blur(12px) !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white,
 :root[data-theme="light"] .onboarding-form-card .text-slate-100 {
-  color: #171b28 !important;
+  color: #ffffff !important;
 }
 
-:root[data-theme="light"] .onboarding-form-card .text-white\/85,
-:root[data-theme="light"] .onboarding-form-card .text-white\/75,
-:root[data-theme="light"] .onboarding-form-card .text-white\/70,
-:root[data-theme="light"] .onboarding-form-card .text-white\/65,
+:root[data-theme="light"] .onboarding-form-card .text-white\/85 {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-white\/75 {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-white\/70 {
+  color: rgba(255, 255, 255, 0.70) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-white\/65 {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
 :root[data-theme="light"] .onboarding-form-card .text-white\/60 {
-  color: #61697f !important;
+  color: rgba(255, 255, 255, 0.60) !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card input {
-  border-color: #d6dbe9 !important;
-  background: #f8f9fc !important;
-  color: #1f2534 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #ffffff !important;
 }
 
 /* Landing page light mode adjustments */

@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 
+const resolvedAiServiceBaseUrl = process.env.AI_SERVICE_BASE_URL?.replace(/\/+$/, "");
+const AI_SERVICE_BASE_URL =
+  resolvedAiServiceBaseUrl ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
+
 export async function POST(request: Request) {
   const startedAt = Date.now();
   try {
+    if (!AI_SERVICE_BASE_URL) {
+      return NextResponse.json(
+        { error: "Missing required env: AI_SERVICE_BASE_URL" },
+        { status: 500 }
+      );
+    }
+
     const contentType = request.headers.get("content-type") ?? "";
     if (!contentType.toLowerCase().includes("multipart/form-data")) {
       return NextResponse.json(
@@ -11,7 +23,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const upstream = await fetch("http://localhost:8000/evaluate/file", {
+    const upstream = await fetch(`${AI_SERVICE_BASE_URL}/evaluate/file`, {
       method: "POST",
       headers: {
         "content-type": contentType,

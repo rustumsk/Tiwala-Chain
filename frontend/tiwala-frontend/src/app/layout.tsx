@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" data-theme="dark" className={inter.variable}>
       <body className="antialiased">
         <Web3Provider>
           <RouteShell>{children}</RouteShell>
