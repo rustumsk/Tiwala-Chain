@@ -176,13 +176,14 @@ if (aiServiceTimeoutSeconds <= 0)
 {
     if (isLocal)
     {
-        aiServiceTimeoutSeconds = 30;
+        aiServiceTimeoutSeconds = 120;
     }
     else
     {
         throw new InvalidOperationException("Missing required configuration: AiService:TimeoutSeconds");
     }
 }
+aiServiceTimeoutSeconds = Math.Max(aiServiceTimeoutSeconds, 120);
 builder.Services.AddHttpClient("AiService", client =>
 {
     client.BaseAddress = new Uri(aiServiceUrl);
