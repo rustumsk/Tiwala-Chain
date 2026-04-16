@@ -33,6 +33,23 @@ export type AuthSession = {
   expiresAtUtc: string;
 };
 
+export class AuthRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number
+  ) {
+    super(message);
+    this.name = "AuthRequestError";
+  }
+}
+
+export function isAuthFailure(error: unknown) {
+  return (
+    error instanceof AuthRequestError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
 type AuthVerifyResponse = {
   accessToken: string;
   expiresAtUtc: string;
@@ -130,7 +147,7 @@ export async function fetchCurrentUser(accessToken: string) {
   });
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    throw new AuthRequestError(await response.text(), response.status);
   }
 
   return (await response.json()) as BackendUser;

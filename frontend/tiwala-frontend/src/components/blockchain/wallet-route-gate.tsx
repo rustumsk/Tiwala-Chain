@@ -10,6 +10,7 @@ import {
   fetchCurrentUser,
   getAuthStorageRaw,
   getStoredAuthSession,
+  isAuthFailure,
   syncProfileFromBackendUser,
 } from "@/lib/auth";
 
@@ -79,9 +80,11 @@ export default function WalletRouteGate() {
           return;
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
-        clearAuthSession();
+        if (isAuthFailure(error)) {
+          clearAuthSession();
+        }
       });
 
     return () => {

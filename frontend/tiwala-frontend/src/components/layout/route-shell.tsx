@@ -39,6 +39,7 @@ import {
   fetchCurrentUser,
   getAuthStorageRaw,
   getStoredAuthSession,
+  isAuthFailure,
   isSessionExpired,
   syncProfileFromBackendUser,
 } from "@/lib/auth";
@@ -338,6 +339,7 @@ export default function RouteShell({ children }: RouteShellProps) {
     !!authSession &&
     !!address &&
     authSession.walletAddress.toLowerCase() === address.toLowerCase();
+  const authenticatedDestination = profile?.role === "admin" ? "/admin" : "/dashboard";
 
   const appLinks = useMemo(
     () => getAppLinks(profile?.role, activeWorkspaceView),
@@ -442,10 +444,12 @@ export default function RouteShell({ children }: RouteShellProps) {
           router.replace("/pending-approval");
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
-        clearAuthSession();
-        router.replace("/unauthorized");
+        if (isAuthFailure(error)) {
+          clearAuthSession();
+          router.replace("/unauthorized");
+        }
       });
 
     return () => {
@@ -491,9 +495,11 @@ export default function RouteShell({ children }: RouteShellProps) {
         syncProfileFromBackendUser(user);
         router.replace("/dashboard");
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
-        clearAuthSession();
+        if (isAuthFailure(error)) {
+          clearAuthSession();
+        }
       });
 
     return () => {
@@ -625,6 +631,19 @@ export default function RouteShell({ children }: RouteShellProps) {
               </div>
 
               <div className="flex items-center gap-2">
+                {isAuthenticated ? (
+                  <Link
+                    href={authenticatedDestination}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium transition ${
+                      isDarkTheme
+                        ? "border-violet-300/30 bg-violet-500/10 text-violet-200 hover:border-violet-200/60 hover:bg-violet-500/20"
+                        : "border-violet-300 bg-violet-50 text-violet-800 hover:border-violet-400"
+                    }`}
+                  >
+                    <LayoutDashboard size={14} />
+                    Dashboard
+                  </Link>
+                ) : null}
                 {themeToggleButton}
                 <WalletButton
                   buttonClassName={`rounded-full border px-4 py-2 text-sm transition-all duration-200 ${
