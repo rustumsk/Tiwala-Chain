@@ -1,0 +1,32 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Temporary/build caches
+.tmp_build/
+.tmp_pdf_pages/
+*.pyc
+__pycache__/
+
+# IDE
+.vs/
+.vscode/
+
+# AI service artifacts
+ai-service/model_output/
+ai-service/fine_tuned_model/
+ai-service/__pycache__/
+
+# Python virtual environments
+venv/
+.venv/
+
+# Node/Next
+node_modules/
+.next/
+out/
+
+# .NET
+bin/
+obj/
