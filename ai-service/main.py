@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import os
+import time
 from pathlib import Path
 
 try:
@@ -11,9 +12,13 @@ try:
 except Exception:  # pragma: no cover
     load_dotenv = None
 
-from model import load_model, analyze_clauses
+from model import load_model, analyze_clauses, get_model_path
 from extractor import extract_text, split_into_clauses
 from llm_suggestions import ask_llm_question
+
+MAX_FILE_BYTES = int(os.getenv("AI_MAX_FILE_BYTES", str(3 * 1024 * 1024)))
+MAX_EXTRACTED_CHARS = int(os.getenv("AI_MAX_EXTRACTED_CHARS", "60000"))
+MAX_CLAUSES = int(os.getenv("AI_MAX_CLAUSES", "40"))
 
 
 def _load_local_env() -> None:
@@ -92,7 +97,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": "legal-bert-finetuned"}
+    return {"status": "ok", "model": "legal-bert-finetuned", "model_path": get_model_path()}
 
 
 @app.post("/evaluate/text", response_model=EvaluationResponse)
@@ -103,12 +108,15 @@ def evaluate_text(request: TextRequest):
     if not request.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
-    clauses = split_into_clauses(request.text)
+    started_at = time.monotonic()
+    clauses = split_into_clauses(request.text[:MAX_EXTRACTED_CHARS])
+    print(f"[evaluate/text] clauses={len(clauses)} split_seconds={time.monotonic() - started_at:.2f}", flush=True)
 
     if not clauses:
         raise HTTPException(status_code=400, detail="No clauses could be extracted from the text.")
 
-    results = analyze_clauses(classifier, clauses)
+    results = analyze_clauses(classifier, clauses[:MAX_CLAUSES])
+    print(f"[evaluate/text] total_seconds={time.monotonic() - started_at:.2f}", flush=True)
     return build_response(results)
 
 
@@ -122,22 +130,29 @@ async def evaluate_file(file: UploadFile = File(...)):
     if not (filename.endswith(".pdf") or filename.endswith(".docx")):
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
 
+    started_at = time.monotonic()
     contents = await file.read()
+    if len(contents) > MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail=f"File must be {MAX_FILE_BYTES} bytes or smaller.")
+    print(f"[evaluate/file] filename={filename} bytes={len(contents)}", flush=True)
 
     try:
         text = extract_text(contents, filename)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to extract text: {str(e)}")
+    print(f"[evaluate/file] extracted_chars={len(text)} extract_seconds={time.monotonic() - started_at:.2f}", flush=True)
 
     if not text.strip():
         raise HTTPException(status_code=400, detail="Could not extract any text from the file.")
 
-    clauses = split_into_clauses(text)
+    clauses = split_into_clauses(text[:MAX_EXTRACTED_CHARS])
+    print(f"[evaluate/file] clauses={len(clauses)} split_seconds={time.monotonic() - started_at:.2f}", flush=True)
 
     if not clauses:
         raise HTTPException(status_code=400, detail="No clauses could be extracted from the document.")
 
-    results = analyze_clauses(classifier, clauses)
+    results = analyze_clauses(classifier, clauses[:MAX_CLAUSES])
+    print(f"[evaluate/file] analyzed_clauses={len(results)} total_seconds={time.monotonic() - started_at:.2f}", flush=True)
     return build_response(results)
 
 
@@ -179,7 +194,8 @@ def build_response(results: List[dict]) -> EvaluationResponse:
 
 if __name__ == "__main__":
     host = os.getenv("AI_HOST", "0.0.0.0" if IS_LOCAL else "").strip()
-    port_raw = os.getenv("AI_PORT", "8000" if IS_LOCAL else "").strip()
+    port_raw = os.getenv("PORT") or os.getenv("AI_PORT", "8000" if IS_LOCAL else "")
+    port_raw = port_raw.strip()
     reload_flag = os.getenv("AI_RELOAD", "1" if IS_LOCAL else "0").strip().lower() in {"1", "true", "yes", "on"}
 
     if not host:

@@ -3,6 +3,7 @@ import os
 import math
 from typing import Any
 
+import torch
 from transformers import pipeline
 try:
     from llm_suggestions import (
@@ -15,7 +16,7 @@ except Exception:  # pragma: no cover - optional module fallback
     generate_llm_suggestions_batch = None
     is_llm_suggestions_enabled = lambda: False
 
-MODEL_PATH = "./fine_tuned_model"
+DEFAULT_MODEL_PATH = "./fine_tuned_model"
 
 LABELS = {
     "LABEL_0": "fair",
@@ -111,12 +112,28 @@ LLM_REVIEW_PATTERNS = [
 ]
 
 
+def get_model_path() -> str:
+    return os.getenv("MODEL_PATH", DEFAULT_MODEL_PATH).strip() or DEFAULT_MODEL_PATH
+
+
 def load_model():
-    print(f"Loading model from {MODEL_PATH}...")
+    model_path = get_model_path()
+    model_revision = os.getenv("MODEL_REVISION", "").strip() or None
+    hf_token = os.getenv("HF_TOKEN", "").strip() or None
+
+    pipeline_kwargs: dict[str, Any] = {
+        "model": model_path,
+        "tokenizer": model_path,
+    }
+    if model_revision:
+        pipeline_kwargs["revision"] = model_revision
+    if hf_token:
+        pipeline_kwargs["token"] = hf_token
+
+    print(f"Loading model from {model_path}...", flush=True)
     classifier = pipeline(
         "text-classification",
-        model=MODEL_PATH,
-        tokenizer=MODEL_PATH,
+        **pipeline_kwargs,
     )
     return classifier
 
@@ -270,10 +287,11 @@ def _extract_prediction_scores(prediction: Any) -> tuple[str, float]:
 
 def _predict_clause(classifier, clause: str) -> tuple[str, float]:
     """Run a single inference, using max_length=512 (full LegalBERT capacity)."""
-    try:
-        prediction = classifier(clause, truncation=True, max_length=512, top_k=None)
-    except TypeError:
-        prediction = classifier(clause, truncation=True, max_length=512)
+    with torch.inference_mode():
+        try:
+            prediction = classifier(clause, truncation=True, max_length=512, top_k=None)
+        except TypeError:
+            prediction = classifier(clause, truncation=True, max_length=512)
     return _extract_prediction_scores(prediction)
 
 

@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 transformers
-torch
+huggingface_hub
 pdfplumber
 python-docx
 scikit-learn
@@ -9,6 +9,5 @@ datasets
 pandas
 accelerate
 python-multipart
-pytest
 httpx
 python-dotenv

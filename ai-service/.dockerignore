@@ -8,6 +8,8 @@ __pycache__/
 .env.*
 
 model_output/
+fine_tuned_model/
+dataset/
 logs/
 sample_documents/
 integration_tests/
