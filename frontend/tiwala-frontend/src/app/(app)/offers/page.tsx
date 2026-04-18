@@ -50,20 +50,20 @@ function getStatusStyle(
   if (s === "accepted")
     return {
       classes: isDark
-        ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
+        ? "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-200/85"
         : "border-emerald-200 bg-emerald-50 text-emerald-700",
       label: "Accepted",
     };
   if (s === "declined")
     return {
       classes: isDark
-        ? "border-red-400/30 bg-red-500/10 text-red-300"
-        : "border-red-200 bg-red-50 text-red-700",
+        ? "border-rose-400/20 bg-rose-400/[0.08] text-rose-200/85"
+        : "border-rose-200 bg-rose-50 text-rose-700",
       label: "Declined",
     };
   return {
     classes: isDark
-      ? "border-amber-400/30 bg-amber-500/10 text-amber-300"
+      ? "border-amber-400/20 bg-amber-400/[0.08] text-amber-200/85"
       : "border-amber-200 bg-amber-50 text-amber-700",
     label: "Pending",
   };
@@ -75,12 +75,10 @@ export default function OffersPage() {
   const {
     isDarkTheme,
     panelClass,
-    subtlePanelClass,
     mutedTextClass,
     tinyLabelClass,
     titleClass,
     pageClass,
-    actionChipClass,
   } = useThemeStyles();
 
   const profile = useMemo(() => {
@@ -180,9 +178,27 @@ export default function OffersPage() {
     return { pending, accepted, declined, total: offers.length };
   }, [offers]);
 
+  const surfaceClass = isDarkTheme
+    ? "min-h-screen bg-[#0A0A0F] text-white"
+    : "min-h-screen bg-gray-50 text-[#141621]";
+  const statCardClass = isDarkTheme
+    ? "border border-white/[0.12] bg-white/[0.025]"
+    : "border border-gray-200 bg-white";
+  const listDividerClass = isDarkTheme ? "border-white/[0.10]" : "border-gray-200";
+  const rowHoverClass = isDarkTheme ? "hover:bg-white/[0.025]" : "hover:bg-white";
+  const tabWrapClass = isDarkTheme
+    ? "border border-white/[0.10] bg-white/[0.025]"
+    : "border border-gray-200 bg-white";
+  const activeTabClass = isDarkTheme
+    ? "bg-white text-[#0A0A0F]"
+    : "bg-[#11131b] text-white";
+  const inactiveTabClass = isDarkTheme
+    ? "text-white/58 hover:bg-white/[0.06] hover:text-white"
+    : "text-gray-600 hover:bg-gray-100 hover:text-gray-950";
+
   if (!isConnected || !profile) {
     return (
-      <div className={pageClass}>
+      <div className={`${pageClass} ${surfaceClass}`}>
         <section
           className={`mx-auto w-full max-w-[1580px] ${panelClass} rounded-2xl px-6 py-10 lg:px-8`}
         >
@@ -214,7 +230,7 @@ export default function OffersPage() {
   }
 
   return (
-    <div className={pageClass}>
+    <div className={`${pageClass} ${surfaceClass}`}>
       <section className="mx-auto w-full max-w-[1580px] space-y-6">
         {/* Hero */}
         <article className={`${panelClass} rounded-2xl px-6 py-6 lg:px-8 lg:py-7`}>
@@ -240,23 +256,19 @@ export default function OffersPage() {
               label: "Pending",
               value: counts.pending,
               icon: Clock,
-              border: isDarkTheme
-                ? "border-l-amber-400"
-                : "border-l-amber-500",
+              border: "border-l-amber-400",
               iconBg: isDarkTheme
-                ? "bg-amber-500/15 text-amber-300"
-                : "bg-amber-100 text-amber-600",
+                ? "bg-amber-400/10 text-amber-200/85"
+                : "bg-amber-50 text-amber-700",
             },
             {
               label: "Accepted",
               value: counts.accepted,
               icon: BriefcaseBusiness,
-              border: isDarkTheme
-                ? "border-l-emerald-400"
-                : "border-l-emerald-500",
+              border: "border-l-emerald-400",
               iconBg: isDarkTheme
-                ? "bg-emerald-500/15 text-emerald-300"
-                : "bg-emerald-100 text-emerald-600",
+                ? "bg-emerald-400/10 text-emerald-200/85"
+                : "bg-emerald-50 text-emerald-700",
             },
             {
               label: "Total value",
@@ -264,17 +276,15 @@ export default function OffersPage() {
                 .reduce((s, o) => s + Number(o.amountUsdt), 0)
                 .toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`,
               icon: CircleDollarSign,
-              border: isDarkTheme
-                ? "border-l-violet-400"
-                : "border-l-violet-500",
+              border: "border-l-blue-400",
               iconBg: isDarkTheme
-                ? "bg-violet-500/15 text-violet-300"
-                : "bg-violet-100 text-violet-600",
+                ? "bg-blue-400/10 text-blue-200/85"
+                : "bg-blue-50 text-blue-700",
             },
           ].map((stat) => (
             <article
               key={stat.label}
-              className={`${panelClass} rounded-2xl border-l-[3px] ${stat.border} p-5`}
+              className={`${statCardClass} rounded-2xl border-l-[3px] ${stat.border} p-5`}
             >
               <div className="flex items-center justify-between">
                 <p
@@ -283,13 +293,13 @@ export default function OffersPage() {
                   {stat.label}
                 </p>
                 <span
-                  className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}
+                  className={`inline-flex size-8 items-center justify-center rounded-full ${stat.iconBg}`}
                 >
                   <stat.icon size={16} />
                 </span>
               </div>
               <p
-                className={`mt-3 text-2xl font-bold tabular-nums ${titleClass}`}
+                className={`mt-3 text-2xl font-semibold tabular-nums ${titleClass}`}
               >
                 {stat.value}
               </p>
@@ -311,8 +321,8 @@ export default function OffersPage() {
         ) : null}
 
         {/* Offers list */}
-        <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <section className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p
                 className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}
@@ -320,72 +330,68 @@ export default function OffersPage() {
                 Offers
               </p>
               <h2
-                className={`mt-1.5 text-xl font-bold tracking-tight ${titleClass}`}
+                className={`mt-1.5 text-xl font-semibold tracking-tight ${titleClass}`}
               >
                 {isEmployerView ? "Your job offers" : "Pending job offers"}
               </h2>
+              <p className={`mt-1 text-xs ${mutedTextClass}`}>
+                {filtered.length} of {counts.total} shown
+              </p>
             </div>
-            <span
-              className={`${actionChipClass} self-start rounded-full px-3.5 py-1.5 text-xs font-semibold tabular-nums`}
-            >
-              {filtered.length} of {counts.total}
-            </span>
-          </div>
 
-          {/* Filters */}
-          <div className="mt-5 flex flex-wrap gap-2 text-xs">
-            {(
-              [
-                { key: "all", label: "All" },
-                { key: "pending", label: "Pending" },
-                { key: "accepted", label: "Accepted" },
-                { key: "declined", label: "Declined" },
-              ] as const
-            ).map((opt) => {
-              const active = statusFilter === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() =>
-                    setStatusFilter(opt.key as OfferStatusFilter)
-                  }
-                  className={`rounded-full px-3.5 py-1.5 font-medium transition ${
-                    active
-                      ? isDarkTheme
-                        ? "border border-violet-300/60 bg-violet-500/25 text-violet-50"
-                        : "border border-violet-400 bg-violet-100 text-violet-800"
-                      : isDarkTheme
-                        ? "border border-white/10 bg-white/[0.02] text-white/65 hover:border-violet-300/30 hover:bg-violet-500/10"
-                        : "border border-[#e1e4f0] bg-white text-[#555a6b] hover:border-violet-300 hover:bg-violet-50"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+            <div className={`flex w-fit flex-wrap gap-1 rounded-full p-1 text-xs ${tabWrapClass}`}>
+              {(
+                [
+                  { key: "all", label: "All" },
+                  { key: "pending", label: "Pending" },
+                  { key: "accepted", label: "Accepted" },
+                  { key: "declined", label: "Declined" },
+                ] as const
+              ).map((opt) => {
+                const active = statusFilter === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() =>
+                      setStatusFilter(opt.key as OfferStatusFilter)
+                    }
+                    className={`rounded-full px-3.5 py-1.5 font-medium transition ${
+                      active ? activeTabClass : inactiveTabClass
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {isLoading ? (
-            <div className="mt-6 space-y-3">
+            <div className={`divide-y ${listDividerClass}`}>
               {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={`h-20 animate-pulse rounded-xl ${subtlePanelClass}`}
-                />
+                <div key={i} className="py-5">
+                  <div
+                    className={`h-10 animate-pulse rounded-lg ${
+                      isDarkTheme ? "bg-white/[0.05]" : "bg-gray-200"
+                    }`}
+                  />
+                </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div
-              className={`mt-6 flex flex-col items-center gap-5 rounded-2xl py-14 ${subtlePanelClass}`}
+              className={`flex flex-col items-center gap-4 border-y py-14 text-center ${listDividerClass}`}
             >
               <span
-                className={`inline-flex size-16 items-center justify-center rounded-2xl ${isDarkTheme ? "bg-violet-500/10" : "bg-violet-50"}`}
+                className={`inline-flex size-12 items-center justify-center rounded-full ${
+                  isDarkTheme ? "bg-white/[0.04] text-white/45" : "bg-white text-gray-400"
+                }`}
               >
-                <Inbox size={28} className="text-violet-400/60" />
+                <Inbox size={22} />
               </span>
-              <div className="text-center">
-                <p className={`text-sm font-medium ${titleClass}`}>
+              <div>
+                <p className={`text-sm font-semibold ${titleClass}`}>
                   No offers found
                 </p>
                 <p
@@ -398,7 +404,7 @@ export default function OffersPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-6 space-y-3">
+            <div className={`divide-y ${listDividerClass}`}>
               {filtered.map((offer) => {
                 const style = getStatusStyle(offer.status, isDarkTheme);
                 return (
@@ -406,64 +412,56 @@ export default function OffersPage() {
                     key={offer.id}
                     type="button"
                     onClick={() => router.push(`/offers/${offer.id}`)}
-                    className={`${subtlePanelClass} group flex w-full items-center gap-4 rounded-xl px-5 py-4 text-left transition-all duration-200 hover:border-violet-300/40 ${isDarkTheme ? "hover:bg-violet-500/[0.04]" : "hover:bg-violet-50/40"}`}
+                    className={`group grid w-full grid-cols-1 gap-3 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center ${rowHoverClass}`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={`truncate text-sm font-semibold ${titleClass}`}
-                      >
-                        {offer.title || `Offer #${offer.id}`}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span
-                          className={`text-xs tabular-nums ${mutedTextClass}`}
+                    <div className="min-w-0 px-1 sm:px-0">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <p
+                          className={`min-w-0 truncate text-sm font-semibold ${titleClass}`}
                         >
-                          {isEmployerView
-                            ? shortAddr(offer.freelancerWallet)
-                            : shortAddr(offer.employerWallet)}
-                        </span>
+                          {offer.title || `Offer #${offer.id}`}
+                        </p>
                         <span
-                          className={`text-xs ${isDarkTheme ? "text-white/20" : "text-[#d0d3de]"}`}
+                          className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.classes}`}
                         >
-                          |
-                        </span>
-                        <span
-                          className={`text-xs font-medium tabular-nums ${titleClass}`}
-                        >
-                          {offer.amountUsdt.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}{" "}
-                          USDT
-                        </span>
-                        <span
-                          className={`text-xs ${isDarkTheme ? "text-white/20" : "text-[#d0d3de]"}`}
-                        >
-                          |
-                        </span>
-                        <span
-                          className={`text-xs ${mutedTextClass}`}
-                        >
-                          {relativeTime(offer.createdAt)}
+                          {style.label}
                         </span>
                       </div>
+                      <p
+                        className={`mt-1 text-xs tabular-nums ${mutedTextClass}`}
+                      >
+                        {isEmployerView
+                          ? shortAddr(offer.freelancerWallet)
+                          : shortAddr(offer.employerWallet)}
+                      </p>
                     </div>
 
-                    <span
-                      className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${style.classes}`}
-                    >
-                      {style.label}
-                    </span>
+                    <div className="flex items-center justify-between gap-4 px-1 sm:block sm:px-0 sm:text-right">
+                      <p className={`text-sm font-semibold tabular-nums ${titleClass}`}>
+                        {offer.amountUsdt.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        USDT
+                      </p>
+                      <p className={`mt-0 text-[11px] sm:mt-1 ${mutedTextClass}`}>
+                        {relativeTime(offer.createdAt)}
+                      </p>
+                    </div>
 
                     <ArrowUpRight
-                      size={16}
-                      className={`shrink-0 transition ${isDarkTheme ? "text-white/20 group-hover:text-violet-300" : "text-[#c8cbda] group-hover:text-violet-500"}`}
+                      size={15}
+                      className={`hidden shrink-0 transition sm:block ${
+                        isDarkTheme
+                          ? "text-white/22 group-hover:text-white/60"
+                          : "text-gray-300 group-hover:text-gray-600"
+                      }`}
                     />
                   </button>
                 );
               })}
             </div>
           )}
-        </article>
+        </section>
       </section>
     </div>
   );
