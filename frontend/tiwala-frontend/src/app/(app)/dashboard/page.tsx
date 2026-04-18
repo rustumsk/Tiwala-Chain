@@ -7,8 +7,10 @@ import {
   CircleDollarSign,
   Scale,
   TrendingUp,
+  Wallet,
 } from "lucide-react";
-import { useAccount, useChainId } from "wagmi";
+import { formatUnits } from "viem";
+import { useAccount, useChainId, useReadContract } from "wagmi";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
 import { useVisibleInterval } from "@/hooks/use-visible-interval";
 import JobCard from "@/components/jobs/job-card";
@@ -24,6 +26,7 @@ import { fetchMyPostingStats } from "@/lib/postings";
 import { getStoredProfile, type LocalUserProfile } from "@/lib/profile";
 import { fetchMyProposalStats } from "@/lib/proposals";
 import { API_POLL_INTERVAL_MS } from "@/lib/realtime";
+import { usdtAbi, USDT_SEPOLIA_ADDRESS } from "@/lib/usdt";
 import type { EscrowJob } from "@/types";
 
 type DashboardView = "employer" | "freelancer";
@@ -51,6 +54,15 @@ const STATUS_COLORS_LIGHT: Record<EscrowJobStatus, { dot: string; text: string }
 function formatUsdtValue(value: number) {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: value >= 100 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatWalletUsdt(value: bigint | undefined) {
+  if (typeof value !== "bigint") return "0.00";
+  const numeric = Number(formatUnits(value, 6));
+  return numeric.toLocaleString(undefined, {
+    minimumFractionDigits: numeric >= 100 ? 0 : 2,
     maximumFractionDigits: 2,
   });
 }
@@ -305,6 +317,18 @@ export default function DashboardPage() {
 
   const walletChip = address ? shortAddr(address) : "N/A";
   const networkLabel = chainId === 11155111 ? "Sepolia" : `Chain ${chainId}`;
+  const usdtBalanceQuery = useReadContract({
+    address: USDT_SEPOLIA_ADDRESS,
+    abi: usdtAbi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: Boolean(address && chainId === 11155111),
+      refetchInterval: API_POLL_INTERVAL_MS,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
+    },
+  });
   const [employerPostingStats, setEmployerPostingStats] = useState({
     openPostings: 0,
     newProposals: 0,
@@ -371,36 +395,57 @@ export default function DashboardPage() {
       value: activeConfig.jobCount,
       suffix: "",
       icon: BriefcaseBusiness,
-      accent: "violet",
-      accentBorder: isDarkTheme ? "border-l-violet-400" : "border-l-violet-500",
-      iconBg: isDarkTheme ? "bg-violet-500/15 text-violet-300" : "bg-violet-100 text-violet-600",
+      detail: `${activeConfig.queueCountLabel} in this workspace`,
+      tone: isDarkTheme
+        ? "bg-sky-400/10 text-sky-200"
+        : "bg-sky-50 text-sky-700",
     },
     {
       label: "Active",
       value: activeConfig.activeCount,
       suffix: "",
       icon: TrendingUp,
-      accent: "emerald",
-      accentBorder: isDarkTheme ? "border-l-emerald-400" : "border-l-emerald-500",
-      iconBg: isDarkTheme ? "bg-emerald-500/15 text-emerald-300" : "bg-emerald-100 text-emerald-600",
+      detail: "Funded, in progress, or review",
+      tone: isDarkTheme
+        ? "bg-emerald-400/10 text-emerald-200"
+        : "bg-emerald-50 text-emerald-700",
     },
     {
       label: "Disputes",
       value: activeConfig.disputedCount,
       suffix: "",
       icon: Scale,
-      accent: "red",
-      accentBorder: isDarkTheme ? "border-l-red-400" : "border-l-red-500",
-      iconBg: isDarkTheme ? "bg-red-500/15 text-red-300" : "bg-red-100 text-red-600",
+      detail: activeConfig.disputedCount > 0 ? "Needs attention" : "No active disputes",
+      tone: isDarkTheme
+        ? "bg-rose-400/10 text-rose-200"
+        : "bg-rose-50 text-rose-700",
     },
     {
       label: "Total escrow",
       value: formatUsdtValue(activeConfig.totalEscrow),
       suffix: " USDT",
       icon: CircleDollarSign,
-      accent: "blue",
-      accentBorder: isDarkTheme ? "border-l-blue-400" : "border-l-blue-500",
-      iconBg: isDarkTheme ? "bg-blue-500/15 text-blue-300" : "bg-blue-100 text-blue-600",
+      detail: "Value locked across listed jobs",
+      tone: isDarkTheme
+        ? "bg-blue-400/10 text-blue-200"
+        : "bg-blue-50 text-blue-700",
+    },
+    {
+      label: "Wallet balance",
+      value: formatWalletUsdt(usdtBalanceQuery.data),
+      suffix: " USDT",
+      icon: Wallet,
+      detail:
+        chainId === 11155111
+          ? usdtBalanceQuery.isLoading
+            ? "Reading wallet balance"
+            : usdtBalanceQuery.isError
+              ? "Balance unavailable"
+              : "Available in wallet"
+          : "Switch to Sepolia",
+      tone: isDarkTheme
+        ? "bg-violet-400/10 text-violet-200"
+        : "bg-violet-50 text-violet-700",
     },
   ];
 
@@ -499,25 +544,28 @@ export default function DashboardPage() {
         </article>
 
         {/* Stat Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {statCards.map((stat) => (
             <article
               key={stat.label}
-              className={`${panelClass} rounded-2xl border-l-[3px] ${stat.accentBorder} p-5`}
+              className={`${panelClass} rounded-2xl p-5 transition hover:-translate-y-0.5`}
             >
-              <div className="flex items-center justify-between">
-                <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+              <div className="flex items-start justify-between gap-3">
+                <p className={`pt-1 text-xs font-semibold ${isDarkTheme ? "text-white/72" : "text-[#343949]"}`}>
                   {stat.label}
                 </p>
-                <span className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}>
+                <span className={`inline-flex size-8 shrink-0 items-center justify-center rounded-full ${stat.tone}`}>
                   <stat.icon size={16} />
                 </span>
               </div>
-              <p className={`mt-3 text-2xl font-bold tabular-nums ${titleClass}`}>
+              <p className={`mt-4 text-3xl font-semibold tabular-nums tracking-normal ${titleClass}`}>
                 {stat.value}
                 {stat.suffix ? (
-                  <span className={`ml-1 text-sm font-medium ${mutedTextClass}`}>{stat.suffix}</span>
+                  <span className={`ml-1 text-xs font-semibold ${mutedTextClass}`}>{stat.suffix}</span>
                 ) : null}
+              </p>
+              <p className={`mt-3 text-xs leading-5 ${mutedTextClass}`}>
+                {stat.detail}
               </p>
             </article>
           ))}

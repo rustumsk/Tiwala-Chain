@@ -2,8 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
-import { Save, Trash2, UserRound } from "lucide-react";
+import { formatUnits } from "viem";
+import { useAccount, useChainId, useReadContract } from "wagmi";
+import { Save, Trash2, UserRound, Wallet } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
 import {
   clearStoredProfile,
@@ -19,10 +20,21 @@ import {
   type BackendUser,
 } from "@/lib/auth";
 import { notifyError, notifySuccess } from "@/lib/notify";
+import { usdtAbi, USDT_SEPOLIA_ADDRESS } from "@/lib/usdt";
+
+function formatWalletUsdt(value: bigint | undefined) {
+  if (typeof value !== "bigint") return "0.00";
+  const numeric = Number(formatUnits(value, 6));
+  return numeric.toLocaleString(undefined, {
+    minimumFractionDigits: numeric >= 100 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { isDarkTheme } = useAppTheme();
 
    const pageClass = isDarkTheme ? "text-white" : "text-[#141621]";
@@ -62,6 +74,16 @@ export default function ProfileSettingsPage() {
   const [me, setMe] = useState<BackendUser | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const usdtBalanceQuery = useReadContract({
+    address: USDT_SEPOLIA_ADDRESS,
+    abi: usdtAbi,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: Boolean(address && chainId === 11155111),
+      refetchOnWindowFocus: true,
+    },
+  });
 
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -258,6 +280,44 @@ export default function ProfileSettingsPage() {
               </span>
             </div>
           ) : null}
+        </article>
+
+        <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}>
+                Wallet
+              </p>
+              <h2 className={`mt-2 text-lg font-semibold tracking-tight ${titleClass}`}>
+                USDT balance
+              </h2>
+              <p className={`mt-1 text-xs ${mutedTextClass}`}>
+                Available balance in the connected Sepolia wallet.
+              </p>
+            </div>
+            <span
+              className={`inline-flex size-9 items-center justify-center rounded-full ${
+                isDarkTheme
+                  ? "bg-violet-400/10 text-violet-200"
+                  : "bg-violet-50 text-violet-700"
+              }`}
+            >
+              <Wallet size={17} />
+            </span>
+          </div>
+          <p className={`mt-5 text-3xl font-semibold tabular-nums ${titleClass}`}>
+            {formatWalletUsdt(usdtBalanceQuery.data)}
+            <span className={`ml-1 text-xs font-semibold ${mutedTextClass}`}>USDT</span>
+          </p>
+          <p className={`mt-3 text-xs ${mutedTextClass}`}>
+            {chainId !== 11155111
+              ? "Switch to Sepolia to read your balance."
+              : usdtBalanceQuery.isLoading
+                ? "Reading wallet balance..."
+                : usdtBalanceQuery.isError
+                  ? "Balance unavailable right now."
+                  : "Balance refreshes when the profile page regains focus."}
+          </p>
         </article>
 
         <article className={`${panelClass} rounded-xl p-6 lg:p-7`}>
