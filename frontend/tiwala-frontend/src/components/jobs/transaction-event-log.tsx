@@ -55,6 +55,10 @@ const EVENT_NAMES: EventName[] = [
   "DisputeResolved",
 ];
 
+const ZERO_BLOCK = BigInt(0);
+const LOG_BLOCK_RANGE = BigInt(9_000);
+const MAX_JOB_CREATED_LOOKBACK_BLOCKS = BigInt(800_000);
+
 function shortHash(value: string) {
   return value.length < 14 ? value : `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
@@ -178,6 +182,10 @@ function toRow(log: ChainLog, timestamp?: number): LogRow {
   }
 }
 
+function minBigInt(a: bigint, b: bigint) {
+  return a < b ? a : b;
+}
+
 export default function TransactionEventLog({
   jobId,
   mode = "dark",
@@ -198,32 +206,79 @@ export default function TransactionEventLog({
     setIsLoading(true);
     setError("");
     try {
-      const eventLogs = (
-        await Promise.all(
-          EVENT_NAMES.map((eventName) =>
-            publicClient.getContractEvents({
+      const latestBlock = await publicClient.getBlockNumber();
+      const oldestSearchBlock =
+        latestBlock > MAX_JOB_CREATED_LOOKBACK_BLOCKS
+          ? latestBlock - MAX_JOB_CREATED_LOOKBACK_BLOCKS
+          : ZERO_BLOCK;
+      let createdAtBlock: bigint | null = null;
+      let searchToBlock = latestBlock;
+
+      while (searchToBlock >= oldestSearchBlock && createdAtBlock === null) {
+        const searchFromBlock =
+          searchToBlock > LOG_BLOCK_RANGE
+            ? searchToBlock - LOG_BLOCK_RANGE + BigInt(1)
+            : ZERO_BLOCK;
+        const fromBlock =
+          searchFromBlock < oldestSearchBlock
+            ? oldestSearchBlock
+            : searchFromBlock;
+        const createdLogs = await publicClient.getContractEvents({
+          address: TIWALA_ESCROW_ADDRESS,
+          abi: tiwalaEscrowAbi,
+          eventName: "JobCreated",
+          args: { jobId },
+          fromBlock,
+          toBlock: searchToBlock,
+        });
+
+        if (createdLogs.length > 0) {
+          createdAtBlock = createdLogs[0].blockNumber;
+          break;
+        }
+
+        if (fromBlock === ZERO_BLOCK || fromBlock === oldestSearchBlock) {
+          break;
+        }
+        searchToBlock = fromBlock - BigInt(1);
+      }
+
+      if (createdAtBlock === null) {
+        setRows([]);
+        return;
+      }
+
+      const eventLogs: ChainLog[] = [];
+      let fromBlock = createdAtBlock;
+      while (fromBlock <= latestBlock) {
+        const toBlock = minBigInt(fromBlock + LOG_BLOCK_RANGE - BigInt(1), latestBlock);
+        const chunkLogs = await Promise.all(
+          EVENT_NAMES.map(async (eventName) => {
+            const logs = await publicClient.getContractEvents({
               address: TIWALA_ESCROW_ADDRESS,
               abi: tiwalaEscrowAbi,
               eventName,
               args: { jobId },
-              fromBlock: BigInt(0),
-              toBlock: "latest",
-            })
-          )
-        )
-      )
-        .flat()
-        .map((log) => ({
-          eventName: log.eventName as EventName,
-          args: log.args as Record<string, unknown>,
-          blockNumber: log.blockNumber,
-          logIndex: log.logIndex,
-          transactionHash: log.transactionHash,
-        }))
-        .sort((a, b) => {
-          if (a.blockNumber === b.blockNumber) return a.logIndex - b.logIndex;
-          return a.blockNumber < b.blockNumber ? -1 : 1;
-        });
+              fromBlock,
+              toBlock,
+            });
+            return logs.map((log) => ({
+              eventName: log.eventName as EventName,
+              args: log.args as Record<string, unknown>,
+              blockNumber: log.blockNumber,
+              logIndex: log.logIndex,
+              transactionHash: log.transactionHash,
+            }));
+          })
+        );
+        eventLogs.push(...chunkLogs.flat());
+        fromBlock = toBlock + BigInt(1);
+      }
+
+      eventLogs.sort((a, b) => {
+        if (a.blockNumber === b.blockNumber) return a.logIndex - b.logIndex;
+        return a.blockNumber < b.blockNumber ? -1 : 1;
+      });
 
       const blockNumbers = [...new Set(eventLogs.map((log) => log.blockNumber))];
       const timestamps = new Map<bigint, number>();
