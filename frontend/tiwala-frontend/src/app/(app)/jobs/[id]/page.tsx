@@ -18,6 +18,7 @@ import JobStatusBadge from "@/components/jobs/job-status-badge";
 import JobTimeline from "@/components/jobs/job-timeline";
 import ActionButtons from "@/components/jobs/action-buttons";
 import DeliverablesPanel from "@/components/jobs/deliverables-panel";
+import TransactionEventLog from "@/components/jobs/transaction-event-log";
 import { getStoredAuthSession } from "@/lib/auth";
 import {
   tiwalaEscrowAbi,
@@ -88,6 +89,7 @@ export default function JobDetailPage() {
     allApproved: boolean;
   } | null>(null);
   const [deliverablesRefreshKey, setDeliverablesRefreshKey] = useState(0);
+  const [transactionLogRefreshKey, setTransactionLogRefreshKey] = useState(0);
 
   const jobId = useMemo(() => {
     if (!params?.id) return null;
@@ -287,6 +289,7 @@ export default function JobDetailPage() {
   const refreshJobDetailState = useCallback(async () => {
     await refetchOnChainJob();
     setDeliverablesRefreshKey((k) => k + 1);
+    setTransactionLogRefreshKey((k) => k + 1);
   }, [refetchOnChainJob]);
 
   const refreshDeliverablesState = useCallback(() => {
@@ -640,6 +643,7 @@ export default function JobDetailPage() {
               onAfterDisputeRecord={async () => {
                 await refetchOnChainJob();
                 setDisputeReloadKey((k) => k + 1);
+                setTransactionLogRefreshKey((k) => k + 1);
               }}
               onAfterTransaction={refreshJobDetailState}
               status={parsed.status}
@@ -677,23 +681,15 @@ export default function JobDetailPage() {
           ) : null
         ) : null}
 
-        {/* Footer nav */}
+        {parsed ? (
+          <TransactionEventLog
+            jobId={parsed.id}
+            mode={theme}
+            refreshKey={transactionLogRefreshKey}
+          />
+        ) : null}
+
         <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
-          <p
-            className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}
-          >
-            Transaction history
-          </p>
-          <h2
-            className={`mt-1.5 text-lg font-bold tracking-tight ${titleClass}`}
-          >
-            Event log
-          </h2>
-          <p className={`mt-2 text-sm ${mutedTextClass}`}>
-            Event-level history from contract logs will be wired once the event
-            ABI is finalized. Current transaction feedback is shown in the
-            action panel above.
-          </p>
           <Link
             className={`${actionChipClass} mt-4 inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium transition hover:border-violet-300/50 hover:bg-violet-500/20`}
             href="/dashboard"

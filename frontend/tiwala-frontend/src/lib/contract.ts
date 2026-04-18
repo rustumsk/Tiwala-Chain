@@ -5,6 +5,69 @@ export const TIWALA_ESCROW_ADDRESS =
 
 export const tiwalaEscrowAbi = [
   {
+    type: "event",
+    name: "JobCreated",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "employer", type: "address", indexed: true },
+      { name: "freelancer", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+      { name: "contractHash", type: "bytes32", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "JobFunded",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "employer", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "WorkSubmitted",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "freelancer", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "PaymentReleased",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "freelancer", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "PaymentRefunded",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "employer", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "DisputeRaised",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "raisedBy", type: "address", indexed: true },
+    ],
+  },
+  {
+    type: "event",
+    name: "DisputeResolved",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true },
+      { name: "resolvedBy", type: "address", indexed: true },
+      { name: "releasedToFreelancer", type: "bool", indexed: false },
+    ],
+  },
+  {
     type: "function",
     name: "createJob",
     stateMutability: "nonpayable",
