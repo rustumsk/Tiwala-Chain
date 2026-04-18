@@ -50,20 +50,20 @@ function getStatusStyle(
   if (s === "accepted")
     return {
       classes: isDark
-        ? "border-emerald-400/20 bg-emerald-400/[0.08] text-emerald-200/85"
+        ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
         : "border-emerald-200 bg-emerald-50 text-emerald-700",
       label: "Accepted",
     };
   if (s === "declined")
     return {
       classes: isDark
-        ? "border-rose-400/20 bg-rose-400/[0.08] text-rose-200/85"
-        : "border-rose-200 bg-rose-50 text-rose-700",
+        ? "border-red-400/30 bg-red-500/10 text-red-300"
+        : "border-red-200 bg-red-50 text-red-700",
       label: "Declined",
     };
   return {
     classes: isDark
-      ? "border-amber-400/20 bg-amber-400/[0.08] text-amber-200/85"
+      ? "border-amber-400/30 bg-amber-500/10 text-amber-300"
       : "border-amber-200 bg-amber-50 text-amber-700",
     label: "Pending",
   };
@@ -75,10 +75,12 @@ export default function OffersPage() {
   const {
     isDarkTheme,
     panelClass,
+    subtlePanelClass,
     mutedTextClass,
     tinyLabelClass,
     titleClass,
     pageClass,
+    actionChipClass,
   } = useThemeStyles();
 
   const profile = useMemo(() => {
@@ -178,27 +180,9 @@ export default function OffersPage() {
     return { pending, accepted, declined, total: offers.length };
   }, [offers]);
 
-  const surfaceClass = isDarkTheme
-    ? "min-h-screen bg-[#0A0A0F] text-white"
-    : "min-h-screen bg-[#f7f7f4] text-[#0d0d10]";
-  const statCardClass = isDarkTheme
-    ? "border border-white/[0.12] bg-white/[0.035]"
-    : "border border-[#d7d7d2] bg-white";
-  const listPanelClass = isDarkTheme
-    ? "border border-white/[0.12] bg-white/[0.035]"
-    : "border border-[#d7d7d2] bg-white";
-  const listDividerClass = isDarkTheme ? "border-white/[0.10]" : "border-[#d9d9d4]";
-  const rowHoverClass = isDarkTheme ? "hover:bg-white/[0.035]" : "hover:bg-[#fbfbf8]";
-  const tabClass = isDarkTheme
-    ? "border border-white/20 bg-transparent text-white/86 hover:bg-white/[0.06]"
-    : "border border-[#bfc0ba] bg-white text-[#0d0d10] hover:bg-[#f4f4ef]";
-  const activeTabClass = isDarkTheme
-    ? "border-white/70 bg-white text-[#0A0A0F]"
-    : "border-[#0d0d10] bg-[#0d0d10] text-white";
-
   if (!isConnected || !profile) {
     return (
-      <div className={`${pageClass} ${surfaceClass}`}>
+      <div className={pageClass}>
         <section
           className={`mx-auto w-full max-w-[1580px] ${panelClass} rounded-2xl px-6 py-10 lg:px-8`}
         >
@@ -230,24 +214,24 @@ export default function OffersPage() {
   }
 
   return (
-    <div className={`${pageClass} ${surfaceClass}`}>
-      <section className="mx-auto w-full max-w-[680px] space-y-7 py-4">
+    <div className={pageClass}>
+      <section className="mx-auto w-full max-w-[1580px] space-y-6">
         {/* Hero */}
-        <header>
-          <p className={`text-[11px] font-bold uppercase tracking-[0.22em] ${isDarkTheme ? "text-white/75" : "text-[#171717]"}`}>
+        <article className={`${panelClass} rounded-2xl px-6 py-6 lg:px-8 lg:py-7`}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
             {isEmployerView ? "Employer" : "Freelancer"}
           </p>
           <h1
-            className={`mt-1 text-2xl font-semibold tracking-tight ${titleClass}`}
+            className={`mt-2 text-3xl font-bold tracking-tight ${titleClass}`}
           >
             {isEmployerView ? "Sent job offers" : "Incoming job offers"}
           </h1>
-          <p className={`mt-1 text-sm leading-6 ${isDarkTheme ? "text-white/72" : "text-[#171717]"}`}>
+          <p className={`mt-1.5 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
             {isEmployerView
-              ? "Review contracts sent to freelancers and track their status."
-              : "Review contracts sent to your wallet and track their status."}
+              ? "Review contracts you have sent to freelancers, and track whether they are pending, accepted, or declined."
+              : "Review contracts that employers have sent to your wallet, run AI analysis, and accept or decline the work."}
           </p>
-        </header>
+        </article>
 
         {/* Summary chips */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -256,19 +240,23 @@ export default function OffersPage() {
               label: "Pending",
               value: counts.pending,
               icon: Clock,
-              border: "border-l-amber-400",
+              border: isDarkTheme
+                ? "border-l-amber-400"
+                : "border-l-amber-500",
               iconBg: isDarkTheme
-                ? "bg-amber-400/10 text-amber-200/85"
-                : "bg-amber-50 text-amber-700",
+                ? "bg-amber-500/15 text-amber-300"
+                : "bg-amber-100 text-amber-600",
             },
             {
               label: "Accepted",
               value: counts.accepted,
               icon: BriefcaseBusiness,
-              border: "border-l-emerald-400",
+              border: isDarkTheme
+                ? "border-l-emerald-400"
+                : "border-l-emerald-500",
               iconBg: isDarkTheme
-                ? "bg-emerald-400/10 text-emerald-200/85"
-                : "bg-emerald-50 text-emerald-700",
+                ? "bg-emerald-500/15 text-emerald-300"
+                : "bg-emerald-100 text-emerald-600",
             },
             {
               label: "Total value",
@@ -276,15 +264,17 @@ export default function OffersPage() {
                 .reduce((s, o) => s + Number(o.amountUsdt), 0)
                 .toLocaleString(undefined, { maximumFractionDigits: 2 })} USDT`,
               icon: CircleDollarSign,
-              border: "border-l-blue-400",
+              border: isDarkTheme
+                ? "border-l-violet-400"
+                : "border-l-violet-500",
               iconBg: isDarkTheme
-                ? "bg-blue-400/10 text-blue-200/85"
-                : "bg-blue-50 text-blue-700",
+                ? "bg-violet-500/15 text-violet-300"
+                : "bg-violet-100 text-violet-600",
             },
           ].map((stat) => (
             <article
               key={stat.label}
-              className={`${statCardClass} rounded-lg border-l-2 ${stat.border} p-5`}
+              className={`${panelClass} rounded-2xl border-l-[3px] ${stat.border} p-5`}
             >
               <div className="flex items-center justify-between">
                 <p
@@ -293,13 +283,13 @@ export default function OffersPage() {
                   {stat.label}
                 </p>
                 <span
-                  className={`inline-flex size-8 items-center justify-center rounded-md ${stat.iconBg}`}
+                  className={`inline-flex size-9 items-center justify-center rounded-xl ${stat.iconBg}`}
                 >
                   <stat.icon size={16} />
                 </span>
               </div>
               <p
-                className={`mt-2 text-2xl font-semibold tabular-nums leading-none ${titleClass}`}
+                className={`mt-3 text-2xl font-bold tabular-nums ${titleClass}`}
               >
                 {stat.value}
               </p>
@@ -321,78 +311,81 @@ export default function OffersPage() {
         ) : null}
 
         {/* Offers list */}
-        <section className={`${listPanelClass} overflow-hidden rounded-lg`}>
-          <div className={`flex items-center justify-between border-b px-5 py-4 ${listDividerClass}`}>
-            <h2
-              className={`text-base font-semibold tracking-tight ${titleClass}`}
-            >
-              {isEmployerView ? "Your job offers" : "Pending job offers"}
-            </h2>
+        <article className={`${panelClass} rounded-2xl p-6 lg:p-8`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p
+                className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}
+              >
+                Offers
+              </p>
+              <h2
+                className={`mt-1.5 text-xl font-bold tracking-tight ${titleClass}`}
+              >
+                {isEmployerView ? "Your job offers" : "Pending job offers"}
+              </h2>
+            </div>
             <span
-              className={`rounded-full border px-3 py-1 text-xs font-semibold tabular-nums ${
-                isDarkTheme
-                  ? "border-white/15 bg-white/[0.03] text-white/80"
-                  : "border-[#c9cac4] bg-[#f7f7f4] text-[#30302d]"
-              }`}
+              className={`${actionChipClass} self-start rounded-full px-3.5 py-1.5 text-xs font-semibold tabular-nums`}
             >
               {filtered.length} of {counts.total}
             </span>
           </div>
 
-          <div className={`border-b px-5 py-3 ${listDividerClass}`}>
-            <div className="flex flex-wrap gap-1.5 text-sm">
-              {(
-                [
-                  { key: "all", label: "All" },
-                  { key: "pending", label: "Pending" },
-                  { key: "accepted", label: "Accepted" },
-                  { key: "declined", label: "Declined" },
-                ] as const
-              ).map((opt) => {
-                const active = statusFilter === opt.key;
-                return (
-                  <button
-                    key={opt.key}
-                    type="button"
-                    onClick={() =>
-                      setStatusFilter(opt.key as OfferStatusFilter)
-                    }
-                    className={`rounded-md px-4 py-2 font-medium transition ${
-                      active ? activeTabClass : tabClass
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
-            </div>
+          {/* Filters */}
+          <div className="mt-5 flex flex-wrap gap-2 text-xs">
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "pending", label: "Pending" },
+                { key: "accepted", label: "Accepted" },
+                { key: "declined", label: "Declined" },
+              ] as const
+            ).map((opt) => {
+              const active = statusFilter === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() =>
+                    setStatusFilter(opt.key as OfferStatusFilter)
+                  }
+                  className={`rounded-full px-3.5 py-1.5 font-medium transition ${
+                    active
+                      ? isDarkTheme
+                        ? "border border-violet-300/60 bg-violet-500/25 text-violet-50"
+                        : "border border-violet-400 bg-violet-100 text-violet-800"
+                      : isDarkTheme
+                        ? "border border-white/10 bg-white/[0.02] text-white/65 hover:border-violet-300/30 hover:bg-violet-500/10"
+                        : "border border-[#e1e4f0] bg-white text-[#555a6b] hover:border-violet-300 hover:bg-violet-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
 
           {isLoading ? (
-            <div className={`divide-y ${listDividerClass}`}>
+            <div className="mt-6 space-y-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="px-5 py-5">
-                  <div
-                    className={`h-10 animate-pulse rounded-lg ${
-                      isDarkTheme ? "bg-white/[0.05]" : "bg-gray-200"
-                    }`}
-                  />
-                </div>
+                <div
+                  key={i}
+                  className={`h-20 animate-pulse rounded-xl ${subtlePanelClass}`}
+                />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div
-              className="flex flex-col items-center gap-4 px-5 py-14 text-center"
+              className={`mt-6 flex flex-col items-center gap-5 rounded-2xl py-14 ${subtlePanelClass}`}
             >
               <span
-                className={`inline-flex size-12 items-center justify-center rounded-full ${
-                  isDarkTheme ? "bg-white/[0.04] text-white/45" : "bg-white text-gray-400"
-                }`}
+                className={`inline-flex size-16 items-center justify-center rounded-2xl ${isDarkTheme ? "bg-violet-500/10" : "bg-violet-50"}`}
               >
-                <Inbox size={22} />
+                <Inbox size={28} className="text-violet-400/60" />
               </span>
-              <div>
-                <p className={`text-sm font-semibold ${titleClass}`}>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${titleClass}`}>
                   No offers found
                 </p>
                 <p
@@ -405,7 +398,7 @@ export default function OffersPage() {
               </div>
             </div>
           ) : (
-            <div className={`divide-y ${listDividerClass}`}>
+            <div className="mt-6 space-y-3">
               {filtered.map((offer) => {
                 const style = getStatusStyle(offer.status, isDarkTheme);
                 return (
@@ -413,57 +406,64 @@ export default function OffersPage() {
                     key={offer.id}
                     type="button"
                     onClick={() => router.push(`/offers/${offer.id}`)}
-                    className={`group grid w-full grid-cols-1 gap-3 px-5 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center ${rowHoverClass}`}
+                    className={`${subtlePanelClass} group flex w-full items-center gap-4 rounded-xl px-5 py-4 text-left transition-all duration-200 hover:border-violet-300/40 ${isDarkTheme ? "hover:bg-violet-500/[0.04]" : "hover:bg-violet-50/40"}`}
                   >
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <p
-                          className={`min-w-0 truncate text-base font-semibold ${titleClass}`}
-                        >
-                          {offer.title || `Offer #${offer.id}`}
-                        </p>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className={`truncate text-sm font-semibold ${titleClass}`}
+                      >
+                        {offer.title || `Offer #${offer.id}`}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span
-                          className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${style.classes}`}
+                          className={`text-xs tabular-nums ${mutedTextClass}`}
                         >
-                          {style.label}
+                          {isEmployerView
+                            ? shortAddr(offer.freelancerWallet)
+                            : shortAddr(offer.employerWallet)}
+                        </span>
+                        <span
+                          className={`text-xs ${isDarkTheme ? "text-white/20" : "text-[#d0d3de]"}`}
+                        >
+                          |
+                        </span>
+                        <span
+                          className={`text-xs font-medium tabular-nums ${titleClass}`}
+                        >
+                          {offer.amountUsdt.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          USDT
+                        </span>
+                        <span
+                          className={`text-xs ${isDarkTheme ? "text-white/20" : "text-[#d0d3de]"}`}
+                        >
+                          |
+                        </span>
+                        <span
+                          className={`text-xs ${mutedTextClass}`}
+                        >
+                          {relativeTime(offer.createdAt)}
                         </span>
                       </div>
-                      <p
-                        className={`mt-1 text-xs tabular-nums ${isDarkTheme ? "text-white/55" : "text-[#30302d]"}`}
-                      >
-                        {isEmployerView
-                          ? shortAddr(offer.freelancerWallet)
-                          : shortAddr(offer.employerWallet)}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
-                      <p className={`text-sm font-semibold tabular-nums ${titleClass}`}>
-                        {offer.amountUsdt.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })}{" "}
-                        USDT
-                      </p>
-                      <p className={`mt-0 text-[11px] sm:mt-1 ${mutedTextClass}`}>
-                        {relativeTime(offer.createdAt)}
-                      </p>
                     </div>
 
                     <span
-                      className={`hidden size-8 shrink-0 items-center justify-center rounded-md border transition sm:inline-flex ${
-                        isDarkTheme
-                          ? "border-white/15 text-white/45 group-hover:text-white/75"
-                          : "border-[#bfc0ba] text-[#30302d] group-hover:bg-[#f4f4ef]"
-                      }`}
+                      className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[11px] font-medium ${style.classes}`}
                     >
-                      <ArrowUpRight size={15} />
+                      {style.label}
                     </span>
+
+                    <ArrowUpRight
+                      size={16}
+                      className={`shrink-0 transition ${isDarkTheme ? "text-white/20 group-hover:text-violet-300" : "text-[#c8cbda] group-hover:text-violet-500"}`}
+                    />
                   </button>
                 );
               })}
             </div>
           )}
-        </section>
+        </article>
       </section>
     </div>
   );
