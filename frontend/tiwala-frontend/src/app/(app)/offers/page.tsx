@@ -180,21 +180,21 @@ export default function OffersPage() {
 
   const surfaceClass = isDarkTheme
     ? "min-h-screen bg-[#0A0A0F] text-white"
-    : "min-h-screen bg-gray-50 text-[#141621]";
+    : "min-h-screen bg-[#f7f7f4] text-[#0d0d10]";
   const statCardClass = isDarkTheme
-    ? "border border-white/[0.12] bg-white/[0.025]"
-    : "border border-gray-200 bg-white";
-  const listDividerClass = isDarkTheme ? "border-white/[0.10]" : "border-gray-200";
-  const rowHoverClass = isDarkTheme ? "hover:bg-white/[0.025]" : "hover:bg-white";
-  const tabWrapClass = isDarkTheme
-    ? "border border-white/[0.10] bg-white/[0.025]"
-    : "border border-gray-200 bg-white";
+    ? "border border-white/[0.12] bg-white/[0.035]"
+    : "border border-[#d7d7d2] bg-white";
+  const listPanelClass = isDarkTheme
+    ? "border border-white/[0.12] bg-white/[0.035]"
+    : "border border-[#d7d7d2] bg-white";
+  const listDividerClass = isDarkTheme ? "border-white/[0.10]" : "border-[#d9d9d4]";
+  const rowHoverClass = isDarkTheme ? "hover:bg-white/[0.035]" : "hover:bg-[#fbfbf8]";
+  const tabClass = isDarkTheme
+    ? "border border-white/20 bg-transparent text-white/86 hover:bg-white/[0.06]"
+    : "border border-[#bfc0ba] bg-white text-[#0d0d10] hover:bg-[#f4f4ef]";
   const activeTabClass = isDarkTheme
-    ? "bg-white text-[#0A0A0F]"
-    : "bg-[#11131b] text-white";
-  const inactiveTabClass = isDarkTheme
-    ? "text-white/58 hover:bg-white/[0.06] hover:text-white"
-    : "text-gray-600 hover:bg-gray-100 hover:text-gray-950";
+    ? "border-white/70 bg-white text-[#0A0A0F]"
+    : "border-[#0d0d10] bg-[#0d0d10] text-white";
 
   if (!isConnected || !profile) {
     return (
@@ -231,23 +231,23 @@ export default function OffersPage() {
 
   return (
     <div className={`${pageClass} ${surfaceClass}`}>
-      <section className="mx-auto w-full max-w-[1580px] space-y-6">
+      <section className="mx-auto w-full max-w-[680px] space-y-7 py-4">
         {/* Hero */}
-        <article className={`${panelClass} rounded-2xl px-6 py-6 lg:px-8 lg:py-7`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-500/80">
+        <header>
+          <p className={`text-[11px] font-bold uppercase tracking-[0.22em] ${isDarkTheme ? "text-white/75" : "text-[#171717]"}`}>
             {isEmployerView ? "Employer" : "Freelancer"}
           </p>
           <h1
-            className={`mt-2 text-3xl font-bold tracking-tight ${titleClass}`}
+            className={`mt-1 text-2xl font-semibold tracking-tight ${titleClass}`}
           >
             {isEmployerView ? "Sent job offers" : "Incoming job offers"}
           </h1>
-          <p className={`mt-1.5 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
+          <p className={`mt-1 text-sm leading-6 ${isDarkTheme ? "text-white/72" : "text-[#171717]"}`}>
             {isEmployerView
-              ? "Review contracts you have sent to freelancers, and track whether they are pending, accepted, or declined."
-              : "Review contracts that employers have sent to your wallet, run AI analysis, and accept or decline the work."}
+              ? "Review contracts sent to freelancers and track their status."
+              : "Review contracts sent to your wallet and track their status."}
           </p>
-        </article>
+        </header>
 
         {/* Summary chips */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -284,7 +284,7 @@ export default function OffersPage() {
           ].map((stat) => (
             <article
               key={stat.label}
-              className={`${statCardClass} rounded-2xl border-l-[3px] ${stat.border} p-5`}
+              className={`${statCardClass} rounded-lg border-l-2 ${stat.border} p-5`}
             >
               <div className="flex items-center justify-between">
                 <p
@@ -293,13 +293,13 @@ export default function OffersPage() {
                   {stat.label}
                 </p>
                 <span
-                  className={`inline-flex size-8 items-center justify-center rounded-full ${stat.iconBg}`}
+                  className={`inline-flex size-8 items-center justify-center rounded-md ${stat.iconBg}`}
                 >
                   <stat.icon size={16} />
                 </span>
               </div>
               <p
-                className={`mt-3 text-2xl font-semibold tabular-nums ${titleClass}`}
+                className={`mt-2 text-2xl font-semibold tabular-nums leading-none ${titleClass}`}
               >
                 {stat.value}
               </p>
@@ -321,25 +321,26 @@ export default function OffersPage() {
         ) : null}
 
         {/* Offers list */}
-        <section className="space-y-5">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p
-                className={`text-[11px] uppercase tracking-[0.18em] ${tinyLabelClass}`}
-              >
-                Offers
-              </p>
-              <h2
-                className={`mt-1.5 text-xl font-semibold tracking-tight ${titleClass}`}
-              >
-                {isEmployerView ? "Your job offers" : "Pending job offers"}
-              </h2>
-              <p className={`mt-1 text-xs ${mutedTextClass}`}>
-                {filtered.length} of {counts.total} shown
-              </p>
-            </div>
+        <section className={`${listPanelClass} overflow-hidden rounded-lg`}>
+          <div className={`flex items-center justify-between border-b px-5 py-4 ${listDividerClass}`}>
+            <h2
+              className={`text-base font-semibold tracking-tight ${titleClass}`}
+            >
+              {isEmployerView ? "Your job offers" : "Pending job offers"}
+            </h2>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold tabular-nums ${
+                isDarkTheme
+                  ? "border-white/15 bg-white/[0.03] text-white/80"
+                  : "border-[#c9cac4] bg-[#f7f7f4] text-[#30302d]"
+              }`}
+            >
+              {filtered.length} of {counts.total}
+            </span>
+          </div>
 
-            <div className={`flex w-fit flex-wrap gap-1 rounded-full p-1 text-xs ${tabWrapClass}`}>
+          <div className={`border-b px-5 py-3 ${listDividerClass}`}>
+            <div className="flex flex-wrap gap-1.5 text-sm">
               {(
                 [
                   { key: "all", label: "All" },
@@ -356,8 +357,8 @@ export default function OffersPage() {
                     onClick={() =>
                       setStatusFilter(opt.key as OfferStatusFilter)
                     }
-                    className={`rounded-full px-3.5 py-1.5 font-medium transition ${
-                      active ? activeTabClass : inactiveTabClass
+                    className={`rounded-md px-4 py-2 font-medium transition ${
+                      active ? activeTabClass : tabClass
                     }`}
                   >
                     {opt.label}
@@ -370,7 +371,7 @@ export default function OffersPage() {
           {isLoading ? (
             <div className={`divide-y ${listDividerClass}`}>
               {[0, 1, 2].map((i) => (
-                <div key={i} className="py-5">
+                <div key={i} className="px-5 py-5">
                   <div
                     className={`h-10 animate-pulse rounded-lg ${
                       isDarkTheme ? "bg-white/[0.05]" : "bg-gray-200"
@@ -381,7 +382,7 @@ export default function OffersPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div
-              className={`flex flex-col items-center gap-4 border-y py-14 text-center ${listDividerClass}`}
+              className="flex flex-col items-center gap-4 px-5 py-14 text-center"
             >
               <span
                 className={`inline-flex size-12 items-center justify-center rounded-full ${
@@ -412,12 +413,12 @@ export default function OffersPage() {
                     key={offer.id}
                     type="button"
                     onClick={() => router.push(`/offers/${offer.id}`)}
-                    className={`group grid w-full grid-cols-1 gap-3 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center ${rowHoverClass}`}
+                    className={`group grid w-full grid-cols-1 gap-3 px-5 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center ${rowHoverClass}`}
                   >
-                    <div className="min-w-0 px-1 sm:px-0">
+                    <div className="min-w-0">
                       <div className="flex min-w-0 flex-wrap items-center gap-2">
                         <p
-                          className={`min-w-0 truncate text-sm font-semibold ${titleClass}`}
+                          className={`min-w-0 truncate text-base font-semibold ${titleClass}`}
                         >
                           {offer.title || `Offer #${offer.id}`}
                         </p>
@@ -428,7 +429,7 @@ export default function OffersPage() {
                         </span>
                       </div>
                       <p
-                        className={`mt-1 text-xs tabular-nums ${mutedTextClass}`}
+                        className={`mt-1 text-xs tabular-nums ${isDarkTheme ? "text-white/55" : "text-[#30302d]"}`}
                       >
                         {isEmployerView
                           ? shortAddr(offer.freelancerWallet)
@@ -436,7 +437,7 @@ export default function OffersPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 px-1 sm:block sm:px-0 sm:text-right">
+                    <div className="flex items-center justify-between gap-4 sm:block sm:text-right">
                       <p className={`text-sm font-semibold tabular-nums ${titleClass}`}>
                         {offer.amountUsdt.toLocaleString(undefined, {
                           maximumFractionDigits: 2,
@@ -448,14 +449,15 @@ export default function OffersPage() {
                       </p>
                     </div>
 
-                    <ArrowUpRight
-                      size={15}
-                      className={`hidden shrink-0 transition sm:block ${
+                    <span
+                      className={`hidden size-8 shrink-0 items-center justify-center rounded-md border transition sm:inline-flex ${
                         isDarkTheme
-                          ? "text-white/22 group-hover:text-white/60"
-                          : "text-gray-300 group-hover:text-gray-600"
+                          ? "border-white/15 text-white/45 group-hover:text-white/75"
+                          : "border-[#bfc0ba] text-[#30302d] group-hover:bg-[#f4f4ef]"
                       }`}
-                    />
+                    >
+                      <ArrowUpRight size={15} />
+                    </span>
                   </button>
                 );
               })}
