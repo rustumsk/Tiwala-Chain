@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import {
   useAccount,
@@ -32,6 +32,7 @@ type ActionButtonsProps = {
   /** Required when "Raise dispute" is available (review stage). */
   contractHash: string;
   onAfterDisputeRecord?: () => void | Promise<void>;
+  onAfterTransaction?: () => void | Promise<void>;
 };
 
 type ActionDef = {
@@ -55,6 +56,7 @@ export default function ActionButtons({
   canSubmitWorkOnChain = true,
   contractHash,
   onAfterDisputeRecord,
+  onAfterTransaction,
 }: ActionButtonsProps) {
   const config = useConfig();
   const { address } = useAccount();
@@ -80,6 +82,11 @@ export default function ActionButtons({
     details: string;
   } | null>(null);
   const isDarkTheme = mode === "dark";
+
+  useEffect(() => {
+    if (!receipt.isSuccess || !txHash) return;
+    void onAfterTransaction?.();
+  }, [onAfterTransaction, receipt.isSuccess, txHash]);
 
   const allowanceQuery = useReadContract({
     address: USDT_SEPOLIA_ADDRESS,
@@ -375,7 +382,15 @@ export default function ActionButtons({
               : "border-violet-200 bg-violet-50 text-violet-700"
           }`}
         >
-          Transaction sent: {txHash}
+          Transaction sent:{" "}
+          <a
+            href={`https://sepolia.etherscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noreferrer"
+            className="break-all underline underline-offset-2"
+          >
+            {txHash}
+          </a>
         </p>
       ) : null}
 

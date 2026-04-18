@@ -24,6 +24,7 @@ type DeliverablesPanelProps = {
   canActAsFreelancer: boolean;
   canSubmit: boolean;
   submitLockReason?: string | null;
+  onAfterChange?: () => void | Promise<void>;
 };
 
 function statusTone(isDark: boolean, status: string) {
@@ -56,6 +57,7 @@ export default function DeliverablesPanel({
   canActAsFreelancer,
   canSubmit,
   submitLockReason = null,
+  onAfterChange,
 }: DeliverablesPanelProps) {
   const { address } = useAccount();
   const { isDarkTheme } = useAppTheme();
@@ -455,14 +457,14 @@ export default function DeliverablesPanel({
                           note: note.trim() ? note.trim() : undefined,
                           links: cleanLinks,
                           files,
-                          // when editingDeliverableId is set, backend updates that row instead of creating a new one
                           deliverableId: editingDeliverableId ?? undefined,
-                        } as any);
+                        });
                         setNote("");
                         setLinks([""]);
                         setFiles([]);
                         setEditingDeliverableId(null);
                         await refresh();
+                        await onAfterChange?.();
                         notifySuccess(
                           editingDeliverableId
                             ? "Submission updated."
@@ -768,6 +770,7 @@ export default function DeliverablesPanel({
                     }
                     setConfirmAction(null);
                     await refresh();
+                    await onAfterChange?.();
                   } catch (err) {
                     setError(err instanceof Error ? err.message : "Review action failed.");
                     setConfirmAction(null);
@@ -790,4 +793,3 @@ export default function DeliverablesPanel({
     </article>
   );
 }
-

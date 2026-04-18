@@ -40,12 +40,12 @@ export async function submitDeliverableByHash(input: {
   note?: string;
   links: string[];
   files: File[];
+  deliverableId?: number;
 }): Promise<Deliverable> {
   const formData = new FormData();
   if (input.note) formData.append("note", input.note);
-  // Optional: target an existing deliverable for updates (revision flow)
-  if (typeof (input as any).deliverableId === "number") {
-    formData.append("deliverableId", String((input as any).deliverableId));
+  if (typeof input.deliverableId === "number") {
+    formData.append("deliverableId", String(input.deliverableId));
   }
   formData.append("linksJson", JSON.stringify(input.links));
   input.files.forEach((file) => formData.append("files", file));

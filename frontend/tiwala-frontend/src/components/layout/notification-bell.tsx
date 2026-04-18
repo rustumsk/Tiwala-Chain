@@ -111,13 +111,22 @@ export default function NotificationBell({
     }
 
     const data = notification.data ?? {};
+    const jobId = Number(data.jobId ?? "");
     const postingId = Number(data.postingId ?? "");
+    const offerTypes = new Set([
+      "offer_sent",
+      "offer_from_proposal",
+      "offer_accepted",
+      "offer_declined",
+    ]);
     const employerTypes = new Set([
       "proposal_received",
       "proposal_withdrawn",
     ]);
 
-    if (Number.isFinite(postingId) && postingId > 0) {
+    if (offerTypes.has(notification.type)) {
+      router.push(Number.isFinite(jobId) && jobId > 0 ? `/offers/${jobId}` : "/offers");
+    } else if (Number.isFinite(postingId) && postingId > 0) {
       if (
         profile?.role === "employer" ||
         (profile?.role === "both" && employerTypes.has(notification.type))
@@ -126,8 +135,6 @@ export default function NotificationBell({
       } else {
         router.push(`/postings/${postingId}`);
       }
-    } else if (notification.type === "offer_from_proposal") {
-      router.push("/offers");
     }
 
     setOpen(false);

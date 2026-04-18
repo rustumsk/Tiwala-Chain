@@ -87,4 +87,7 @@ export const MARKETPLACE_NOTIFICATION_LABELS: Record<string, string> = {
   proposal_message: "Proposal message",
   proposal_withdrawn: "Proposal withdrawn",
   offer_from_proposal: "Offer created",
+  offer_sent: "Offer received",
+  offer_accepted: "Offer accepted",
+  offer_declined: "Offer declined",
 };

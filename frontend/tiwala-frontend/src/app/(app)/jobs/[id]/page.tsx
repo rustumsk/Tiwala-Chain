@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useAccount, useChainId, useReadContract } from "wagmi";
@@ -87,6 +87,7 @@ export default function JobDetailPage() {
     hasAny: boolean;
     allApproved: boolean;
   } | null>(null);
+  const [deliverablesRefreshKey, setDeliverablesRefreshKey] = useState(0);
 
   const jobId = useMemo(() => {
     if (!params?.id) return null;
@@ -243,7 +244,7 @@ export default function JobDetailPage() {
       }
     }
     void loadDeliverables();
-  }, [address, isDeliverablesJobReady, parsed]);
+  }, [address, deliverablesRefreshKey, isDeliverablesJobReady, parsed]);
 
   useEffect(() => {
     if (!parsed || parsed.status !== 4) {
@@ -282,6 +283,15 @@ export default function JobDetailPage() {
           address.toLowerCase()
     )
   );
+
+  const refreshJobDetailState = useCallback(async () => {
+    await refetchOnChainJob();
+    setDeliverablesRefreshKey((k) => k + 1);
+  }, [refetchOnChainJob]);
+
+  const refreshDeliverablesState = useCallback(() => {
+    setDeliverablesRefreshKey((k) => k + 1);
+  }, []);
 
   if (jobId === null) {
     return (
@@ -631,6 +641,7 @@ export default function JobDetailPage() {
                 await refetchOnChainJob();
                 setDisputeReloadKey((k) => k + 1);
               }}
+              onAfterTransaction={refreshJobDetailState}
               status={parsed.status}
               canSubmitWorkOnChain={canSubmitWorkOnChain}
             />
@@ -660,6 +671,7 @@ export default function JobDetailPage() {
               canActAsEmployer={canActAsEmployer}
               canActAsFreelancer={canActAsFreelancer}
               canSubmit={canSubmitDeliverables}
+              onAfterChange={refreshDeliverablesState}
               submitLockReason={deliverableSubmitLockReason}
             />
           ) : null
