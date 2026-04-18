@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TiwalaChain Frontend
 
-## Getting Started
+The frontend is a Next.js application for employers, freelancers, and moderators. It provides the main product UI for onboarding, marketplace postings, proposals, job offers, escrow job management, contract verification, AI fairness review, deliverables, notifications, and in-app blockchain transaction logs.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 16
+- React 19
+- Tailwind CSS
+- wagmi, viem, RainbowKit
+- TanStack Query
+- sonner toast notifications
+- lucide-react icons
+
+## Important Paths
+
+```text
+src/
+|-- app/                 Next.js App Router routes and API proxy routes
+|-- components/          Reusable UI, layout, blockchain, job, marketplace, AI components
+|-- hooks/               Shared React hooks
+|-- lib/                 API clients, contract config, auth, notifications, utilities
+|-- resource/            Static app resources
+`-- types/               Shared TypeScript types
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Notable files:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/lib/contract.ts` - escrow contract address, ABI, status labels
+- `src/lib/usdt.ts` - Sepolia USDT address and ABI
+- `src/lib/jobs.ts` - job/offer API client
+- `src/lib/proposals.ts` - proposal and marketplace API client
+- `src/components/jobs/transaction-event-log.tsx` - in-app blockchain event log
+- `src/components/layout/route-shell.tsx` - authenticated app shell
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Create or edit `.env`:
 
-To learn more about Next.js, take a look at the following resources:
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:5067
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=tiwalachain-dev-walletconnect-id
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`NEXT_PUBLIC_*` values are exposed to the browser.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts
 
-## Deploy on Vercel
+```powershell
+npm install
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Useful checks:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```powershell
+npx tsc --noEmit --pretty false
+```
+
+## Local Development
+
+Start the backend first, then run:
+
+```powershell
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+The app is configured for Sepolia. Users need a supported wallet and Sepolia selected for on-chain actions.
+
+## Feature Areas
+
+- Public landing and onboarding
+- Wallet authentication and local session persistence
+- Employer dashboard and freelancer dashboard
+- Job posting marketplace
+- Proposal submission, messaging, shortlist/select/reject flows
+- Offer creation, acceptance, and decline
+- Contract upload, hashing, verification, and AI evaluation
+- Deliverable submission and employer review
+- Escrow actions through the deployed smart contract
+- Notifications and unread counts
+- Per-job blockchain transaction history with Etherscan links
+
+## Deployment Notes
+
+- Set `NEXT_PUBLIC_API_BASE_URL` to the deployed backend API.
+- Set a real WalletConnect project ID for production.
+- Make sure the backend CORS settings allow the deployed frontend origin.
+- The currently configured escrow and USDT addresses live in `src/lib/contract.ts` and `src/lib/usdt.ts`.
