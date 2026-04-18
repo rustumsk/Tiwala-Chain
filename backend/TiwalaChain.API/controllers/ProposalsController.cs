@@ -690,6 +690,9 @@ public sealed partial class ProposalsController : ControllerBase
         posting.ClosedAt = DateTime.UtcNow;
         posting.UpdatedAt = DateTime.UtcNow;
         AddSystemMessage(proposal.Id, "A formal offer was created from this proposal.");
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        proposal.ConvertedJobId = job.Id;
         AddNotification(
             proposal.FreelancerWallet,
             "offer_from_proposal",
@@ -698,10 +701,8 @@ public sealed partial class ProposalsController : ControllerBase
             {
                 ["postingId"] = posting.Id,
                 ["proposalId"] = proposal.Id,
+                ["jobId"] = job.Id,
             });
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        proposal.ConvertedJobId = job.Id;
         await _dbContext.SaveChangesAsync(cancellationToken);
         return Ok(ToJobResponse(job));
     }

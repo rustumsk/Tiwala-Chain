@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Collections.Frozen;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 [ApiController]
@@ -79,6 +80,16 @@ public sealed class JobsController : ControllerBase
         };
 
         _dbContext.Jobs.Add(job);
+        await _dbContext.SaveChangesAsync();
+
+        AddNotification(
+            job.FreelancerWallet,
+            "offer_sent",
+            $"New job offer received: \"{job.Title}\".",
+            new Dictionary<string, object?>
+            {
+                ["jobId"] = job.Id,
+            });
         await _dbContext.SaveChangesAsync();
 
         return Ok(ToJobResponse(job));
@@ -500,6 +511,14 @@ public sealed class JobsController : ControllerBase
 
         job.Status = JobStatus.Accepted;
         job.UpdatedAt = DateTime.UtcNow;
+        AddNotification(
+            job.EmployerWallet,
+            "offer_accepted",
+            $"Your offer \"{job.Title}\" was accepted.",
+            new Dictionary<string, object?>
+            {
+                ["jobId"] = job.Id,
+            });
         await _dbContext.SaveChangesAsync();
 
         return Ok(ToJobResponse(job));
@@ -533,6 +552,14 @@ public sealed class JobsController : ControllerBase
 
         job.Status = JobStatus.Declined;
         job.UpdatedAt = DateTime.UtcNow;
+        AddNotification(
+            job.EmployerWallet,
+            "offer_declined",
+            $"Your offer \"{job.Title}\" was declined.",
+            new Dictionary<string, object?>
+            {
+                ["jobId"] = job.Id,
+            });
         await _dbContext.SaveChangesAsync();
 
         return Ok(ToJobResponse(job));
@@ -555,6 +582,21 @@ public sealed class JobsController : ControllerBase
     {
         var w = wallet.ToLowerInvariant();
         return job.EmployerWallet == w || job.FreelancerWallet == w;
+    }
+
+    private void AddNotification(
+        string recipientWallet,
+        string type,
+        string message,
+        IReadOnlyDictionary<string, object?>? data = null)
+    {
+        _dbContext.Notifications.Add(new Notification
+        {
+            RecipientWallet = recipientWallet,
+            Type = type,
+            Message = message.Length > 500 ? message[..500] : message,
+            DataJson = data is null ? null : JsonSerializer.Serialize(data),
+        });
     }
 
     private static JobResponse ToJobResponse(Job job)
