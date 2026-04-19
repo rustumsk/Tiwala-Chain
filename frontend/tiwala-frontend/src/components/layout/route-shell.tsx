@@ -11,6 +11,7 @@ import {
   FileText,
   Home,
   LayoutDashboard,
+  Menu,
   Moon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -19,6 +20,7 @@ import {
   ShieldCheck,
   Sun,
   Users,
+  X,
 } from "lucide-react";
 import AppIcon from "@/resource/icon.png";
 import WalletButton from "@/components/blockchain/wallet-button";
@@ -257,6 +259,7 @@ export default function RouteShell({ children }: RouteShellProps) {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem("tiwala:sidebar-hidden") === "true";
   });
+  const [publicMobileNavOpen, setPublicMobileNavOpen] = useState(false);
 
   const isHome = pathname === "/";
   const isOnboarding = pathname === "/onboarding";
@@ -530,6 +533,10 @@ export default function RouteShell({ children }: RouteShellProps) {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    setPublicMobileNavOpen(false);
+  }, [pathname]);
+
   const themeToggleButton = (
     <button
       type="button"
@@ -557,7 +564,21 @@ export default function RouteShell({ children }: RouteShellProps) {
                 : "border-[#e5e8f2] bg-[#f8f9fc]"
             }`}
           >
-            <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6 md:px-12">
+            <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-12">
+              <button
+                type="button"
+                onClick={() => setPublicMobileNavOpen(true)}
+                className={`inline-flex size-10 shrink-0 items-center justify-center rounded-full border transition md:hidden ${
+                  isDarkTheme
+                    ? "border-white/15 bg-white/[0.04] text-white hover:border-violet-300/40 hover:bg-violet-500/15"
+                    : "border-[#dfe3ef] bg-white text-[#252b3b] hover:border-violet-300 hover:bg-violet-50"
+                }`}
+                aria-label="Open navigation menu"
+                aria-expanded={publicMobileNavOpen}
+              >
+                <Menu size={19} />
+              </button>
+
               <Link className="group inline-flex shrink-0 items-center gap-2.5" href="/">
                 <span
                   className={`inline-flex size-8 items-center justify-center rounded-lg ${
@@ -655,7 +676,7 @@ export default function RouteShell({ children }: RouteShellProps) {
                     <span className="hidden sm:inline">Dashboard</span>
                   </Link>
                 ) : null}
-                {themeToggleButton}
+                <span className="hidden sm:inline-flex">{themeToggleButton}</span>
                 <WalletButton
                   buttonClassName={`rounded-full border px-4 py-2 text-sm transition-all duration-200 ${
                     isDarkTheme
@@ -676,6 +697,151 @@ export default function RouteShell({ children }: RouteShellProps) {
               </div>
             </nav>
           </header>
+          {publicMobileNavOpen ? (
+            <div className="fixed inset-0 z-50 md:hidden">
+              <button
+                type="button"
+                aria-label="Close navigation menu"
+                className="absolute inset-0 bg-black/55"
+                onClick={() => setPublicMobileNavOpen(false)}
+              />
+              <aside
+                className={`relative flex h-full w-[82vw] max-w-[320px] flex-col border-r px-5 py-5 shadow-2xl ${
+                  isDarkTheme
+                    ? "border-white/10 bg-[#10081d] text-white"
+                    : "border-[#e2e6f0] bg-white text-[#161a27]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-2.5"
+                    onClick={() => setPublicMobileNavOpen(false)}
+                  >
+                    <span
+                      className={`inline-flex size-8 items-center justify-center rounded-lg ${
+                        isDarkTheme ? "bg-violet-500/20" : "bg-violet-100"
+                      }`}
+                    >
+                      <Image src={AppIcon} alt="TiwalaChain icon" className="h-5 w-5" />
+                    </span>
+                    <span className="text-sm font-semibold">TiwalaChain</span>
+                  </Link>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={() => setPublicMobileNavOpen(false)}
+                    className={`inline-flex size-9 items-center justify-center rounded-full transition ${
+                      isDarkTheme
+                        ? "text-white/60 hover:bg-white/10 hover:text-white"
+                        : "text-[#5f6678] hover:bg-[#f0f2f7] hover:text-[#171a24]"
+                    }`}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className="mt-7 flex flex-col gap-1">
+                  {isHome ? (
+                    homeSections.map((link) =>
+                      link.kind === "section" ? (
+                        <button
+                          key={link.href}
+                          type="button"
+                          onClick={() => {
+                            scrollToSection(link.href);
+                            setPublicMobileNavOpen(false);
+                          }}
+                          className={`rounded-xl px-3 py-3 text-left text-sm font-medium transition ${
+                            isDarkTheme
+                              ? "text-white/72 hover:bg-white/[0.08] hover:text-white"
+                              : "text-[#252b3b] hover:bg-violet-50 hover:text-violet-800"
+                          }`}
+                        >
+                          {link.label}
+                        </button>
+                      ) : (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
+                            isDarkTheme
+                              ? "text-white/72 hover:bg-white/[0.08] hover:text-white"
+                              : "text-[#252b3b] hover:bg-violet-50 hover:text-violet-800"
+                          }`}
+                          onClick={() => setPublicMobileNavOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      )
+                    )
+                  ) : (
+                    <>
+                      <Link
+                        href="/"
+                        className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
+                          isDarkTheme
+                            ? "text-white/72 hover:bg-white/[0.08] hover:text-white"
+                            : "text-[#252b3b] hover:bg-violet-50 hover:text-violet-800"
+                        }`}
+                        onClick={() => setPublicMobileNavOpen(false)}
+                      >
+                        Back to Home
+                      </Link>
+                      <Link
+                        href="/public"
+                        className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
+                          isDarkTheme
+                            ? "text-white/72 hover:bg-white/[0.08] hover:text-white"
+                            : "text-[#252b3b] hover:bg-violet-50 hover:text-violet-800"
+                        }`}
+                        onClick={() => setPublicMobileNavOpen(false)}
+                      >
+                        Public Services
+                      </Link>
+                    </>
+                  )}
+                </div>
+
+                <div className={`mt-6 h-px ${isDarkTheme ? "bg-white/10" : "bg-[#e7eaf2]"}`} />
+
+                <div className="mt-5 flex flex-col gap-3">
+                  {isAuthenticated ? (
+                    <Link
+                      href={authenticatedDestination}
+                      className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+                        isDarkTheme
+                          ? "border-violet-300/30 bg-violet-500/10 text-violet-200"
+                          : "border-violet-300 bg-violet-50 text-violet-800"
+                      }`}
+                      onClick={() => setPublicMobileNavOpen(false)}
+                    >
+                      <LayoutDashboard size={16} />
+                      Dashboard
+                    </Link>
+                  ) : null}
+                  {themeToggleButton}
+                  <WalletButton
+                    buttonClassName={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 ${
+                      isDarkTheme
+                        ? "border-white/20 bg-transparent text-white hover:border-white/60"
+                        : "border-[#d8dceb] bg-white text-[#262b3b] hover:border-violet-300"
+                    }`}
+                    connectedClassName={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 ${
+                      isDarkTheme
+                        ? "border-violet-400/40 bg-violet-500/10 text-violet-300"
+                        : "border-violet-300 bg-violet-100 text-violet-700"
+                    }`}
+                    wrongNetworkClassName={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all duration-200 ${
+                      isDarkTheme
+                        ? "border-red-400/40 bg-red-500/10 text-red-300"
+                        : "border-red-300 bg-red-50 text-red-700"
+                    }`}
+                  />
+                </div>
+              </aside>
+            </div>
+          ) : null}
           {children}
         </div>
       </AppThemeProvider>
