@@ -204,6 +204,7 @@ function formatTitleFromPath(pathname: string) {
   if (pathname === "/public/postings") return "Public Job Postings";
   if (pathname.startsWith("/public/postings/")) return "Public Posting Detail";
   if (pathname === "/public/contracts") return "Public Contract Tools";
+  if (pathname === "/public/contracts/builder") return "Public Contract Builder";
   if (pathname === "/public/contracts/verify") return "Public Contract Verification";
   if (pathname === "/public/ai-review") return "Public AI Review";
   if (pathname === "/dashboard") return "Dashboard";
