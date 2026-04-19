@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { AlertTriangle, Loader2, Sparkles } from "lucide-react";
+import { AlertTriangle, Download, Loader2, Sparkles } from "lucide-react";
 import FairnessScore from "@/components/ai/fairness-score";
 import ClauseAnalysis from "@/components/ai/clause-analysis";
+import FreeTriesModal from "@/components/public/free-tries-modal";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
 import type { ParsedClause } from "@/lib/ai-parsing";
 import {
   evaluatePublicAiReview,
+  PublicRateLimitError,
   type PublicAiEvaluationResponse,
 } from "@/lib/public-services";
 
@@ -27,6 +29,7 @@ export default function PublicAiReviewPage() {
   const [result, setResult] = useState<PublicAiEvaluationResponse | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showRateLimitModal, setShowRateLimitModal] = useState(false);
 
   const parsedClauses: ParsedClause[] =
     result?.clauses.map((clause) => ({
@@ -52,10 +55,37 @@ export default function PublicAiReviewPage() {
       const response = await evaluatePublicAiReview(file);
       setResult(response);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "AI review failed.");
+      if (submitError instanceof PublicRateLimitError) {
+        setShowRateLimitModal(true);
+      } else {
+        setError(submitError instanceof Error ? submitError.message : "AI review failed.");
+      }
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function downloadSampleContract() {
+    const { Document, Packer, Paragraph, TextRun } = await import("docx");
+    const paragraphs = sampleJobContractText.split("\n").map(
+      (line) =>
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: line || " ",
+              bold: line === "SAMPLE JOB CONTRACT FOR AI TESTING",
+            }),
+          ],
+        })
+    );
+    const docxDocument = new Document({ sections: [{ children: paragraphs }] });
+    const blob = await Packer.toBlob(docxDocument);
+    const url = URL.createObjectURL(blob);
+    const anchor = window.document.createElement("a");
+    anchor.href = url;
+    anchor.download = "sample-job-contract-with-unfair-clauses.docx";
+    anchor.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -106,24 +136,34 @@ export default function PublicAiReviewPage() {
               Anonymous uploads are limited to PDF or DOCX files up to 3 MB.
             </p>
 
-            <button
-              type="button"
-              className={`${actionChipClass} mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold`}
-              disabled={isSubmitting}
-              onClick={() => void handleSubmit()}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Reviewing...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={16} />
-                  Run AI review
-                </>
-              )}
-            </button>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className={`${actionChipClass} inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold`}
+                disabled={isSubmitting}
+                onClick={() => void handleSubmit()}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Reviewing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    Run AI review
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className={`${chipClass} inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition hover:border-violet-300 hover:bg-violet-500/10`}
+                onClick={() => void downloadSampleContract()}
+              >
+                <Download size={16} />
+                Download sample contract
+              </button>
+            </div>
 
             {error ? (
               <div className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -182,6 +222,29 @@ export default function PublicAiReviewPage() {
           </div>
         </section>
       ) : null}
+      <FreeTriesModal
+        open={showRateLimitModal}
+        onClose={() => setShowRateLimitModal(false)}
+        title="AI review free tries used"
+      />
     </div>
   );
 }
+
+const sampleJobContractText = `SAMPLE JOB CONTRACT FOR AI TESTING
+
+This sample document is intentionally written with unfair clauses so visitors can test the public AI contract analyzer.
+
+1. Scope of Work. The Freelancer shall build a landing page, integrate analytics, and deliver editable source files for Client review.
+
+2. Payment. Client may delay payment for any reason and is not required to pay until Client is fully satisfied, even if the work meets the written scope.
+
+3. Revisions. Freelancer must provide unlimited revisions, weekend support, and emergency edits without additional compensation.
+
+4. Intellectual Property. All Freelancer pre-existing templates, tools, notes, methods, and portfolio materials automatically become Client property.
+
+5. Termination. Client may terminate immediately without notice, keep all completed work, and owe no payment for work already performed.
+
+6. Confidentiality. Both parties shall protect confidential information and use it only for this project.
+
+7. Dispute Resolution. Freelancer waives any right to dispute nonpayment, request mediation, or recover fees related to this agreement.`;

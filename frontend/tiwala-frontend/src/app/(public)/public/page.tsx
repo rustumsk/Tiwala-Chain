@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BriefcaseBusiness, FileSearch, Sparkles } from "lucide-react";
+import { BriefcaseBusiness, FilePenLine, FileSearch, Sparkles } from "lucide-react";
 import { useThemeStyles } from "@/hooks/use-theme-styles";
 
 const cards = [
@@ -25,6 +25,13 @@ const cards = [
     description:
       "Run a limited anonymous fairness review and see the top flagged clauses with plain-language reasons.",
     icon: Sparkles,
+  },
+  {
+    href: "/public/contracts/builder",
+    title: "Contract builder",
+    description:
+      "Draft a freelance job contract, preview it, export it, and run a limited AI fairness check.",
+    icon: FilePenLine,
   },
 ];
 
@@ -52,7 +59,7 @@ export default function PublicServicesPage() {
               </h1>
               <p className={`mt-2 max-w-2xl text-sm leading-6 ${mutedTextClass}`}>
                 These routes are public by design: browse open postings, verify a contract hash,
-                and run a limited AI fairness review without wallet onboarding.
+                build a test contract, and run a limited AI fairness review without wallet onboarding.
               </p>
             </div>
           </div>
@@ -63,7 +70,7 @@ export default function PublicServicesPage() {
         </div>
       </section>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-3">
+      <section className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map(({ href, title, description, icon: Icon }) => (
           <Link
             key={href}
