@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 [ApiController]
@@ -19,11 +21,70 @@ public sealed class PublicContractsController : ControllerBase
 
     private readonly AppDbContext _dbContext;
     private readonly IMemoryCache _memoryCache;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public PublicContractsController(AppDbContext dbContext, IMemoryCache memoryCache)
+    public PublicContractsController(
+        AppDbContext dbContext,
+        IMemoryCache memoryCache,
+        IHttpClientFactory httpClientFactory)
     {
         _dbContext = dbContext;
         _memoryCache = memoryCache;
+        _httpClientFactory = httpClientFactory;
+    }
+
+    [EnableRateLimiting("public-contract-builder")]
+    [HttpPost("evaluate")]
+    public async Task<IActionResult> Evaluate(
+        [FromBody] PublicContractEvaluationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Text))
+        {
+            return BadRequest(new { error = "Contract text is required before running AI review." });
+        }
+
+        if (request.Text.Length > 60000)
+        {
+            return BadRequest(new { error = "Anonymous contract builder reviews support up to 60,000 characters." });
+        }
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient("AiService");
+            using var upstream = await client.PostAsJsonAsync(
+                "evaluate/text",
+                new { text = request.Text },
+                cancellationToken);
+            var payload = await upstream.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cancellationToken);
+
+            if (!upstream.IsSuccessStatusCode)
+            {
+                var message = payload.ValueKind == JsonValueKind.Object &&
+                              payload.TryGetProperty("detail", out var detail)
+                    ? detail.GetString()
+                    : "AI evaluation is currently unavailable.";
+                return StatusCode((int)upstream.StatusCode, new { error = message });
+            }
+
+            return Ok(payload);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return StatusCode(StatusCodes.Status504GatewayTimeout, new
+            {
+                error = "ai_evaluation_timeout",
+                message = "The AI review service took too long to respond. Please try again later.",
+            });
+        }
+        catch (HttpRequestException)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                error = "ai_evaluation_unavailable",
+                message = "The AI review service is currently unavailable. Please try again later.",
+            });
+        }
     }
 
     [EnableRateLimiting("public-contract-verify")]
@@ -177,6 +238,8 @@ public sealed record PublicContractVerificationResponse(
     PublicContractTrustMetadata? Metadata,
     string Message
 );
+
+public sealed record PublicContractEvaluationRequest(string Text);
 
 public sealed record PublicContractTrustMetadata(
     string Title,
