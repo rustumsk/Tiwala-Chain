@@ -62,6 +62,16 @@ export type PublicAiEvaluationResponse = {
   cached: boolean;
 };
 
+export class PublicRateLimitError extends Error {
+  retryAfterSeconds: number | null;
+
+  constructor(message: string, retryAfterSeconds: number | null = null) {
+    super(message);
+    this.name = "PublicRateLimitError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 type BrowsePublicPostingsInput = {
   q?: string;
   category?: string;
@@ -160,12 +170,57 @@ export async function evaluatePublicAiReview(
     | null;
 
   if (!response.ok) {
-    throw new Error(
+    const message =
       (payload as { message?: string; error?: string } | null)?.message ??
-        (payload as { message?: string; error?: string } | null)?.error ??
-        `Request failed (${response.status}).`
-    );
+      (payload as { message?: string; error?: string } | null)?.error ??
+      `Request failed (${response.status}).`;
+
+    if (response.status === 429) {
+      const retryAfterRaw = response.headers.get("Retry-After");
+      const parsedRetryAfter = retryAfterRaw ? Number(retryAfterRaw) : Number.NaN;
+      throw new PublicRateLimitError(
+        message,
+        Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : null
+      );
+    }
+
+    throw new Error(message);
   }
 
   return payload as PublicAiEvaluationResponse;
+}
+
+export async function evaluatePublicContractText(
+  text: string
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`${API_BASE_URL}/api/public/contracts/evaluate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as
+    | Record<string, unknown>
+    | { error?: string; message?: string }
+    | null;
+
+  if (!response.ok) {
+    const message =
+      (payload as { message?: string; error?: string } | null)?.message ??
+      (payload as { message?: string; error?: string } | null)?.error ??
+      `Request failed (${response.status}).`;
+
+    if (response.status === 429) {
+      const retryAfterRaw = response.headers.get("Retry-After");
+      const parsedRetryAfter = retryAfterRaw ? Number(retryAfterRaw) : Number.NaN;
+      throw new PublicRateLimitError(
+        message,
+        Number.isFinite(parsedRetryAfter) ? parsedRetryAfter : null
+      );
+    }
+
+    throw new Error(message);
+  }
+
+  return payload as Record<string, unknown>;
 }
