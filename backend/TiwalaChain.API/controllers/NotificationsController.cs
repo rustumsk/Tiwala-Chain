@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -36,7 +35,7 @@ public sealed class NotificationsController : ControllerBase
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        return Ok(notifications.Select(ToNotificationResponse).ToList());
+        return Ok(notifications.Select(NotificationMapper.ToResponse).ToList());
     }
 
     [Authorize]
@@ -80,7 +79,7 @@ public sealed class NotificationsController : ControllerBase
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return Ok(ToNotificationResponse(notification));
+        return Ok(NotificationMapper.ToResponse(notification));
     }
 
     [Authorize]
@@ -125,32 +124,4 @@ public sealed class NotificationsController : ControllerBase
         return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
     }
 
-    private static NotificationResponse ToNotificationResponse(Notification notification)
-    {
-        return new NotificationResponse(
-            notification.Id,
-            notification.Type,
-            notification.Message,
-            DeserializeJson(notification.DataJson),
-            notification.IsRead,
-            notification.CreatedAt,
-            notification.ReadAt);
-    }
-
-    private static Dictionary<string, object?> DeserializeJson(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return [];
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<Dictionary<string, object?>>(raw) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
 }
