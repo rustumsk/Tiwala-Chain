@@ -230,23 +230,3 @@ public sealed class PublicContractsController : ControllerBase
         return $"{wallet[..6]}...{wallet[^4..]}";
     }
 }
-
-public sealed record PublicContractVerificationResponse(
-    string Status,
-    string MatchedHash,
-    string? UploadedHash,
-    PublicContractTrustMetadata? Metadata,
-    string Message
-);
-
-public sealed record PublicContractEvaluationRequest(string Text);
-
-public sealed record PublicContractTrustMetadata(
-    string Title,
-    string JobStatus,
-    decimal AmountUsdt,
-    DateTime RecordedAt,
-    string EmployerWallet,
-    string FreelancerWallet
-);
-
