@@ -1,17 +1,15 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Cryptography;
-using System.Text;
 
 [ApiController]
 [Route("api/[controller]")]
 public sealed class FilesController : ControllerBase
 {
-    private readonly S3StorageService _storage;
+    private readonly FileService _fileService;
 
-    public FilesController(S3StorageService storage)
+    public FilesController(FileService fileService)
     {
-        _storage = storage;
+        _fileService = fileService;
     }
 
     [HttpPost("upload")]
@@ -19,42 +17,19 @@ public sealed class FilesController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Upload([FromForm] IFormFile file, CancellationToken cancellationToken)
     {
-        if (file is null || file.Length == 0)
+        var result = await _fileService.UploadAsync(file, cancellationToken);
+        if (!result.IsSuccess)
         {
-            return BadRequest("No file uploaded.");
+            return BadRequest(result.Error);
         }
-
-        await using var stream = file.OpenReadStream();
-        await using var buffer = new MemoryStream();
-        await stream.CopyToAsync(buffer, cancellationToken);
-        buffer.Position = 0;
-
-        // Compute SHA-256 hash of the exact file bytes
-        string hashHex;
-        using (var sha = SHA256.Create())
-        {
-            var hash = sha.ComputeHash(buffer.ToArray());
-            var sb = new StringBuilder(hash.Length * 2);
-            foreach (var b in hash)
-            {
-                sb.Append(b.ToString("x2"));
-            }
-            hashHex = sb.ToString();
-        }
-
-        buffer.Position = 0;
-        var key = $"uploads/{DateTime.UtcNow:yyyyMMddHHmmssfff}-{Guid.NewGuid():N}-{file.FileName}";
-
-        await _storage.UploadAsync(buffer, key, file.ContentType, cancellationToken);
 
         return Ok(new
         {
-            fileName = file.FileName,
-            contentType = file.ContentType,
-            length = file.Length,
-            key,
-            hash = hashHex,
+            fileName = result.Value!.FileName,
+            contentType = result.Value.ContentType,
+            length = result.Value.Length,
+            key = result.Value.Key,
+            hash = result.Value.Hash,
         });
     }
 }
-
