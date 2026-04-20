@@ -403,29 +403,3 @@ public sealed partial class AuthController : ControllerBase
     [GeneratedRegex("^0x[a-f0-9]{40}$", RegexOptions.Compiled)]
     private static partial Regex WalletRegex();
 }
-
-public sealed record NonceRequest(string WalletAddress, int ChainId = 0);
-public sealed record NonceResponse(string Message, string Nonce, DateTime ExpiresAtUtc, string Domain, string Uri, int ChainId);
-public sealed record VerifyRequest(string WalletAddress, string Message, string Signature);
-public sealed record AuthResponse(string AccessToken, DateTime ExpiresAtUtc, UserResponse User);
-public sealed record UserResponse(
-    int Id,
-    string WalletAddress,
-    string? DisplayName,
-    string Role,
-    bool IsApproved,
-    DateTime CreatedAt,
-    bool CanDeleteAccount = false);
-
-public sealed record AdminUserResponse(
-    int Id,
-    string WalletAddress,
-    string? DisplayName,
-    string Role,
-    bool IsApproved,
-    DateTime CreatedAt,
-    bool CanDelete);
-public sealed record UpdateProfileRequest(string DisplayName, string Role);
-public sealed record UpdateRoleRequest(string Role);
-public sealed record ApproveRequest(bool Approved);
-public sealed record PendingNonce(string Message, string Nonce);
