@@ -260,6 +260,7 @@ builder.Services.AddScoped<CurrentUserService>();
 builder.Services.AddScoped<DeliverableService>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ProposalMapper>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<S3StorageService>();
 var app = builder.Build();

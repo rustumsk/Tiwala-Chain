@@ -2,10 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 [ApiController]
 [Route("api")]
@@ -13,11 +10,19 @@ public sealed partial class ProposalsController : ControllerBase
 {
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
+    private readonly CurrentUserService _currentUserService;
+    private readonly ProposalMapper _proposalMapper;
 
-    public ProposalsController(AppDbContext dbContext, S3StorageService storage)
+    public ProposalsController(
+        AppDbContext dbContext,
+        S3StorageService storage,
+        CurrentUserService currentUserService,
+        ProposalMapper proposalMapper)
     {
         _dbContext = dbContext;
         _storage = storage;
+        _currentUserService = currentUserService;
+        _proposalMapper = proposalMapper;
     }
 
     [Authorize]
@@ -28,7 +33,7 @@ public sealed partial class ProposalsController : ControllerBase
         [FromBody] CreateProposalRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -39,7 +44,7 @@ public sealed partial class ProposalsController : ControllerBase
             return StatusCode(403, "Your account is pending admin approval.");
         }
 
-        if (!CanSubmitProposal(user.Role))
+        if (!ProposalPolicy.CanSubmit(user.Role))
         {
             return Forbid();
         }
@@ -62,7 +67,7 @@ public sealed partial class ProposalsController : ControllerBase
             return BadRequest("You cannot apply to your own posting.");
         }
 
-        var validation = ValidateProposalInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
+        var validation = ProposalValidator.ValidateInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
         if (validation is not null)
         {
             return BadRequest(validation);
@@ -83,13 +88,13 @@ public sealed partial class ProposalsController : ControllerBase
         {
             PostingId = posting.Id,
             FreelancerWallet = user.WalletAddress,
-            CoverLetter = TrimToNull(request.CoverLetter),
+            CoverLetter = TextNormalizer.TrimToNull(request.CoverLetter),
             ProposedAmount = request.ProposedAmount,
-            EstimatedTimeline = TrimToNull(request.EstimatedTimeline),
-            PortfolioLinksJson = SerializeStringList(request.PortfolioLinks),
-            RelevantExperience = TrimToNull(request.RelevantExperience),
-            ScreeningAnswersJson = SerializeStringMap(request.ScreeningAnswers),
-            CvAttachmentKey = TrimToNull(request.CvAttachmentKey),
+            EstimatedTimeline = TextNormalizer.TrimToNull(request.EstimatedTimeline),
+            PortfolioLinksJson = JsonFieldSerializer.SerializeStringList(request.PortfolioLinks),
+            RelevantExperience = TextNormalizer.TrimToNull(request.RelevantExperience),
+            ScreeningAnswersJson = JsonFieldSerializer.SerializeStringMap(request.ScreeningAnswers),
+            CvAttachmentKey = TextNormalizer.TrimToNull(request.CvAttachmentKey),
             Status = ProposalStatus.Submitted,
         };
 
@@ -109,7 +114,7 @@ public sealed partial class ProposalsController : ControllerBase
             });
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     [Authorize]
@@ -118,7 +123,7 @@ public sealed partial class ProposalsController : ControllerBase
         int postingId,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -136,7 +141,7 @@ public sealed partial class ProposalsController : ControllerBase
             .Where(p => p.PostingId == postingId)
             .OrderByDescending(p => p.CreatedAt);
 
-        var isOwner = IsPostingOwner(posting, user.WalletAddress);
+        var isOwner = ProposalPolicy.IsPostingOwner(posting, user.WalletAddress);
         if (!isOwner && user.Role != UserRole.Admin)
         {
             query = query.Where(p => p.FreelancerWallet == user.WalletAddress);
@@ -171,14 +176,14 @@ public sealed partial class ProposalsController : ControllerBase
             }
         }
 
-        return Ok(await ToProposalResponsesAsync(proposals, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponsesAsync(proposals, posting, cancellationToken));
     }
 
     [Authorize]
     [HttpGet("proposals/mine")]
     public async Task<ActionResult<List<ProposalResponse>>> GetMyProposals(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -189,14 +194,14 @@ public sealed partial class ProposalsController : ControllerBase
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return Ok(await ToProposalResponsesAsync(proposals, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponsesAsync(proposals, cancellationToken));
     }
 
     [Authorize]
     [HttpGet("proposals/mine/stats")]
     public async Task<ActionResult<ProposalStatsResponse>> GetMyProposalStats(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -222,7 +227,7 @@ public sealed partial class ProposalsController : ControllerBase
     [HttpGet("proposals/{id:int}")]
     public async Task<ActionResult<ProposalResponse>> GetProposal(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -240,12 +245,12 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
 
-        if (IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
+        if (ProposalPolicy.IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
         {
             proposal.Status = ProposalStatus.Viewed;
             proposal.ViewedAt = DateTime.UtcNow;
@@ -262,7 +267,7 @@ public sealed partial class ProposalsController : ControllerBase
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     [Authorize]
@@ -272,7 +277,7 @@ public sealed partial class ProposalsController : ControllerBase
         [FromBody] UpdateProposalRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -296,40 +301,40 @@ public sealed partial class ProposalsController : ControllerBase
 
         var nextAmount = request.ProposedAmount ?? proposal.ProposedAmount;
         var nextTimeline = request.EstimatedTimeline ?? proposal.EstimatedTimeline;
-        var validation = ValidateProposalInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
+        var validation = ProposalValidator.ValidateInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
         if (validation is not null)
         {
             return BadRequest(validation);
         }
 
-        proposal.CoverLetter = TrimToNull(request.CoverLetter ?? proposal.CoverLetter);
+        proposal.CoverLetter = TextNormalizer.TrimToNull(request.CoverLetter ?? proposal.CoverLetter);
         proposal.ProposedAmount = nextAmount;
-        proposal.EstimatedTimeline = TrimToNull(nextTimeline);
+        proposal.EstimatedTimeline = TextNormalizer.TrimToNull(nextTimeline);
         proposal.PortfolioLinksJson = request.PortfolioLinks is null
             ? proposal.PortfolioLinksJson
-            : SerializeStringList(request.PortfolioLinks);
+            : JsonFieldSerializer.SerializeStringList(request.PortfolioLinks);
         proposal.RelevantExperience = request.RelevantExperience is null
             ? proposal.RelevantExperience
-            : TrimToNull(request.RelevantExperience);
+            : TextNormalizer.TrimToNull(request.RelevantExperience);
         proposal.ScreeningAnswersJson = request.ScreeningAnswers is null
             ? proposal.ScreeningAnswersJson
-            : SerializeStringMap(request.ScreeningAnswers);
+            : JsonFieldSerializer.SerializeStringMap(request.ScreeningAnswers);
         proposal.CvAttachmentKey = request.CvAttachmentKey is null
             ? proposal.CvAttachmentKey
-            : TrimToNull(request.CvAttachmentKey);
+            : TextNormalizer.TrimToNull(request.CvAttachmentKey);
         proposal.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var posting = await _dbContext.JobPostings.FirstAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     [Authorize]
     [HttpPost("proposals/{id:int}/withdraw")]
     public async Task<ActionResult<ProposalResponse>> WithdrawProposal(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -371,7 +376,7 @@ public sealed partial class ProposalsController : ControllerBase
             });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     [Authorize]
@@ -402,7 +407,7 @@ public sealed partial class ProposalsController : ControllerBase
     [HttpPost("proposals/{id:int}/select")]
     public async Task<ActionResult<ProposalResponse>> SelectProposal(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -420,7 +425,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -476,7 +481,7 @@ public sealed partial class ProposalsController : ControllerBase
             });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     [Authorize]
@@ -485,7 +490,7 @@ public sealed partial class ProposalsController : ControllerBase
         int proposalId,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -503,7 +508,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
@@ -525,7 +530,7 @@ public sealed partial class ProposalsController : ControllerBase
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return Ok(await ToProposalMessageResponsesAsync(messages, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalMessageResponsesAsync(messages, cancellationToken));
     }
 
     [Authorize]
@@ -536,7 +541,7 @@ public sealed partial class ProposalsController : ControllerBase
         [FromBody] SendProposalMessageRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -564,12 +569,12 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
 
-        if (!CanMessage(proposal.Status))
+        if (!ProposalPolicy.CanMessage(proposal.Status))
         {
             return BadRequest("This proposal thread is closed.");
         }
@@ -599,7 +604,7 @@ public sealed partial class ProposalsController : ControllerBase
             });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToProposalMessageResponseAsync(message, cancellationToken));
+        return Ok(await _proposalMapper.ToProposalMessageResponseAsync(message, cancellationToken));
     }
 
     [Authorize]
@@ -609,7 +614,7 @@ public sealed partial class ProposalsController : ControllerBase
         [FromBody] ConvertProposalToOfferRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -632,7 +637,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -642,7 +647,7 @@ public sealed partial class ProposalsController : ControllerBase
             var existingJob = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == proposal.ConvertedJobId.Value, cancellationToken);
             if (existingJob is not null)
             {
-                return Ok(ToJobResponse(existingJob));
+                return Ok(JobMapper.ToResponse(existingJob));
             }
         }
 
@@ -651,7 +656,7 @@ public sealed partial class ProposalsController : ControllerBase
             return BadRequest("Only selected proposals can be converted to an offer.");
         }
 
-        var normalizedHash = NormalizeHash(request.ContractHash);
+        var normalizedHash = HashNormalizer.NormalizeSha256Hash(request.ContractHash);
         if (string.IsNullOrWhiteSpace(request.ContractKey) || normalizedHash is null)
         {
             return BadRequest("Contract key and a valid contract hash are required.");
@@ -674,7 +679,7 @@ public sealed partial class ProposalsController : ControllerBase
             EmployerWallet = posting.EmployerWallet,
             FreelancerWallet = proposal.FreelancerWallet,
             Title = title,
-            Description = TrimToNull(request.Description ?? posting.Description ?? proposal.CoverLetter),
+            Description = TextNormalizer.TrimToNull(request.Description ?? posting.Description ?? proposal.CoverLetter),
             ContractKey = request.ContractKey.Trim(),
             ContractHash = normalizedHash,
             AmountUsdt = amount,
@@ -704,14 +709,14 @@ public sealed partial class ProposalsController : ControllerBase
                 ["jobId"] = job.Id,
             });
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
     [HttpGet("proposals/{id:int}/cv")]
     public async Task<IActionResult> GetProposalCv(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -729,7 +734,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
@@ -750,7 +755,7 @@ public sealed partial class ProposalsController : ControllerBase
         string notificationMessage,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -768,7 +773,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -797,20 +802,7 @@ public sealed partial class ProposalsController : ControllerBase
             });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToProposalResponseAsync(proposal, posting, cancellationToken));
-    }
-
-    private async Task<User?> ResolveCurrentUser()
-    {
-        var subjectClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!int.TryParse(subjectClaim, out var userId))
-        {
-            return null;
-        }
-
-        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
     }
 
     private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)
@@ -823,140 +815,6 @@ public sealed partial class ProposalsController : ControllerBase
             posting.UpdatedAt = DateTime.UtcNow;
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
-    }
-
-    private async Task<List<ProposalResponse>> ToProposalResponsesAsync(
-        List<Proposal> proposals,
-        CancellationToken cancellationToken)
-    {
-        var postingMap = await _dbContext.JobPostings
-            .Where(p => proposals.Select(x => x.PostingId).Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id, cancellationToken);
-
-        return await ToProposalResponsesAsync(proposals, postingMap, cancellationToken);
-    }
-
-    private async Task<List<ProposalResponse>> ToProposalResponsesAsync(
-        List<Proposal> proposals,
-        JobPosting posting,
-        CancellationToken cancellationToken)
-    {
-        return await ToProposalResponsesAsync(
-            proposals,
-            new Dictionary<int, JobPosting> { [posting.Id] = posting },
-            cancellationToken);
-    }
-
-    private async Task<List<ProposalResponse>> ToProposalResponsesAsync(
-        List<Proposal> proposals,
-        IReadOnlyDictionary<int, JobPosting> postingMap,
-        CancellationToken cancellationToken)
-    {
-        if (proposals.Count == 0)
-        {
-            return [];
-        }
-
-        var wallets = proposals
-            .Select(p => p.FreelancerWallet)
-            .Concat(postingMap.Values.Select(p => p.EmployerWallet))
-            .Distinct()
-            .ToList();
-
-        var displayNames = await _dbContext.Users
-            .Where(u => wallets.Contains(u.WalletAddress))
-            .ToDictionaryAsync(u => u.WalletAddress, u => u.DisplayName, cancellationToken);
-
-        return proposals
-            .Select(proposal => ToProposalResponse(proposal, postingMap[proposal.PostingId], displayNames))
-            .ToList();
-    }
-
-    private async Task<ProposalResponse> ToProposalResponseAsync(
-        Proposal proposal,
-        JobPosting posting,
-        CancellationToken cancellationToken)
-    {
-        var wallets = new[] { proposal.FreelancerWallet, posting.EmployerWallet };
-        var displayNames = await _dbContext.Users
-            .Where(u => wallets.Contains(u.WalletAddress))
-            .ToDictionaryAsync(u => u.WalletAddress, u => u.DisplayName, cancellationToken);
-
-        return ToProposalResponse(proposal, posting, displayNames);
-    }
-
-    private static ProposalResponse ToProposalResponse(
-        Proposal proposal,
-        JobPosting posting,
-        IReadOnlyDictionary<string, string?> displayNames)
-    {
-        return new ProposalResponse(
-            proposal.Id,
-            proposal.PostingId,
-            posting.Title,
-            posting.Status.ToString(),
-            posting.EmployerWallet,
-            displayNames.GetValueOrDefault(posting.EmployerWallet),
-            proposal.FreelancerWallet,
-            displayNames.GetValueOrDefault(proposal.FreelancerWallet),
-            proposal.CoverLetter,
-            proposal.ProposedAmount,
-            proposal.EstimatedTimeline,
-            DeserializeStringList(proposal.PortfolioLinksJson),
-            proposal.RelevantExperience,
-            DeserializeStringMap(proposal.ScreeningAnswersJson),
-            proposal.Status.ToString(),
-            proposal.RejectionReason,
-            proposal.CreatedAt,
-            proposal.UpdatedAt,
-            proposal.ViewedAt,
-            proposal.ConvertedJobId,
-            proposal.CvAttachmentKey is not null);
-    }
-
-    private async Task<List<ProposalMessageResponse>> ToProposalMessageResponsesAsync(
-        List<ProposalMessage> messages,
-        CancellationToken cancellationToken)
-    {
-        if (messages.Count == 0)
-        {
-            return [];
-        }
-
-        var wallets = messages.Select(m => m.SenderWallet).Distinct().ToList();
-        var displayNames = await _dbContext.Users
-            .Where(u => wallets.Contains(u.WalletAddress))
-            .ToDictionaryAsync(u => u.WalletAddress, u => u.DisplayName, cancellationToken);
-
-        return messages
-            .Select(message => ToProposalMessageResponse(message, displayNames))
-            .ToList();
-    }
-
-    private async Task<ProposalMessageResponse> ToProposalMessageResponseAsync(
-        ProposalMessage message,
-        CancellationToken cancellationToken)
-    {
-        var displayNames = await _dbContext.Users
-            .Where(u => u.WalletAddress == message.SenderWallet)
-            .ToDictionaryAsync(u => u.WalletAddress, u => u.DisplayName, cancellationToken);
-
-        return ToProposalMessageResponse(message, displayNames);
-    }
-
-    private static ProposalMessageResponse ToProposalMessageResponse(
-        ProposalMessage message,
-        IReadOnlyDictionary<string, string?> displayNames)
-    {
-        return new ProposalMessageResponse(
-            message.Id,
-            message.ProposalId,
-            message.SenderWallet,
-            displayNames.GetValueOrDefault(message.SenderWallet),
-            message.Body,
-            message.MessageType,
-            message.CreatedAt,
-            message.ReadAt);
     }
 
     private void AddNotification(
@@ -985,205 +843,4 @@ public sealed partial class ProposalsController : ControllerBase
         });
     }
 
-    private static bool CanSubmitProposal(UserRole role) =>
-        role is UserRole.Freelancer or UserRole.Both;
-
-    private static bool CanManageProposal(User user, JobPosting posting) =>
-        user.Role == UserRole.Admin || IsPostingOwner(posting, user.WalletAddress);
-
-    private static bool CanAccessProposal(User user, JobPosting posting, Proposal proposal) =>
-        user.Role == UserRole.Admin ||
-        IsPostingOwner(posting, user.WalletAddress) ||
-        string.Equals(proposal.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase);
-
-    private static bool CanMessage(ProposalStatus status) =>
-        status is ProposalStatus.Submitted or ProposalStatus.Viewed or ProposalStatus.Shortlisted or ProposalStatus.Selected;
-
-    private static bool IsPostingOwner(JobPosting posting, string wallet) =>
-        string.Equals(posting.EmployerWallet, wallet, StringComparison.OrdinalIgnoreCase);
-
-    private static string? ValidateProposalInput(string? coverLetter, decimal proposedAmount, string? estimatedTimeline)
-    {
-        if (proposedAmount <= 0)
-        {
-            return "Proposed amount must be greater than 0.";
-        }
-
-        if (!string.IsNullOrWhiteSpace(coverLetter) && coverLetter.Trim().Length > 4000)
-        {
-            return "Cover letter must be 4000 characters or fewer.";
-        }
-
-        if (!string.IsNullOrWhiteSpace(estimatedTimeline) && estimatedTimeline.Trim().Length > 100)
-        {
-            return "Estimated timeline must be 100 characters or fewer.";
-        }
-
-        return null;
-    }
-
-    private static string? TrimToNull(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static string? SerializeStringList(List<string>? values)
-    {
-        var normalized = (values ?? [])
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Take(10)
-            .ToList();
-        return normalized.Count == 0 ? null : JsonSerializer.Serialize(normalized);
-    }
-
-    private static string? SerializeStringMap(Dictionary<string, string>? values)
-    {
-        if (values is null || values.Count == 0)
-        {
-            return null;
-        }
-
-        var normalized = values
-            .Select(pair => new KeyValuePair<string, string>(pair.Key.Trim(), pair.Value.Trim()))
-            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value))
-            .Take(10)
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-
-        return normalized.Count == 0 ? null : JsonSerializer.Serialize(normalized);
-    }
-
-    private static List<string> DeserializeStringList(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return [];
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<string>>(raw) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
-    private static Dictionary<string, string> DeserializeStringMap(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return [];
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(raw) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
-
-    private static JobResponse ToJobResponse(Job job)
-    {
-        return new JobResponse(
-            job.Id,
-            job.EmployerWallet,
-            job.FreelancerWallet,
-            job.Title,
-            job.Description,
-            job.Status.ToString(),
-            job.AmountUsdt,
-            job.ContractKey,
-            job.ContractHash,
-            job.CreatedAt,
-            job.UpdatedAt,
-            job.PostingId,
-            job.ProposalId);
-    }
-
-    private static string? NormalizeHash(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        var trimmed = value.Trim().ToLowerInvariant();
-        if (trimmed.StartsWith("0x", StringComparison.Ordinal))
-        {
-            trimmed = trimmed[2..];
-        }
-
-        return Regex.IsMatch(trimmed, "^[a-f0-9]{64}$") ? trimmed : null;
-    }
 }
-
-public sealed record CreateProposalRequest(
-    string? CoverLetter,
-    decimal ProposedAmount,
-    string? EstimatedTimeline,
-    List<string>? PortfolioLinks,
-    string? RelevantExperience,
-    Dictionary<string, string>? ScreeningAnswers,
-    string? CvAttachmentKey
-);
-
-public sealed record UpdateProposalRequest(
-    string? CoverLetter,
-    decimal? ProposedAmount,
-    string? EstimatedTimeline,
-    List<string>? PortfolioLinks,
-    string? RelevantExperience,
-    Dictionary<string, string>? ScreeningAnswers,
-    string? CvAttachmentKey
-);
-
-public sealed record SendProposalMessageRequest(string Body);
-
-public sealed record ConvertProposalToOfferRequest(
-    string? Title,
-    string? Description,
-    decimal? AmountUsdt,
-    string ContractKey,
-    string ContractHash
-);
-
-public sealed record ProposalStatsResponse(int ActiveApplications, int UnreadReplies);
-
-public sealed record ProposalResponse(
-    int Id,
-    int PostingId,
-    string PostingTitle,
-    string PostingStatus,
-    string EmployerWallet,
-    string? EmployerDisplayName,
-    string FreelancerWallet,
-    string? FreelancerDisplayName,
-    string? CoverLetter,
-    decimal ProposedAmount,
-    string? EstimatedTimeline,
-    List<string> PortfolioLinks,
-    string? RelevantExperience,
-    Dictionary<string, string> ScreeningAnswers,
-    string Status,
-    string? RejectionReason,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt,
-    DateTime? ViewedAt,
-    int? ConvertedJobId,
-    bool HasCvAttachment
-);
-
-public sealed record ProposalMessageResponse(
-    int Id,
-    int ProposalId,
-    string SenderWallet,
-    string? SenderDisplayName,
-    string Body,
-    string MessageType,
-    DateTime CreatedAt,
-    DateTime? ReadAt
-);
