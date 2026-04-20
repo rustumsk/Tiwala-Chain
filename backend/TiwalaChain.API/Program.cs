@@ -258,6 +258,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<CurrentUserService>();
 builder.Services.AddScoped<DeliverableService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<S3StorageService>();
 var app = builder.Build();
