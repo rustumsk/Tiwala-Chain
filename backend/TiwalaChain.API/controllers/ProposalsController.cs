@@ -11,17 +11,20 @@ public sealed partial class ProposalsController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
     private readonly CurrentUserService _currentUserService;
+    private readonly ProposalMessageService _proposalMessageService;
     private readonly ProposalMapper _proposalMapper;
 
     public ProposalsController(
         AppDbContext dbContext,
         S3StorageService storage,
         CurrentUserService currentUserService,
+        ProposalMessageService proposalMessageService,
         ProposalMapper proposalMapper)
     {
         _dbContext = dbContext;
         _storage = storage;
         _currentUserService = currentUserService;
+        _proposalMessageService = proposalMessageService;
         _proposalMapper = proposalMapper;
     }
 
@@ -496,41 +499,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == proposalId, cancellationToken);
-        if (proposal is null)
-        {
-            return NotFound("Proposal not found.");
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        if (!ProposalPolicy.CanAccess(user, posting, proposal))
-        {
-            return Forbid();
-        }
-
-        var messages = await _dbContext.ProposalMessages
-            .Where(m => m.ProposalId == proposalId)
-            .OrderBy(m => m.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        var changed = false;
-        foreach (var message in messages.Where(m => m.ReadAt is null && !string.Equals(m.SenderWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase)))
-        {
-            message.ReadAt = DateTime.UtcNow;
-            changed = true;
-        }
-
-        if (changed)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        return Ok(await _proposalMapper.ToProposalMessageResponsesAsync(messages, cancellationToken));
+        var result = await _proposalMessageService.GetMessagesAsync(user, proposalId, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -547,64 +517,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        if (!user.IsApproved)
-        {
-            return StatusCode(403, "Your account is pending admin approval.");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000)
-        {
-            return BadRequest("Message body must be between 1 and 4000 characters.");
-        }
-
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == proposalId, cancellationToken);
-        if (proposal is null)
-        {
-            return NotFound("Proposal not found.");
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        if (!ProposalPolicy.CanAccess(user, posting, proposal))
-        {
-            return Forbid();
-        }
-
-        if (!ProposalPolicy.CanMessage(proposal.Status))
-        {
-            return BadRequest("This proposal thread is closed.");
-        }
-
-        var message = new ProposalMessage
-        {
-            ProposalId = proposal.Id,
-            SenderWallet = user.WalletAddress,
-            Body = request.Body.Trim(),
-            MessageType = "user",
-        };
-
-        _dbContext.ProposalMessages.Add(message);
-
-        var recipientWallet = string.Equals(user.WalletAddress, proposal.FreelancerWallet, StringComparison.OrdinalIgnoreCase)
-            ? posting.EmployerWallet
-            : proposal.FreelancerWallet;
-
-        AddNotification(
-            recipientWallet,
-            "proposal_message",
-            $"New message on proposal for \"{posting.Title}\".",
-            new Dictionary<string, object?>
-            {
-                ["postingId"] = posting.Id,
-                ["proposalId"] = proposal.Id,
-            });
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await _proposalMapper.ToProposalMessageResponseAsync(message, cancellationToken));
+        var result = await _proposalMessageService.SendMessageAsync(user, proposalId, request, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -843,4 +757,16 @@ public sealed partial class ProposalsController : ControllerBase
         });
     }
 
+    private ActionResult<T> ToActionResult<T>(ProposalServiceResult<T> result)
+    {
+        return result.Status switch
+        {
+            ProposalServiceResultStatus.Success => Ok(result.Value),
+            ProposalServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ProposalServiceResultStatus.NotFound => NotFound(result.Error),
+            ProposalServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ProposalServiceResultStatus.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
+    }
 }
