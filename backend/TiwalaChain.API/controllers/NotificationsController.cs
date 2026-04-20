@@ -1,18 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
 public sealed class NotificationsController : ControllerBase
 {
-    private readonly AppDbContext _dbContext;
+    private readonly CurrentUserService _currentUserService;
+    private readonly NotificationService _notificationService;
 
-    public NotificationsController(AppDbContext dbContext)
+    public NotificationsController(
+        CurrentUserService currentUserService,
+        NotificationService notificationService)
     {
-        _dbContext = dbContext;
+        _currentUserService = currentUserService;
+        _notificationService = notificationService;
     }
 
     [Authorize]
@@ -21,107 +22,57 @@ public sealed class NotificationsController : ControllerBase
         [FromQuery] int limit = 25,
         CancellationToken cancellationToken = default)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
         }
 
-        limit = Math.Clamp(limit, 1, 100);
-        var notifications = await _dbContext.Notifications
-            .AsNoTracking()
-            .Where(n => n.RecipientWallet == user.WalletAddress)
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(limit)
-            .ToListAsync(cancellationToken);
-
-        return Ok(notifications.Select(NotificationMapper.ToResponse).ToList());
+        return Ok(await _notificationService.GetNotificationsAsync(user, limit, cancellationToken));
     }
 
     [Authorize]
     [HttpGet("unread-count")]
     public async Task<ActionResult<UnreadNotificationCountResponse>> GetUnreadCount(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
         }
 
-        var unreadCount = await _dbContext.Notifications.CountAsync(
-            n => n.RecipientWallet == user.WalletAddress && !n.IsRead,
-            cancellationToken);
-
-        return Ok(new UnreadNotificationCountResponse(unreadCount));
+        return Ok(await _notificationService.GetUnreadCountAsync(user, cancellationToken));
     }
 
     [Authorize]
     [HttpPost("{id:int}/read")]
     public async Task<ActionResult<NotificationResponse>> MarkAsRead(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
         }
 
-        var notification = await _dbContext.Notifications
-            .FirstOrDefaultAsync(n => n.Id == id && n.RecipientWallet == user.WalletAddress, cancellationToken);
-        if (notification is null)
+        var result = await _notificationService.MarkAsReadAsync(user, id, cancellationToken);
+        if (result.Status == NotificationServiceResultStatus.NotFound)
         {
-            return NotFound("Notification not found.");
+            return NotFound(result.Error);
         }
 
-        if (!notification.IsRead)
-        {
-            notification.IsRead = true;
-            notification.ReadAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        return Ok(NotificationMapper.ToResponse(notification));
+        return Ok(result.Value);
     }
 
     [Authorize]
     [HttpPost("read-all")]
     public async Task<ActionResult<UnreadNotificationCountResponse>> MarkAllAsRead(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
         }
 
-        var notifications = await _dbContext.Notifications
-            .Where(n => n.RecipientWallet == user.WalletAddress && !n.IsRead)
-            .ToListAsync(cancellationToken);
-
-        if (notifications.Count > 0)
-        {
-            var now = DateTime.UtcNow;
-            foreach (var notification in notifications)
-            {
-                notification.IsRead = true;
-                notification.ReadAt = now;
-            }
-
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        return Ok(new UnreadNotificationCountResponse(0));
+        return Ok(await _notificationService.MarkAllAsReadAsync(user, cancellationToken));
     }
-
-    private async Task<User?> ResolveCurrentUser()
-    {
-        var subjectClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!int.TryParse(subjectClaim, out var userId))
-        {
-            return null;
-        }
-
-        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-    }
-
 }
