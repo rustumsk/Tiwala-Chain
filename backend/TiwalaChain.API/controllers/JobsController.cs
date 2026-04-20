@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Frozen;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.Json;
@@ -11,15 +10,6 @@ using System.Text.RegularExpressions;
 [Route("api/[controller]")]
 public sealed class JobsController : ControllerBase
 {
-    private static readonly FrozenSet<string> DisputeReasonCodes = new[]
-    {
-        "scope_mismatch",
-        "quality",
-        "late_or_no_delivery",
-        "communication",
-        "other",
-    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
-
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
 
@@ -92,7 +82,7 @@ public sealed class JobsController : ControllerBase
             });
         await _dbContext.SaveChangesAsync();
 
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
@@ -114,7 +104,7 @@ public sealed class JobsController : ControllerBase
             .OrderByDescending(j => j.CreatedAt)
             .ToListAsync();
 
-        return Ok(jobs.Select(ToJobResponse).ToList());
+        return Ok(jobs.Select(JobMapper.ToResponse).ToList());
     }
 
     [Authorize]
@@ -134,7 +124,7 @@ public sealed class JobsController : ControllerBase
             .OrderByDescending(j => j.CreatedAt)
             .ToListAsync();
 
-        return Ok(jobs.Select(ToJobResponse).ToList());
+        return Ok(jobs.Select(JobMapper.ToResponse).ToList());
     }
 
     [Authorize]
@@ -158,7 +148,7 @@ public sealed class JobsController : ControllerBase
             return Forbid();
         }
 
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
@@ -253,7 +243,7 @@ public sealed class JobsController : ControllerBase
 
         if (user.Role == UserRole.Admin)
         {
-            return Ok(ToJobDisputeResponse(dispute));
+            return Ok(JobMapper.ToDisputeResponse(dispute));
         }
 
         var wallet = user.WalletAddress;
@@ -269,7 +259,7 @@ public sealed class JobsController : ControllerBase
             return Forbid();
         }
 
-        return Ok(ToJobDisputeResponse(dispute));
+        return Ok(JobMapper.ToDisputeResponse(dispute));
     }
 
     [Authorize]
@@ -302,7 +292,7 @@ public sealed class JobsController : ControllerBase
         }
 
         var reasonCode = request.ReasonCode?.Trim().ToLowerInvariant() ?? string.Empty;
-        if (!DisputeReasonCodes.Contains(reasonCode))
+        if (!DisputeReasonCodes.Valid.Contains(reasonCode))
         {
             return BadRequest("Invalid dispute reason.");
         }
@@ -346,7 +336,7 @@ public sealed class JobsController : ControllerBase
         return CreatedAtAction(
             nameof(GetJobDisputeByHash),
             new { hash = normalized },
-            ToJobDisputeResponse(dispute));
+            JobMapper.ToDisputeResponse(dispute));
     }
 
     [Authorize]
@@ -385,7 +375,7 @@ public sealed class JobsController : ControllerBase
             return NotFound("Job not found for this contract hash.");
         }
 
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
@@ -400,8 +390,8 @@ public sealed class JobsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var normalizedEmployerWallet = NormalizeWalletAddress(request.EmployerWallet);
-        var normalizedFreelancerWallet = NormalizeWalletAddress(request.FreelancerWallet);
+        var normalizedEmployerWallet = WalletNormalizer.NormalizeWalletAddress(request.EmployerWallet);
+        var normalizedFreelancerWallet = WalletNormalizer.NormalizeWalletAddress(request.FreelancerWallet);
         var normalizedHash = NormalizeHash(request.ContractHash);
         if (normalizedEmployerWallet is null || normalizedFreelancerWallet is null)
         {
@@ -480,7 +470,7 @@ public sealed class JobsController : ControllerBase
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
@@ -521,7 +511,7 @@ public sealed class JobsController : ControllerBase
             });
         await _dbContext.SaveChangesAsync();
 
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     [Authorize]
@@ -562,7 +552,7 @@ public sealed class JobsController : ControllerBase
             });
         await _dbContext.SaveChangesAsync();
 
-        return Ok(ToJobResponse(job));
+        return Ok(JobMapper.ToResponse(job));
     }
 
     private async Task<User?> ResolveCurrentUser()
@@ -599,48 +589,6 @@ public sealed class JobsController : ControllerBase
         });
     }
 
-    private static JobResponse ToJobResponse(Job job)
-    {
-        return new JobResponse(
-            job.Id,
-            job.EmployerWallet,
-            job.FreelancerWallet,
-            job.Title,
-            job.Description,
-            job.Status.ToString(),
-            job.AmountUsdt,
-            job.ContractKey,
-            job.ContractHash,
-            job.CreatedAt,
-            job.UpdatedAt,
-            job.PostingId,
-            job.ProposalId
-        );
-    }
-
-    private static JobDisputeResponse ToJobDisputeResponse(JobDispute d)
-    {
-        return new JobDisputeResponse(
-            d.ContractHash,
-            d.OnChainJobId,
-            d.RaisedByWallet,
-            d.ReasonCode,
-            DisputeReasonLabel(d.ReasonCode),
-            d.Details,
-            d.CreatedAt);
-    }
-
-    private static string DisputeReasonLabel(string code) =>
-        code.ToLowerInvariant() switch
-        {
-            "scope_mismatch" => "Scope or requirements mismatch",
-            "quality" => "Quality of work",
-            "late_or_no_delivery" => "Late or missing delivery",
-            "communication" => "Communication or collaboration",
-            "other" => "Other",
-            _ => code,
-        };
-
     private static string? NormalizeHash(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return null;
@@ -653,10 +601,4 @@ public sealed class JobsController : ControllerBase
         return Regex.IsMatch(trimmed, "^[a-f0-9]{64}$") ? trimmed : null;
     }
 
-    private static string? NormalizeWalletAddress(string? walletAddress)
-    {
-        if (string.IsNullOrWhiteSpace(walletAddress)) return null;
-        var normalized = walletAddress.Trim().ToLowerInvariant();
-        return Regex.IsMatch(normalized, "^0x[a-f0-9]{40}$") ? normalized : null;
-    }
 }
