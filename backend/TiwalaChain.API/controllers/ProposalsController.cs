@@ -44,7 +44,7 @@ public sealed partial class ProposalsController : ControllerBase
             return StatusCode(403, "Your account is pending admin approval.");
         }
 
-        if (!CanSubmitProposal(user.Role))
+        if (!ProposalPolicy.CanSubmit(user.Role))
         {
             return Forbid();
         }
@@ -67,7 +67,7 @@ public sealed partial class ProposalsController : ControllerBase
             return BadRequest("You cannot apply to your own posting.");
         }
 
-        var validation = ValidateProposalInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
+        var validation = ProposalValidator.ValidateInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
         if (validation is not null)
         {
             return BadRequest(validation);
@@ -141,7 +141,7 @@ public sealed partial class ProposalsController : ControllerBase
             .Where(p => p.PostingId == postingId)
             .OrderByDescending(p => p.CreatedAt);
 
-        var isOwner = IsPostingOwner(posting, user.WalletAddress);
+        var isOwner = ProposalPolicy.IsPostingOwner(posting, user.WalletAddress);
         if (!isOwner && user.Role != UserRole.Admin)
         {
             query = query.Where(p => p.FreelancerWallet == user.WalletAddress);
@@ -245,12 +245,12 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
 
-        if (IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
+        if (ProposalPolicy.IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
         {
             proposal.Status = ProposalStatus.Viewed;
             proposal.ViewedAt = DateTime.UtcNow;
@@ -301,7 +301,7 @@ public sealed partial class ProposalsController : ControllerBase
 
         var nextAmount = request.ProposedAmount ?? proposal.ProposedAmount;
         var nextTimeline = request.EstimatedTimeline ?? proposal.EstimatedTimeline;
-        var validation = ValidateProposalInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
+        var validation = ProposalValidator.ValidateInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
         if (validation is not null)
         {
             return BadRequest(validation);
@@ -425,7 +425,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -508,7 +508,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
@@ -569,12 +569,12 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
 
-        if (!CanMessage(proposal.Status))
+        if (!ProposalPolicy.CanMessage(proposal.Status))
         {
             return BadRequest("This proposal thread is closed.");
         }
@@ -637,7 +637,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -734,7 +734,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanAccessProposal(user, posting, proposal))
+        if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
             return Forbid();
         }
@@ -773,7 +773,7 @@ public sealed partial class ProposalsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!CanManageProposal(user, posting))
+        if (!ProposalPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -841,43 +841,6 @@ public sealed partial class ProposalsController : ControllerBase
             Body = body,
             MessageType = "system",
         });
-    }
-
-    private static bool CanSubmitProposal(UserRole role) =>
-        role is UserRole.Freelancer or UserRole.Both;
-
-    private static bool CanManageProposal(User user, JobPosting posting) =>
-        user.Role == UserRole.Admin || IsPostingOwner(posting, user.WalletAddress);
-
-    private static bool CanAccessProposal(User user, JobPosting posting, Proposal proposal) =>
-        user.Role == UserRole.Admin ||
-        IsPostingOwner(posting, user.WalletAddress) ||
-        string.Equals(proposal.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase);
-
-    private static bool CanMessage(ProposalStatus status) =>
-        status is ProposalStatus.Submitted or ProposalStatus.Viewed or ProposalStatus.Shortlisted or ProposalStatus.Selected;
-
-    private static bool IsPostingOwner(JobPosting posting, string wallet) =>
-        string.Equals(posting.EmployerWallet, wallet, StringComparison.OrdinalIgnoreCase);
-
-    private static string? ValidateProposalInput(string? coverLetter, decimal proposedAmount, string? estimatedTimeline)
-    {
-        if (proposedAmount <= 0)
-        {
-            return "Proposed amount must be greater than 0.";
-        }
-
-        if (!string.IsNullOrWhiteSpace(coverLetter) && coverLetter.Trim().Length > 4000)
-        {
-            return "Cover letter must be 4000 characters or fewer.";
-        }
-
-        if (!string.IsNullOrWhiteSpace(estimatedTimeline) && estimatedTimeline.Trim().Length > 100)
-        {
-            return "Estimated timeline must be 100 characters or fewer.";
-        }
-
-        return null;
     }
 
 }
