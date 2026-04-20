@@ -266,6 +266,16 @@ export default function RouteShell({ children }: RouteShellProps) {
   const isUnauthorized = pathname === "/unauthorized";
   const isPendingApproval = pathname === "/pending-approval";
   const isPublic = pathname === "/public" || pathname.startsWith("/public/");
+  const isInsidePublic = pathname.startsWith("/public/");
+
+  const publicLinks = [ 
+    { href: "/", label: "Back to Home" },
+    { href: "/public/postings", label: "Job Postings" },
+    { href: "/public/contracts/verify", label: "Contract Verification" },
+    { href: "/public/ai-review", label: "AI Review" },
+    { href: "/public/contracts/builder", label: "Contract Builder" },
+  ];
+
   const isAppRoute =
     !isHome && !isOnboarding && !isUnauthorized && !isPendingApproval && !isPublic;
   const isDashboard = pathname === "/dashboard";
@@ -634,6 +644,25 @@ export default function RouteShell({ children }: RouteShellProps) {
                       </Link>
                     )
                   ))
+                ) : isInsidePublic ? (
+                  // Show /public/* links when on any public page
+                  <div className="flex items-center gap-5">
+                    {publicLinks
+                    .filter((link) => link.href !== "/")
+                    .map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`text-sm transition-colors ${
+                          isDarkTheme
+                            ? "text-white/60 hover:text-white"
+                            : "text-[#666b80] hover:text-[#171a24]"
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
                 ) : (
                   <div className="flex items-center gap-5">
                     <Link
@@ -646,16 +675,6 @@ export default function RouteShell({ children }: RouteShellProps) {
                     >
                       <Home size={14} />
                       Back to Home
-                    </Link>
-                    <Link
-                      href="/public"
-                      className={`text-sm transition-colors ${
-                        isDarkTheme
-                          ? "text-white/60 hover:text-white"
-                          : "text-[#666b80] hover:text-[#171a24]"
-                      }`}
-                    >
-                      Public Services
                     </Link>
                   </div>
                 )}
@@ -775,6 +794,22 @@ export default function RouteShell({ children }: RouteShellProps) {
                         </Link>
                       )
                     )
+                  ) : isInsidePublic ? (
+                    publicLinks.map((link) =>
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
+                            isDarkTheme
+                              ? "text-white/72 hover:bg-white/[0.08] hover:text-white"
+                              : "text-[#252b3b] hover:bg-violet-50 hover:text-violet-800"
+                          }`}
+                          onClick={() => setPublicMobileNavOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      
+                    )
                   ) : (
                     <>
                       <Link
@@ -788,7 +823,7 @@ export default function RouteShell({ children }: RouteShellProps) {
                       >
                         Back to Home
                       </Link>
-                      <Link
+                      {/* <Link
                         href="/public"
                         className={`rounded-xl px-3 py-3 text-sm font-medium transition ${
                           isDarkTheme
@@ -798,7 +833,7 @@ export default function RouteShell({ children }: RouteShellProps) {
                         onClick={() => setPublicMobileNavOpen(false)}
                       >
                         Public Services
-                      </Link>
+                      </Link> */}
                     </>
                   )}
                 </div>
