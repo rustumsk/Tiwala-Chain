@@ -262,6 +262,7 @@ builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ProposalMapper>();
 builder.Services.AddScoped<PostingMapper>();
+builder.Services.AddScoped<PublicAiService>();
 builder.Services.AddScoped<PublicContractService>();
 builder.Services.AddScoped<PublicPostingService>();
 builder.Services.AddScoped<JwtTokenService>();
