@@ -1,0 +1,23 @@
+public sealed record ProposalResponse(
+    int Id,
+    int PostingId,
+    string PostingTitle,
+    string PostingStatus,
+    string EmployerWallet,
+    string? EmployerDisplayName,
+    string FreelancerWallet,
+    string? FreelancerDisplayName,
+    string? CoverLetter,
+    decimal ProposedAmount,
+    string? EstimatedTimeline,
+    List<string> PortfolioLinks,
+    string? RelevantExperience,
+    Dictionary<string, string> ScreeningAnswers,
+    string Status,
+    string? RejectionReason,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    DateTime? ViewedAt,
+    int? ConvertedJobId,
+    bool HasCvAttachment
+);
