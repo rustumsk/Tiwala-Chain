@@ -2,58 +2,26 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
 public sealed class PostingsController : ControllerBase
 {
-    private static readonly HashSet<string> ValidCategories =
-    [
-        "development",
-        "design",
-        "marketing",
-        "writing",
-        "admin_support",
-        "customer_support",
-        "video_media",
-        "blockchain",
-        "ai_data",
-        "product_strategy",
-    ];
-
-    private static readonly HashSet<string> ValidExperienceLevels =
-    [
-        "entry",
-        "intermediate",
-        "expert",
-    ];
-
-    private static readonly HashSet<string> ValidJobTypes =
-    [
-        "fixed_price",
-    ];
-
-    private static readonly HashSet<string> ValidBudgetTypes =
-    [
-        "fixed",
-        "range",
-    ];
-
-    private static readonly HashSet<string> ValidVisibility =
-    [
-        "public",
-    ];
-
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
+    private readonly CurrentUserService _currentUserService;
+    private readonly PostingMapper _postingMapper;
 
-    public PostingsController(AppDbContext dbContext, S3StorageService storage)
+    public PostingsController(
+        AppDbContext dbContext,
+        S3StorageService storage,
+        CurrentUserService currentUserService,
+        PostingMapper postingMapper)
     {
         _dbContext = dbContext;
         _storage = storage;
+        _currentUserService = currentUserService;
+        _postingMapper = postingMapper;
     }
 
     [Authorize]
@@ -63,7 +31,7 @@ public sealed class PostingsController : ControllerBase
         [FromBody] CreatePostingRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -74,12 +42,12 @@ public sealed class PostingsController : ControllerBase
             return StatusCode(403, "Your account is pending admin approval.");
         }
 
-        if (!CanCreatePosting(user.Role))
+        if (!PostingPolicy.CanCreate(user.Role))
         {
             return Forbid();
         }
 
-        var validation = ValidatePostingInput(
+        var validation = PostingValidator.ValidateInput(
             request.Title,
             request.Category,
             request.ExperienceLevel,
@@ -99,29 +67,29 @@ public sealed class PostingsController : ControllerBase
         {
             EmployerWallet = user.WalletAddress,
             Title = request.Title.Trim(),
-            Summary = TrimToNull(request.Summary),
-            Description = TrimToNull(request.Description),
+            Summary = TextNormalizer.TrimToNull(request.Summary),
+            Description = TextNormalizer.TrimToNull(request.Description),
             Category = request.Category.Trim().ToLowerInvariant(),
-            Skills = NormalizeSkills(request.Skills),
-            JobType = NormalizeOrDefault(request.JobType, "fixed_price"),
-            BudgetType = NormalizeOrDefault(request.BudgetType, "fixed"),
+            Skills = PostingTextNormalizer.NormalizeSkills(request.Skills),
+            JobType = PostingValidator.NormalizeOrDefault(request.JobType, "fixed_price"),
+            BudgetType = PostingValidator.NormalizeOrDefault(request.BudgetType, "fixed"),
             BudgetMin = request.BudgetMin,
             BudgetMax = request.BudgetType?.Trim().ToLowerInvariant() == "range"
                 ? request.BudgetMax
                 : null,
-            Timeline = TrimToNull(request.Timeline),
-            ExperienceLevel = NormalizeOrDefault(request.ExperienceLevel, "intermediate"),
-            Visibility = NormalizeOrDefault(request.Visibility, "public"),
+            Timeline = TextNormalizer.TrimToNull(request.Timeline),
+            ExperienceLevel = PostingValidator.NormalizeOrDefault(request.ExperienceLevel, "intermediate"),
+            Visibility = PostingValidator.NormalizeOrDefault(request.Visibility, "public"),
             ProposalDeadline = request.ProposalDeadline?.ToUniversalTime(),
-            BriefAttachmentKey = TrimToNull(request.BriefAttachmentKey),
-            ScreeningQuestionsJson = SerializeStringList(request.ScreeningQuestions),
+            BriefAttachmentKey = TextNormalizer.TrimToNull(request.BriefAttachmentKey),
+            ScreeningQuestionsJson = JsonFieldSerializer.SerializeStringList(request.ScreeningQuestions),
             Status = PostingStatus.Draft,
         };
 
         _dbContext.JobPostings.Add(posting);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return Ok(await ToPostingResponseAsync(posting, cancellationToken));
+        return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
     }
 
     [AllowAnonymous]
@@ -204,7 +172,7 @@ public sealed class PostingsController : ControllerBase
             }
         }
 
-        var skillTerms = ParseCommaList(skills);
+        var skillTerms = PostingTextNormalizer.ParseCommaList(skills);
         if (skillTerms.Count > 0)
         {
             query = query.Where(p => p.Skills.Any(skill => skillTerms.Contains(skill.ToLower())));
@@ -230,7 +198,7 @@ public sealed class PostingsController : ControllerBase
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var responses = await ToPostingResponsesAsync(items, cancellationToken);
+        var responses = await _postingMapper.ToPostingResponsesAsync(items, cancellationToken);
         return Ok(new PostingListResponse(responses, totalCount, page, pageSize));
     }
 
@@ -238,7 +206,7 @@ public sealed class PostingsController : ControllerBase
     [HttpGet("mine")]
     public async Task<ActionResult<List<PostingResponse>>> GetMyPostings(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -250,14 +218,14 @@ public sealed class PostingsController : ControllerBase
             .ToListAsync(cancellationToken);
 
         await ApplyLazyExpiryAsync(postings, cancellationToken);
-        return Ok(await ToPostingResponsesAsync(postings, cancellationToken));
+        return Ok(await _postingMapper.ToPostingResponsesAsync(postings, cancellationToken));
     }
 
     [Authorize]
     [HttpGet("mine/stats")]
     public async Task<ActionResult<PostingStatsResponse>> GetMyPostingStats(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -294,34 +262,34 @@ public sealed class PostingsController : ControllerBase
 
         if (posting.Status == PostingStatus.Draft)
         {
-            var user = await ResolveCurrentUser();
+            var user = await _currentUserService.GetAsync(User, cancellationToken);
             if (user is null)
             {
                 return Unauthorized("Authentication required.");
             }
 
-            if (!IsOwner(posting, user.WalletAddress) && user.Role != UserRole.Admin)
+            if (!PostingPolicy.CanManage(user, posting))
             {
                 return Forbid();
             }
         }
         else if (posting.Status != PostingStatus.Published && posting.Status != PostingStatus.Filled)
         {
-            var user = await ResolveCurrentUser();
-            if (user is null || (!IsOwner(posting, user.WalletAddress) && user.Role != UserRole.Admin))
+            var user = await _currentUserService.GetAsync(User, cancellationToken);
+            if (user is null || !PostingPolicy.CanManage(user, posting))
             {
                 return NotFound("Posting not found.");
             }
         }
 
-        return Ok(await ToPostingResponseAsync(posting, cancellationToken));
+        return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
     }
 
     [Authorize]
     [HttpGet("{id:int}/brief")]
     public async Task<IActionResult> DownloadPostingBrief(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -340,10 +308,7 @@ public sealed class PostingsController : ControllerBase
             return NotFound("No brief attachment found.");
         }
 
-        var canAccess = posting.Status == PostingStatus.Published
-            || IsOwner(posting, user.WalletAddress)
-            || user.Role == UserRole.Admin;
-        if (!canAccess)
+        if (!PostingPolicy.CanAccessBrief(user, posting))
         {
             return Forbid();
         }
@@ -359,7 +324,7 @@ public sealed class PostingsController : ControllerBase
         [FromBody] UpdatePostingRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -373,7 +338,7 @@ public sealed class PostingsController : ControllerBase
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
-        if (!IsOwner(posting, user.WalletAddress) && user.Role != UserRole.Admin)
+        if (!PostingPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -394,7 +359,7 @@ public sealed class PostingsController : ControllerBase
         var nextSkills = request.Skills ?? posting.Skills;
         var nextDeadline = request.ProposalDeadline ?? posting.ProposalDeadline;
 
-        var validation = ValidatePostingInput(
+        var validation = PostingValidator.ValidateInput(
             nextTitle,
             nextCategory,
             nextExperience,
@@ -413,41 +378,41 @@ public sealed class PostingsController : ControllerBase
         posting.Title = nextTitle.Trim();
         posting.Summary = request.Title is null && request.Summary is null
             ? posting.Summary
-            : TrimToNull(request.Summary) ?? posting.Summary;
+            : TextNormalizer.TrimToNull(request.Summary) ?? posting.Summary;
         if (request.Summary is not null)
         {
-            posting.Summary = TrimToNull(request.Summary);
+            posting.Summary = TextNormalizer.TrimToNull(request.Summary);
         }
         if (request.Description is not null)
         {
-            posting.Description = TrimToNull(request.Description);
+            posting.Description = TextNormalizer.TrimToNull(request.Description);
         }
 
         posting.Category = nextCategory.Trim().ToLowerInvariant();
-        posting.Skills = NormalizeSkills(nextSkills);
-        posting.JobType = NormalizeOrDefault(nextJobType, posting.JobType);
-        posting.BudgetType = NormalizeOrDefault(nextBudgetType, posting.BudgetType);
+        posting.Skills = PostingTextNormalizer.NormalizeSkills(nextSkills);
+        posting.JobType = PostingValidator.NormalizeOrDefault(nextJobType, posting.JobType);
+        posting.BudgetType = PostingValidator.NormalizeOrDefault(nextBudgetType, posting.BudgetType);
         posting.BudgetMin = nextBudgetMin;
         posting.BudgetMax = posting.BudgetType == "range" ? nextBudgetMax : null;
         if (request.Timeline is not null)
         {
-            posting.Timeline = TrimToNull(request.Timeline);
+            posting.Timeline = TextNormalizer.TrimToNull(request.Timeline);
         }
-        posting.ExperienceLevel = NormalizeOrDefault(nextExperience, posting.ExperienceLevel);
-        posting.Visibility = NormalizeOrDefault(nextVisibility, posting.Visibility);
+        posting.ExperienceLevel = PostingValidator.NormalizeOrDefault(nextExperience, posting.ExperienceLevel);
+        posting.Visibility = PostingValidator.NormalizeOrDefault(nextVisibility, posting.Visibility);
         posting.ProposalDeadline = nextDeadline?.ToUniversalTime();
         if (request.BriefAttachmentKey is not null)
         {
-            posting.BriefAttachmentKey = TrimToNull(request.BriefAttachmentKey);
+            posting.BriefAttachmentKey = TextNormalizer.TrimToNull(request.BriefAttachmentKey);
         }
         if (request.ScreeningQuestions is not null)
         {
-            posting.ScreeningQuestionsJson = SerializeStringList(request.ScreeningQuestions);
+            posting.ScreeningQuestionsJson = JsonFieldSerializer.SerializeStringList(request.ScreeningQuestions);
         }
         posting.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToPostingResponseAsync(posting, cancellationToken));
+        return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
     }
 
     [Authorize]
@@ -478,7 +443,7 @@ public sealed class PostingsController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeletePosting(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -490,7 +455,7 @@ public sealed class PostingsController : ControllerBase
             return NotFound("Posting not found.");
         }
 
-        if (!IsOwner(posting, user.WalletAddress) && user.Role != UserRole.Admin)
+        if (!PostingPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -517,7 +482,7 @@ public sealed class PostingsController : ControllerBase
         CancellationToken cancellationToken,
         bool allowFromClosed = false)
     {
-        var user = await ResolveCurrentUser();
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
         if (user is null)
         {
             return Unauthorized("Invalid session.");
@@ -531,7 +496,7 @@ public sealed class PostingsController : ControllerBase
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
-        if (!IsOwner(posting, user.WalletAddress) && user.Role != UserRole.Admin)
+        if (!PostingPolicy.CanManage(user, posting))
         {
             return Forbid();
         }
@@ -540,7 +505,7 @@ public sealed class PostingsController : ControllerBase
         {
             if (posting.Status == PostingStatus.Published)
             {
-                return Ok(await ToPostingResponseAsync(posting, cancellationToken));
+                return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
             }
 
             if (posting.Status != PostingStatus.Draft && !(allowFromClosed && posting.Status == PostingStatus.Closed))
@@ -565,7 +530,7 @@ public sealed class PostingsController : ControllerBase
 
         posting.UpdatedAt = DateTime.UtcNow;
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(await ToPostingResponseAsync(posting, cancellationToken));
+        return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
     }
 
     private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)
@@ -601,269 +566,4 @@ public sealed class PostingsController : ControllerBase
         }
     }
 
-    private async Task<User?> ResolveCurrentUser()
-    {
-        var subjectClaim = User.FindFirstValue(JwtRegisteredClaimNames.Sub)
-            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        if (!int.TryParse(subjectClaim, out var userId))
-        {
-            return null;
-        }
-
-        return await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == userId);
-    }
-
-    private async Task<List<PostingResponse>> ToPostingResponsesAsync(
-        List<JobPosting> postings,
-        CancellationToken cancellationToken)
-    {
-        var wallets = postings.Select(p => p.EmployerWallet).Distinct().ToList();
-        var users = await _dbContext.Users
-            .Where(u => wallets.Contains(u.WalletAddress))
-            .ToDictionaryAsync(u => u.WalletAddress, u => u.DisplayName, cancellationToken);
-
-        return postings.Select(p => ToPostingResponse(p, users)).ToList();
-    }
-
-    private async Task<PostingResponse> ToPostingResponseAsync(JobPosting posting, CancellationToken cancellationToken)
-    {
-        var displayName = await _dbContext.Users
-            .Where(u => u.WalletAddress == posting.EmployerWallet)
-            .Select(u => u.DisplayName)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return ToPostingResponse(posting, new Dictionary<string, string?> { [posting.EmployerWallet] = displayName });
-    }
-
-    private static PostingResponse ToPostingResponse(JobPosting posting, IReadOnlyDictionary<string, string?> users)
-    {
-        users.TryGetValue(posting.EmployerWallet, out var displayName);
-        return new PostingResponse(
-            posting.Id,
-            posting.EmployerWallet,
-            displayName,
-            posting.Title,
-            posting.Summary,
-            posting.Description,
-            posting.Category,
-            posting.Skills,
-            posting.JobType,
-            posting.BudgetType,
-            posting.BudgetMin,
-            posting.BudgetMax,
-            posting.Timeline,
-            posting.ExperienceLevel,
-            posting.Visibility,
-            posting.ProposalDeadline,
-            posting.Status.ToString(),
-            posting.ProposalCount,
-            posting.CreatedAt,
-            posting.PublishedAt,
-            !string.IsNullOrWhiteSpace(posting.BriefAttachmentKey),
-            DeserializeStringList(posting.ScreeningQuestionsJson)
-        );
-    }
-
-    private static bool CanCreatePosting(UserRole role) =>
-        role is UserRole.Employer or UserRole.Both;
-
-    private static bool IsOwner(JobPosting posting, string wallet) =>
-        string.Equals(posting.EmployerWallet, wallet, StringComparison.OrdinalIgnoreCase);
-
-    private static string? ValidatePostingInput(
-        string? title,
-        string? category,
-        string? experienceLevel,
-        string? jobType,
-        string? budgetType,
-        decimal? budgetMin,
-        decimal? budgetMax,
-        string? visibility,
-        List<string>? skills,
-        DateTime? proposalDeadline)
-    {
-        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length is < 5 or > 200)
-        {
-            return "Title must be between 5 and 200 characters.";
-        }
-
-        var normalizedCategory = category?.Trim().ToLowerInvariant();
-        if (string.IsNullOrWhiteSpace(normalizedCategory) || !ValidCategories.Contains(normalizedCategory))
-        {
-            return "Invalid category.";
-        }
-
-        var normalizedExperience = NormalizeOrDefault(experienceLevel, "intermediate");
-        if (!ValidExperienceLevels.Contains(normalizedExperience))
-        {
-            return "Invalid experience level.";
-        }
-
-        var normalizedJobType = NormalizeOrDefault(jobType, "fixed_price");
-        if (!ValidJobTypes.Contains(normalizedJobType))
-        {
-            return "Invalid job type.";
-        }
-
-        var normalizedBudgetType = NormalizeOrDefault(budgetType, "fixed");
-        if (!ValidBudgetTypes.Contains(normalizedBudgetType))
-        {
-            return "Invalid budget type.";
-        }
-
-        if (normalizedBudgetType == "fixed" && (!budgetMin.HasValue || budgetMin.Value <= 0))
-        {
-            return "Fixed budget postings require a positive budget amount.";
-        }
-
-        if (normalizedBudgetType == "range")
-        {
-            if (!budgetMin.HasValue || !budgetMax.HasValue || budgetMin.Value <= 0 || budgetMax.Value <= 0 || budgetMin >= budgetMax)
-            {
-                return "Budget range postings require a valid minimum and maximum budget.";
-            }
-        }
-
-        var normalizedVisibility = NormalizeOrDefault(visibility, "public");
-        if (!ValidVisibility.Contains(normalizedVisibility))
-        {
-            return "Invalid visibility.";
-        }
-
-        var normalizedSkills = NormalizeSkills(skills);
-        if (normalizedSkills.Count > 10)
-        {
-            return "A posting can have at most 10 skills.";
-        }
-
-        if (proposalDeadline.HasValue && proposalDeadline.Value.ToUniversalTime() <= DateTime.UtcNow)
-        {
-            return "Proposal deadline must be in the future.";
-        }
-
-        return null;
-    }
-
-    private static string NormalizeOrDefault(string? value, string fallback) =>
-        string.IsNullOrWhiteSpace(value) ? fallback : value.Trim().ToLowerInvariant();
-
-    private static string? TrimToNull(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private static List<string> NormalizeSkills(List<string>? skills) =>
-        (skills ?? [])
-            .Select(skill => skill.Trim())
-            .Where(skill => !string.IsNullOrWhiteSpace(skill))
-            .Select(skill => skill.Length > 30 ? skill[..30] : skill)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(skill => skill.ToLowerInvariant())
-            .ToList();
-
-    private static List<string> ParseCommaList(string? raw) =>
-        string.IsNullOrWhiteSpace(raw)
-            ? []
-            : raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(item => item.ToLowerInvariant())
-                .Distinct()
-                .ToList();
-
-    private static string? SerializeStringList(List<string>? values)
-    {
-        var normalized = (values ?? [])
-            .Select(v => v.Trim())
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .ToList();
-        return normalized.Count == 0 ? null : JsonSerializer.Serialize(normalized);
-    }
-
-    private static List<string> DeserializeStringList(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return [];
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<string>>(raw) ?? [];
-        }
-        catch
-        {
-            return [];
-        }
-    }
 }
-
-public sealed record CreatePostingRequest(
-    string Title,
-    string? Summary,
-    string? Description,
-    string Category,
-    List<string>? Skills,
-    string? JobType,
-    string? BudgetType,
-    decimal? BudgetMin,
-    decimal? BudgetMax,
-    string? Timeline,
-    string? ExperienceLevel,
-    string? Visibility,
-    DateTime? ProposalDeadline,
-    List<string>? ScreeningQuestions,
-    string? BriefAttachmentKey
-);
-
-public sealed record UpdatePostingRequest(
-    string? Title,
-    string? Summary,
-    string? Description,
-    string? Category,
-    List<string>? Skills,
-    string? JobType,
-    string? BudgetType,
-    decimal? BudgetMin,
-    decimal? BudgetMax,
-    string? Timeline,
-    string? ExperienceLevel,
-    string? Visibility,
-    DateTime? ProposalDeadline,
-    List<string>? ScreeningQuestions,
-    string? BriefAttachmentKey
-);
-
-public sealed record PostingResponse(
-    int Id,
-    string EmployerWallet,
-    string? EmployerDisplayName,
-    string Title,
-    string? Summary,
-    string? Description,
-    string Category,
-    List<string> Skills,
-    string JobType,
-    string BudgetType,
-    decimal? BudgetMin,
-    decimal? BudgetMax,
-    string? Timeline,
-    string ExperienceLevel,
-    string Visibility,
-    DateTime? ProposalDeadline,
-    string Status,
-    int ProposalCount,
-    DateTime CreatedAt,
-    DateTime? PublishedAt,
-    bool HasBriefAttachment,
-    List<string> ScreeningQuestions
-);
-
-public sealed record PostingListResponse(
-    List<PostingResponse> Items,
-    int TotalCount,
-    int Page,
-    int PageSize
-);
-
-public sealed record PostingStatsResponse(
-    int OpenPostings,
-    int NewProposals
-);
