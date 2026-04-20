@@ -49,17 +49,3 @@ public class DeliverableAttachment
     [MaxLength(128)]
     public string? Sha256Hash { get; set; }
 }
-
-public enum DeliverableStatus
-{
-    PendingReview = 0,
-    Approved = 1,
-    RevisionRequested = 2,
-}
-
-public enum DeliverableAttachmentType
-{
-    Link = 0,
-    File = 1,
-}
-

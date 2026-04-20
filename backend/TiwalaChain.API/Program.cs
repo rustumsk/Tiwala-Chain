@@ -256,6 +256,8 @@ if (string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<DeliverableService>();
 builder.Services.AddScoped<JwtTokenService>();
 builder.Services.AddSingleton<S3StorageService>();
 var app = builder.Build();
