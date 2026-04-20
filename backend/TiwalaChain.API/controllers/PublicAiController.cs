@@ -271,22 +271,3 @@ public sealed class PublicAiController : ControllerBase
 
     private static string GetCacheKey(string documentHash) => $"public-ai-review:{documentHash}";
 }
-
-public sealed record PublicAiEvaluationResponse(
-    int FairnessScore,
-    List<PublicAiClauseResponse> Clauses,
-    int TotalClauses,
-    int UnfairCount,
-    int FairCount,
-    bool Truncated,
-    bool Cached
-);
-
-public sealed record PublicAiClauseResponse(
-    string Clause,
-    string Label,
-    int? Confidence,
-    string? Reason,
-    string? Suggestion,
-    string? Issue
-);
