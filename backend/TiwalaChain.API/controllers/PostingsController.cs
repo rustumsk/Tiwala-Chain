@@ -10,17 +10,20 @@ public sealed class PostingsController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
     private readonly CurrentUserService _currentUserService;
+    private readonly PostingQueryService _postingQueryService;
     private readonly PostingMapper _postingMapper;
 
     public PostingsController(
         AppDbContext dbContext,
         S3StorageService storage,
         CurrentUserService currentUserService,
+        PostingQueryService postingQueryService,
         PostingMapper postingMapper)
     {
         _dbContext = dbContext;
         _storage = storage;
         _currentUserService = currentUserService;
+        _postingQueryService = postingQueryService;
         _postingMapper = postingMapper;
     }
 
@@ -109,97 +112,20 @@ public sealed class PostingsController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        var now = DateTime.UtcNow;
-        page = Math.Max(page, 1);
-        pageSize = Math.Clamp(pageSize, 1, 50);
-
-        var query = _dbContext.JobPostings
-            .AsNoTracking()
-            .Where(p => p.Status == PostingStatus.Published)
-            .Where(p => !p.ProposalDeadline.HasValue || p.ProposalDeadline > now);
-
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var search = q.Trim().ToLowerInvariant();
-            query = query.Where(p =>
-                p.Title.ToLower().Contains(search) ||
-                (p.Description != null && p.Description.ToLower().Contains(search)) ||
-                p.Skills.Any(skill => skill.ToLower().Contains(search)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(category))
-        {
-            var normalized = category.Trim().ToLowerInvariant();
-            query = query.Where(p => p.Category == normalized);
-        }
-
-        if (!string.IsNullOrWhiteSpace(experienceLevel))
-        {
-            var normalized = experienceLevel.Trim().ToLowerInvariant();
-            query = query.Where(p => p.ExperienceLevel == normalized);
-        }
-
-        if (!string.IsNullOrWhiteSpace(jobType))
-        {
-            var normalized = jobType.Trim().ToLowerInvariant();
-            query = query.Where(p => p.JobType == normalized);
-        }
-
-        if (budgetMin.HasValue)
-        {
-            query = query.Where(p => (p.BudgetMax ?? p.BudgetMin ?? 0m) >= budgetMin.Value);
-        }
-
-        if (budgetMax.HasValue)
-        {
-            query = query.Where(p => (p.BudgetMin ?? p.BudgetMax ?? 0m) <= budgetMax.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(postedWithin))
-        {
-            var threshold = postedWithin.Trim().ToLowerInvariant() switch
-            {
-                "24h" => now.AddHours(-24),
-                "3d" => now.AddDays(-3),
-                "7d" => now.AddDays(-7),
-                "14d" => now.AddDays(-14),
-                _ => (DateTime?)null,
-            };
-
-            if (threshold.HasValue)
-            {
-                query = query.Where(p => (p.PublishedAt ?? p.CreatedAt) >= threshold.Value);
-            }
-        }
-
-        var skillTerms = PostingTextNormalizer.ParseCommaList(skills);
-        if (skillTerms.Count > 0)
-        {
-            query = query.Where(p => p.Skills.Any(skill => skillTerms.Contains(skill.ToLower())));
-        }
-
-        query = (sort ?? "newest").Trim().ToLowerInvariant() switch
-        {
-            "oldest" => query.OrderBy(p => p.PublishedAt ?? p.CreatedAt),
-            "budget_high" => query.OrderByDescending(p => p.BudgetMax ?? p.BudgetMin ?? 0m)
-                .ThenByDescending(p => p.PublishedAt ?? p.CreatedAt),
-            "budget_low" => query.OrderBy(p => p.BudgetMin ?? p.BudgetMax ?? 0m)
-                .ThenByDescending(p => p.PublishedAt ?? p.CreatedAt),
-            "closing_soon" => query.OrderBy(p => p.ProposalDeadline ?? DateTime.MaxValue)
-                .ThenByDescending(p => p.PublishedAt ?? p.CreatedAt),
-            "fewest_proposals" => query.OrderBy(p => p.ProposalCount)
-                .ThenByDescending(p => p.PublishedAt ?? p.CreatedAt),
-            _ => query.OrderByDescending(p => p.PublishedAt ?? p.CreatedAt),
-        };
-
-        var totalCount = await query.CountAsync(cancellationToken);
-        var items = await query
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync(cancellationToken);
-
-        var responses = await _postingMapper.ToPostingResponsesAsync(items, cancellationToken);
-        return Ok(new PostingListResponse(responses, totalCount, page, pageSize));
+        var result = await _postingQueryService.BrowseAsync(
+            q,
+            category,
+            experienceLevel,
+            jobType,
+            budgetMin,
+            budgetMax,
+            postedWithin,
+            skills,
+            sort,
+            page,
+            pageSize,
+            cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -212,13 +138,8 @@ public sealed class PostingsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var postings = await _dbContext.JobPostings
-            .Where(p => p.EmployerWallet == user.WalletAddress)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        await ApplyLazyExpiryAsync(postings, cancellationToken);
-        return Ok(await _postingMapper.ToPostingResponsesAsync(postings, cancellationToken));
+        var result = await _postingQueryService.GetMineAsync(user, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -231,58 +152,15 @@ public sealed class PostingsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var openPostings = await _dbContext.JobPostings.CountAsync(
-            p => p.EmployerWallet == user.WalletAddress && p.Status == PostingStatus.Published,
-            cancellationToken);
-
-        var postingIds = await _dbContext.JobPostings
-            .Where(p => p.EmployerWallet == user.WalletAddress)
-            .Select(p => p.Id)
-            .ToListAsync(cancellationToken);
-
-        var newProposals = postingIds.Count == 0
-            ? 0
-            : await _dbContext.Proposals.CountAsync(
-                p => postingIds.Contains(p.PostingId) && p.Status == ProposalStatus.Submitted,
-                cancellationToken);
-
-        return Ok(new PostingStatsResponse(openPostings, newProposals));
+        var result = await _postingQueryService.GetMineStatsAsync(user, cancellationToken);
+        return ToActionResult(result);
     }
 
     [HttpGet("{id:int}")]
     public async Task<ActionResult<PostingResponse>> GetPosting(int id, CancellationToken cancellationToken)
     {
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        await ApplyLazyExpiryAsync(posting, cancellationToken);
-
-        if (posting.Status == PostingStatus.Draft)
-        {
-            var user = await _currentUserService.GetAsync(User, cancellationToken);
-            if (user is null)
-            {
-                return Unauthorized("Authentication required.");
-            }
-
-            if (!PostingPolicy.CanManage(user, posting))
-            {
-                return Forbid();
-            }
-        }
-        else if (posting.Status != PostingStatus.Published && posting.Status != PostingStatus.Filled)
-        {
-            var user = await _currentUserService.GetAsync(User, cancellationToken);
-            if (user is null || !PostingPolicy.CanManage(user, posting))
-            {
-                return NotFound("Posting not found.");
-            }
-        }
-
-        return Ok(await _postingMapper.ToPostingResponseAsync(posting, cancellationToken));
+        var result = await _postingQueryService.GetAsync(User, id, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -545,25 +423,19 @@ public sealed class PostingsController : ControllerBase
         }
     }
 
-    private async Task ApplyLazyExpiryAsync(List<JobPosting> postings, CancellationToken cancellationToken)
+    private ActionResult<T> ToActionResult<T>(PostingServiceResult<T> result)
     {
-        var changed = false;
-        foreach (var posting in postings)
+        return result.Status switch
         {
-            if (posting.Status == PostingStatus.Published &&
-                posting.ProposalDeadline.HasValue &&
-                posting.ProposalDeadline.Value <= DateTime.UtcNow)
-            {
-                posting.Status = PostingStatus.Expired;
-                posting.UpdatedAt = DateTime.UtcNow;
-                changed = true;
-            }
-        }
-
-        if (changed)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
+            PostingServiceResultStatus.Success => Ok(result.Value),
+            PostingServiceResultStatus.BadRequest => BadRequest(result.Error),
+            PostingServiceResultStatus.Conflict => Conflict(result.Error),
+            PostingServiceResultStatus.NotFound => NotFound(result.Error),
+            PostingServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            PostingServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            PostingServiceResultStatus.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 
 }

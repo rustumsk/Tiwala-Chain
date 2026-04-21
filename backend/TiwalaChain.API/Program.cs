@@ -268,6 +268,7 @@ builder.Services.AddScoped<ProposalOfferService>();
 builder.Services.AddScoped<ProposalQueryService>();
 builder.Services.AddScoped<ProposalWorkflowService>();
 builder.Services.AddScoped<ProposalMapper>();
+builder.Services.AddScoped<PostingQueryService>();
 builder.Services.AddScoped<PostingMapper>();
 builder.Services.AddScoped<PublicAiService>();
 builder.Services.AddScoped<PublicContractService>();
