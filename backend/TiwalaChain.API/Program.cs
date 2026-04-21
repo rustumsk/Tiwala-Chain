@@ -257,6 +257,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DeliverableService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<JobService>();
