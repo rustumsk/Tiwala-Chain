@@ -153,6 +153,7 @@ public sealed class ProposalServiceResult<T>
 
     public static ProposalServiceResult<T> Success(T value) => new(ProposalServiceResultStatus.Success, value, null);
     public static ProposalServiceResult<T> BadRequest(string error) => new(ProposalServiceResultStatus.BadRequest, default, error);
+    public static ProposalServiceResult<T> Conflict(string error) => new(ProposalServiceResultStatus.Conflict, default, error);
     public static ProposalServiceResult<T> NotFound(string error) => new(ProposalServiceResultStatus.NotFound, default, error);
     public static ProposalServiceResult<T> Forbidden(string? error = null) => new(ProposalServiceResultStatus.Forbidden, default, error);
 }
@@ -161,6 +162,7 @@ public enum ProposalServiceResultStatus
 {
     Success,
     BadRequest,
+    Conflict,
     NotFound,
     Forbidden,
 }
