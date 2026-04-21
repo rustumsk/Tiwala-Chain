@@ -1,42 +1,35 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 
 [ApiController]
 [Route("api")]
 public sealed partial class ProposalsController : ControllerBase
 {
-    private readonly AppDbContext _dbContext;
-    private readonly S3StorageService _storage;
     private readonly CurrentUserService _currentUserService;
     private readonly ProposalCommandService _proposalCommandService;
+    private readonly ProposalFileService _proposalFileService;
     private readonly ProposalMessageService _proposalMessageService;
     private readonly ProposalOfferService _proposalOfferService;
     private readonly ProposalQueryService _proposalQueryService;
     private readonly ProposalWorkflowService _proposalWorkflowService;
-    private readonly ProposalMapper _proposalMapper;
 
     public ProposalsController(
-        AppDbContext dbContext,
-        S3StorageService storage,
         CurrentUserService currentUserService,
         ProposalCommandService proposalCommandService,
+        ProposalFileService proposalFileService,
         ProposalMessageService proposalMessageService,
         ProposalOfferService proposalOfferService,
         ProposalQueryService proposalQueryService,
-        ProposalWorkflowService proposalWorkflowService,
-        ProposalMapper proposalMapper)
+        ProposalWorkflowService proposalWorkflowService)
     {
-        _dbContext = dbContext;
-        _storage = storage;
         _currentUserService = currentUserService;
         _proposalCommandService = proposalCommandService;
+        _proposalFileService = proposalFileService;
         _proposalMessageService = proposalMessageService;
         _proposalOfferService = proposalOfferService;
         _proposalQueryService = proposalQueryService;
         _proposalWorkflowService = proposalWorkflowService;
-        _proposalMapper = proposalMapper;
     }
 
     [Authorize]
@@ -249,30 +242,17 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (proposal is null)
+        var result = await _proposalFileService.GetCvAsync(user, id, cancellationToken);
+        return result.Status switch
         {
-            return NotFound("Proposal not found.");
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        if (!ProposalPolicy.CanAccess(user, posting, proposal))
-        {
-            return Forbid();
-        }
-
-        if (string.IsNullOrWhiteSpace(proposal.CvAttachmentKey))
-        {
-            return NotFound("No CV attached to this proposal.");
-        }
-
-        var (stream, contentType) = await _storage.GetAsync(proposal.CvAttachmentKey, cancellationToken);
-        return File(stream, contentType, $"proposal-{proposal.Id}-cv");
+            ProposalServiceResultStatus.Success => File(result.Value!.Stream, result.Value.ContentType, result.Value.FileName),
+            ProposalServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ProposalServiceResultStatus.Conflict => Conflict(result.Error),
+            ProposalServiceResultStatus.NotFound => NotFound(result.Error),
+            ProposalServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ProposalServiceResultStatus.Forbidden => Forbid(),
+            _ => StatusCode(StatusCodes.Status500InternalServerError),
+        };
     }
 
     private ActionResult<T> ToActionResult<T>(ProposalServiceResult<T> result)
