@@ -262,6 +262,7 @@ builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<ProposalMessageService>();
+builder.Services.AddScoped<ProposalWorkflowService>();
 builder.Services.AddScoped<ProposalMapper>();
 builder.Services.AddScoped<PostingMapper>();
 builder.Services.AddScoped<PublicAiService>();
