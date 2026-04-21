@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 [ApiController]
 [Route("api")]
@@ -13,6 +12,7 @@ public sealed partial class ProposalsController : ControllerBase
     private readonly CurrentUserService _currentUserService;
     private readonly ProposalCommandService _proposalCommandService;
     private readonly ProposalMessageService _proposalMessageService;
+    private readonly ProposalOfferService _proposalOfferService;
     private readonly ProposalQueryService _proposalQueryService;
     private readonly ProposalWorkflowService _proposalWorkflowService;
     private readonly ProposalMapper _proposalMapper;
@@ -23,6 +23,7 @@ public sealed partial class ProposalsController : ControllerBase
         CurrentUserService currentUserService,
         ProposalCommandService proposalCommandService,
         ProposalMessageService proposalMessageService,
+        ProposalOfferService proposalOfferService,
         ProposalQueryService proposalQueryService,
         ProposalWorkflowService proposalWorkflowService,
         ProposalMapper proposalMapper)
@@ -32,6 +33,7 @@ public sealed partial class ProposalsController : ControllerBase
         _currentUserService = currentUserService;
         _proposalCommandService = proposalCommandService;
         _proposalMessageService = proposalMessageService;
+        _proposalOfferService = proposalOfferService;
         _proposalQueryService = proposalQueryService;
         _proposalWorkflowService = proposalWorkflowService;
         _proposalMapper = proposalMapper;
@@ -233,96 +235,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        if (!user.IsApproved)
-        {
-            return StatusCode(403, "Your account is pending admin approval.");
-        }
-
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (proposal is null)
-        {
-            return NotFound("Proposal not found.");
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        if (!ProposalPolicy.CanManage(user, posting))
-        {
-            return Forbid();
-        }
-
-        if (proposal.Status == ProposalStatus.ConvertedToOffer && proposal.ConvertedJobId.HasValue)
-        {
-            var existingJob = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == proposal.ConvertedJobId.Value, cancellationToken);
-            if (existingJob is not null)
-            {
-                return Ok(JobMapper.ToResponse(existingJob));
-            }
-        }
-
-        if (proposal.Status != ProposalStatus.Selected)
-        {
-            return BadRequest("Only selected proposals can be converted to an offer.");
-        }
-
-        var normalizedHash = HashNormalizer.NormalizeSha256Hash(request.ContractHash);
-        if (string.IsNullOrWhiteSpace(request.ContractKey) || normalizedHash is null)
-        {
-            return BadRequest("Contract key and a valid contract hash are required.");
-        }
-
-        var amount = request.AmountUsdt ?? proposal.ProposedAmount;
-        if (amount <= 0)
-        {
-            return BadRequest("Offer amount must be greater than 0.");
-        }
-
-        var title = string.IsNullOrWhiteSpace(request.Title) ? posting.Title : request.Title.Trim();
-        if (title.Length is < 5 or > 200)
-        {
-            return BadRequest("Title must be between 5 and 200 characters.");
-        }
-
-        var job = new Job
-        {
-            EmployerWallet = posting.EmployerWallet,
-            FreelancerWallet = proposal.FreelancerWallet,
-            Title = title,
-            Description = TextNormalizer.TrimToNull(request.Description ?? posting.Description ?? proposal.CoverLetter),
-            ContractKey = request.ContractKey.Trim(),
-            ContractHash = normalizedHash,
-            AmountUsdt = amount,
-            Status = JobStatus.PendingOffer,
-            PostingId = posting.Id,
-            ProposalId = proposal.Id,
-        };
-
-        _dbContext.Jobs.Add(job);
-        proposal.Status = ProposalStatus.ConvertedToOffer;
-        proposal.UpdatedAt = DateTime.UtcNow;
-        posting.Status = PostingStatus.Filled;
-        posting.ClosedAt = DateTime.UtcNow;
-        posting.UpdatedAt = DateTime.UtcNow;
-        AddSystemMessage(proposal.Id, "A formal offer was created from this proposal.");
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        proposal.ConvertedJobId = job.Id;
-        AddNotification(
-            proposal.FreelancerWallet,
-            "offer_from_proposal",
-            $"A formal offer was created from your proposal for \"{posting.Title}\".",
-            new Dictionary<string, object?>
-            {
-                ["postingId"] = posting.Id,
-                ["proposalId"] = proposal.Id,
-                ["jobId"] = job.Id,
-            });
-        await _dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(JobMapper.ToResponse(job));
+        var result = await _proposalOfferService.ConvertToOfferAsync(user, id, request, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -359,32 +273,6 @@ public sealed partial class ProposalsController : ControllerBase
 
         var (stream, contentType) = await _storage.GetAsync(proposal.CvAttachmentKey, cancellationToken);
         return File(stream, contentType, $"proposal-{proposal.Id}-cv");
-    }
-
-    private void AddNotification(
-        string recipientWallet,
-        string type,
-        string message,
-        IReadOnlyDictionary<string, object?>? data = null)
-    {
-        _dbContext.Notifications.Add(new Notification
-        {
-            RecipientWallet = recipientWallet,
-            Type = type,
-            Message = message.Length > 500 ? message[..500] : message,
-            DataJson = data is null ? null : JsonSerializer.Serialize(data),
-        });
-    }
-
-    private void AddSystemMessage(int proposalId, string body)
-    {
-        _dbContext.ProposalMessages.Add(new ProposalMessage
-        {
-            ProposalId = proposalId,
-            SenderWallet = "system",
-            Body = body,
-            MessageType = "system",
-        });
     }
 
     private ActionResult<T> ToActionResult<T>(ProposalServiceResult<T> result)
