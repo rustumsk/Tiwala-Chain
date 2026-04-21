@@ -261,6 +261,7 @@ builder.Services.AddScoped<DeliverableService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ProposalCommandService>();
 builder.Services.AddScoped<ProposalMessageService>();
 builder.Services.AddScoped<ProposalQueryService>();
 builder.Services.AddScoped<ProposalWorkflowService>();

@@ -11,6 +11,7 @@ public sealed partial class ProposalsController : ControllerBase
     private readonly AppDbContext _dbContext;
     private readonly S3StorageService _storage;
     private readonly CurrentUserService _currentUserService;
+    private readonly ProposalCommandService _proposalCommandService;
     private readonly ProposalMessageService _proposalMessageService;
     private readonly ProposalQueryService _proposalQueryService;
     private readonly ProposalWorkflowService _proposalWorkflowService;
@@ -20,6 +21,7 @@ public sealed partial class ProposalsController : ControllerBase
         AppDbContext dbContext,
         S3StorageService storage,
         CurrentUserService currentUserService,
+        ProposalCommandService proposalCommandService,
         ProposalMessageService proposalMessageService,
         ProposalQueryService proposalQueryService,
         ProposalWorkflowService proposalWorkflowService,
@@ -28,6 +30,7 @@ public sealed partial class ProposalsController : ControllerBase
         _dbContext = dbContext;
         _storage = storage;
         _currentUserService = currentUserService;
+        _proposalCommandService = proposalCommandService;
         _proposalMessageService = proposalMessageService;
         _proposalQueryService = proposalQueryService;
         _proposalWorkflowService = proposalWorkflowService;
@@ -48,82 +51,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        if (!user.IsApproved)
-        {
-            return StatusCode(403, "Your account is pending admin approval.");
-        }
-
-        if (!ProposalPolicy.CanSubmit(user.Role))
-        {
-            return Forbid();
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == postingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        await ApplyLazyExpiryAsync(posting, cancellationToken);
-
-        if (posting.Status != PostingStatus.Published)
-        {
-            return BadRequest("This posting is not accepting proposals.");
-        }
-
-        if (string.Equals(posting.EmployerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest("You cannot apply to your own posting.");
-        }
-
-        var validation = ProposalValidator.ValidateInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
-        if (validation is not null)
-        {
-            return BadRequest(validation);
-        }
-
-        var existing = await _dbContext.Proposals
-            .FirstOrDefaultAsync(
-                p => p.PostingId == postingId &&
-                    p.FreelancerWallet == user.WalletAddress &&
-                    p.Status != ProposalStatus.Withdrawn,
-                cancellationToken);
-        if (existing is not null)
-        {
-            return Conflict("You already have an active proposal for this posting.");
-        }
-
-        var proposal = new Proposal
-        {
-            PostingId = posting.Id,
-            FreelancerWallet = user.WalletAddress,
-            CoverLetter = TextNormalizer.TrimToNull(request.CoverLetter),
-            ProposedAmount = request.ProposedAmount,
-            EstimatedTimeline = TextNormalizer.TrimToNull(request.EstimatedTimeline),
-            PortfolioLinksJson = JsonFieldSerializer.SerializeStringList(request.PortfolioLinks),
-            RelevantExperience = TextNormalizer.TrimToNull(request.RelevantExperience),
-            ScreeningAnswersJson = JsonFieldSerializer.SerializeStringMap(request.ScreeningAnswers),
-            CvAttachmentKey = TextNormalizer.TrimToNull(request.CvAttachmentKey),
-            Status = ProposalStatus.Submitted,
-        };
-
-        _dbContext.Proposals.Add(proposal);
-        posting.ProposalCount += 1;
-        posting.UpdatedAt = DateTime.UtcNow;
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        AddNotification(
-            posting.EmployerWallet,
-            "proposal_received",
-            $"New proposal received for \"{posting.Title}\".",
-            new Dictionary<string, object?>
-            {
-                ["postingId"] = posting.Id,
-                ["proposalId"] = proposal.Id,
-            });
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
+        var result = await _proposalCommandService.CreateAsync(user, postingId, request, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -197,51 +126,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (proposal is null)
-        {
-            return NotFound("Proposal not found.");
-        }
-
-        if (!string.Equals(proposal.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
-        {
-            return Forbid();
-        }
-
-        if (proposal.Status is ProposalStatus.Shortlisted or ProposalStatus.Selected or ProposalStatus.Rejected or ProposalStatus.Withdrawn or ProposalStatus.ConvertedToOffer)
-        {
-            return BadRequest("This proposal can no longer be edited.");
-        }
-
-        var nextAmount = request.ProposedAmount ?? proposal.ProposedAmount;
-        var nextTimeline = request.EstimatedTimeline ?? proposal.EstimatedTimeline;
-        var validation = ProposalValidator.ValidateInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
-        if (validation is not null)
-        {
-            return BadRequest(validation);
-        }
-
-        proposal.CoverLetter = TextNormalizer.TrimToNull(request.CoverLetter ?? proposal.CoverLetter);
-        proposal.ProposedAmount = nextAmount;
-        proposal.EstimatedTimeline = TextNormalizer.TrimToNull(nextTimeline);
-        proposal.PortfolioLinksJson = request.PortfolioLinks is null
-            ? proposal.PortfolioLinksJson
-            : JsonFieldSerializer.SerializeStringList(request.PortfolioLinks);
-        proposal.RelevantExperience = request.RelevantExperience is null
-            ? proposal.RelevantExperience
-            : TextNormalizer.TrimToNull(request.RelevantExperience);
-        proposal.ScreeningAnswersJson = request.ScreeningAnswers is null
-            ? proposal.ScreeningAnswersJson
-            : JsonFieldSerializer.SerializeStringMap(request.ScreeningAnswers);
-        proposal.CvAttachmentKey = request.CvAttachmentKey is null
-            ? proposal.CvAttachmentKey
-            : TextNormalizer.TrimToNull(request.CvAttachmentKey);
-        proposal.UpdatedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var posting = await _dbContext.JobPostings.FirstAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
+        var result = await _proposalCommandService.UpdateAsync(user, id, request, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -475,18 +361,6 @@ public sealed partial class ProposalsController : ControllerBase
         return File(stream, contentType, $"proposal-{proposal.Id}-cv");
     }
 
-    private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)
-    {
-        if (posting.Status == PostingStatus.Published &&
-            posting.ProposalDeadline.HasValue &&
-            posting.ProposalDeadline.Value <= DateTime.UtcNow)
-        {
-            posting.Status = PostingStatus.Expired;
-            posting.UpdatedAt = DateTime.UtcNow;
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-    }
-
     private void AddNotification(
         string recipientWallet,
         string type,
@@ -519,6 +393,7 @@ public sealed partial class ProposalsController : ControllerBase
         {
             ProposalServiceResultStatus.Success => Ok(result.Value),
             ProposalServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ProposalServiceResultStatus.Conflict => Conflict(result.Error),
             ProposalServiceResultStatus.NotFound => NotFound(result.Error),
             ProposalServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
             ProposalServiceResultStatus.Forbidden => Forbid(),
