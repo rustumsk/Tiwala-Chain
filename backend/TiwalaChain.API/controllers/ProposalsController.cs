@@ -12,6 +12,7 @@ public sealed partial class ProposalsController : ControllerBase
     private readonly S3StorageService _storage;
     private readonly CurrentUserService _currentUserService;
     private readonly ProposalMessageService _proposalMessageService;
+    private readonly ProposalQueryService _proposalQueryService;
     private readonly ProposalWorkflowService _proposalWorkflowService;
     private readonly ProposalMapper _proposalMapper;
 
@@ -20,6 +21,7 @@ public sealed partial class ProposalsController : ControllerBase
         S3StorageService storage,
         CurrentUserService currentUserService,
         ProposalMessageService proposalMessageService,
+        ProposalQueryService proposalQueryService,
         ProposalWorkflowService proposalWorkflowService,
         ProposalMapper proposalMapper)
     {
@@ -27,6 +29,7 @@ public sealed partial class ProposalsController : ControllerBase
         _storage = storage;
         _currentUserService = currentUserService;
         _proposalMessageService = proposalMessageService;
+        _proposalQueryService = proposalQueryService;
         _proposalWorkflowService = proposalWorkflowService;
         _proposalMapper = proposalMapper;
     }
@@ -135,54 +138,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == postingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        await ApplyLazyExpiryAsync(posting, cancellationToken);
-
-        IQueryable<Proposal> query = _dbContext.Proposals
-            .Where(p => p.PostingId == postingId)
-            .OrderByDescending(p => p.CreatedAt);
-
-        var isOwner = ProposalPolicy.IsPostingOwner(posting, user.WalletAddress);
-        if (!isOwner && user.Role != UserRole.Admin)
-        {
-            query = query.Where(p => p.FreelancerWallet == user.WalletAddress);
-        }
-
-        var proposals = await query.ToListAsync(cancellationToken);
-
-        if (isOwner)
-        {
-            var submitted = proposals
-                .Where(p => p.Status == ProposalStatus.Submitted)
-                .ToList();
-            if (submitted.Count > 0)
-            {
-                foreach (var proposal in submitted)
-                {
-                    proposal.Status = ProposalStatus.Viewed;
-                    proposal.ViewedAt = DateTime.UtcNow;
-                    proposal.UpdatedAt = DateTime.UtcNow;
-                    AddNotification(
-                        proposal.FreelancerWallet,
-                        "proposal_viewed",
-                        $"Your proposal for \"{posting.Title}\" was viewed.",
-                        new Dictionary<string, object?>
-                        {
-                            ["postingId"] = posting.Id,
-                            ["proposalId"] = proposal.Id,
-                        });
-                }
-
-                await _dbContext.SaveChangesAsync(cancellationToken);
-            }
-        }
-
-        return Ok(await _proposalMapper.ToProposalResponsesAsync(proposals, posting, cancellationToken));
+        var result = await _proposalQueryService.GetPostingProposalsAsync(user, postingId, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -195,12 +152,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var proposals = await _dbContext.Proposals
-            .Where(p => p.FreelancerWallet == user.WalletAddress)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        return Ok(await _proposalMapper.ToProposalResponsesAsync(proposals, cancellationToken));
+        var result = await _proposalQueryService.GetMineAsync(user, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -213,20 +166,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var activeApplications = await _dbContext.Proposals.CountAsync(
-            p => p.FreelancerWallet == user.WalletAddress &&
-                p.Status != ProposalStatus.Rejected &&
-                p.Status != ProposalStatus.Withdrawn &&
-                p.Status != ProposalStatus.ConvertedToOffer,
-            cancellationToken);
-
-        var unreadReplies = await _dbContext.Notifications.CountAsync(
-            n => n.RecipientWallet == user.WalletAddress &&
-                !n.IsRead &&
-                n.Type == "proposal_message",
-            cancellationToken);
-
-        return Ok(new ProposalStatsResponse(activeApplications, unreadReplies));
+        var result = await _proposalQueryService.GetMineStatsAsync(user, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
@@ -239,41 +180,8 @@ public sealed partial class ProposalsController : ControllerBase
             return Unauthorized("Invalid session.");
         }
 
-        var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
-        if (proposal is null)
-        {
-            return NotFound("Proposal not found.");
-        }
-
-        var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
-        if (posting is null)
-        {
-            return NotFound("Posting not found.");
-        }
-
-        if (!ProposalPolicy.CanAccess(user, posting, proposal))
-        {
-            return Forbid();
-        }
-
-        if (ProposalPolicy.IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
-        {
-            proposal.Status = ProposalStatus.Viewed;
-            proposal.ViewedAt = DateTime.UtcNow;
-            proposal.UpdatedAt = DateTime.UtcNow;
-            AddNotification(
-                proposal.FreelancerWallet,
-                "proposal_viewed",
-                $"Your proposal for \"{posting.Title}\" was viewed.",
-                new Dictionary<string, object?>
-                {
-                    ["postingId"] = posting.Id,
-                    ["proposalId"] = proposal.Id,
-                });
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        return Ok(await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken));
+        var result = await _proposalQueryService.GetAsync(user, id, cancellationToken);
+        return ToActionResult(result);
     }
 
     [Authorize]
