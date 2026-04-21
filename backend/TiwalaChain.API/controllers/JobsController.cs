@@ -22,82 +22,54 @@ public sealed class JobsController : ControllerBase
         [FromBody] CreateJobRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.CreateJobAsync(user, request, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.CreateJobAsync(user, request, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("offers/incoming")]
     public async Task<ActionResult<List<JobResponse>>> GetIncomingOffers(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        return Ok(await _jobService.GetIncomingOffersAsync(user, cancellationToken));
+        return await WithCurrentUserAsync<List<JobResponse>>(
+            async user => Ok(await _jobService.GetIncomingOffersAsync(user, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("offers/sent")]
     public async Task<ActionResult<List<JobResponse>>> GetSentOffers(CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        return Ok(await _jobService.GetSentOffersAsync(user, cancellationToken));
+        return await WithCurrentUserAsync<List<JobResponse>>(
+            async user => Ok(await _jobService.GetSentOffersAsync(user, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("{id:int}")]
     public async Task<ActionResult<JobResponse>> GetJob(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.GetJobAsync(user, id, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.GetJobAsync(user, id, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("{id:int}/contract")]
     public async Task<IActionResult> GetJobContract(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.GetJobContractAsync(user, id, cancellationToken);
-        return ToFileResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToFileResult(await _jobService.GetJobContractAsync(user, id, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("contract/by-hash/{hash}")]
     public async Task<IActionResult> GetJobContractByHash(string hash, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.GetJobContractByHashAsync(user, hash, cancellationToken);
-        return ToFileResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToFileResult(await _jobService.GetJobContractByHashAsync(user, hash, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
@@ -106,14 +78,9 @@ public sealed class JobsController : ControllerBase
         string hash,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.GetJobDisputeByHashAsync(user, hash, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.GetJobDisputeByHashAsync(user, hash, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
@@ -122,36 +89,30 @@ public sealed class JobsController : ControllerBase
         [FromBody] RecordJobDisputeRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
+        return await WithCurrentUserAsync(
+            async user =>
+            {
+                var result = await _jobService.RecordJobDisputeAsync(user, request, cancellationToken);
+                if (result.Status == JobServiceResultStatus.Created)
+                {
+                    return CreatedAtAction(
+                        nameof(GetJobDisputeByHash),
+                        new { hash = result.LocationHash },
+                        result.Value);
+                }
 
-        var result = await _jobService.RecordJobDisputeAsync(user, request, cancellationToken);
-        if (result.Status == JobServiceResultStatus.Created)
-        {
-            return CreatedAtAction(
-                nameof(GetJobDisputeByHash),
-                new { hash = result.LocationHash },
-                result.Value);
-        }
-
-        return ToActionResult(result);
+                return ToActionResult(result);
+            },
+            cancellationToken);
     }
 
     [Authorize]
     [HttpGet("by-hash/{hash}")]
     public async Task<ActionResult<JobResponse>> GetJobByHash(string hash, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.GetJobByHashAsync(user, hash, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.GetJobByHashAsync(user, hash, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
@@ -160,47 +121,47 @@ public sealed class JobsController : ControllerBase
         [FromBody] SyncJobFromChainRequest request,
         CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.SyncJobFromChainAsync(user, request, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.SyncJobFromChainAsync(user, request, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpPost("{id:int}/accept")]
     public async Task<ActionResult<JobResponse>> AcceptJob(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.AcceptJobAsync(user, id, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.AcceptJobAsync(user, id, cancellationToken)),
+            cancellationToken);
     }
 
     [Authorize]
     [HttpPost("{id:int}/decline")]
     public async Task<ActionResult<JobResponse>> DeclineJob(int id, CancellationToken cancellationToken)
     {
-        var user = await ResolveCurrentUserAsync(cancellationToken);
-        if (user is null)
-        {
-            return Unauthorized("Invalid session.");
-        }
-
-        var result = await _jobService.DeclineJobAsync(user, id, cancellationToken);
-        return ToActionResult(result);
+        return await WithCurrentUserAsync(
+            async user => ToActionResult(await _jobService.DeclineJobAsync(user, id, cancellationToken)),
+            cancellationToken);
     }
 
-    private async Task<User?> ResolveCurrentUserAsync(CancellationToken cancellationToken)
+    private async Task<ActionResult<T>> WithCurrentUserAsync<T>(
+        Func<User, Task<ActionResult<T>>> action,
+        CancellationToken cancellationToken)
     {
-        return await _currentUserService.GetAsync(User, cancellationToken);
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
+        return user is null
+            ? Unauthorized("Invalid session.")
+            : await action(user);
+    }
+
+    private async Task<IActionResult> WithCurrentUserAsync(
+        Func<User, Task<IActionResult>> action,
+        CancellationToken cancellationToken)
+    {
+        var user = await _currentUserService.GetAsync(User, cancellationToken);
+        return user is null
+            ? Unauthorized("Invalid session.")
+            : await action(user);
     }
 
     private ActionResult<T> ToActionResult<T>(JobServiceResult<T> result)
