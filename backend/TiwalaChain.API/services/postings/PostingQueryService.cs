@@ -16,7 +16,7 @@ public sealed class PostingQueryService
         _postingMapper = postingMapper;
     }
 
-    public async Task<PostingServiceResult<PostingListResponse>> BrowseAsync(
+    public async Task<ServiceResult<PostingListResponse>> BrowseAsync(
         string? q,
         string? category,
         string? experienceLevel,
@@ -49,10 +49,10 @@ public sealed class PostingQueryService
             .ToListAsync(cancellationToken);
 
         var responses = await _postingMapper.ToPostingResponsesAsync(items, cancellationToken);
-        return PostingServiceResult<PostingListResponse>.Success(new PostingListResponse(responses, totalCount, page, pageSize));
+        return ServiceResult<PostingListResponse>.Success(new PostingListResponse(responses, totalCount, page, pageSize));
     }
 
-    public async Task<PostingServiceResult<List<PostingResponse>>> GetMineAsync(
+    public async Task<ServiceResult<List<PostingResponse>>> GetMineAsync(
         User user,
         CancellationToken cancellationToken)
     {
@@ -63,10 +63,10 @@ public sealed class PostingQueryService
 
         await ApplyLazyExpiryAsync(postings, cancellationToken);
         var responses = await _postingMapper.ToPostingResponsesAsync(postings, cancellationToken);
-        return PostingServiceResult<List<PostingResponse>>.Success(responses);
+        return ServiceResult<List<PostingResponse>>.Success(responses);
     }
 
-    public async Task<PostingServiceResult<PostingStatsResponse>> GetMineStatsAsync(
+    public async Task<ServiceResult<PostingStatsResponse>> GetMineStatsAsync(
         User user,
         CancellationToken cancellationToken)
     {
@@ -85,10 +85,10 @@ public sealed class PostingQueryService
                 p => postingIds.Contains(p.PostingId) && p.Status == ProposalStatus.Submitted,
                 cancellationToken);
 
-        return PostingServiceResult<PostingStatsResponse>.Success(new PostingStatsResponse(openPostings, newProposals));
+        return ServiceResult<PostingStatsResponse>.Success(new PostingStatsResponse(openPostings, newProposals));
     }
 
-    public async Task<PostingServiceResult<PostingResponse>> GetAsync(
+    public async Task<ServiceResult<PostingResponse>> GetAsync(
         System.Security.Claims.ClaimsPrincipal principal,
         int id,
         CancellationToken cancellationToken)
@@ -96,7 +96,7 @@ public sealed class PostingQueryService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (posting is null)
         {
-            return PostingServiceResult<PostingResponse>.NotFound("Posting not found.");
+            return ServiceResult<PostingResponse>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
@@ -106,12 +106,12 @@ public sealed class PostingQueryService
             var user = await _currentUserService.GetAsync(principal, cancellationToken);
             if (user is null)
             {
-                return PostingServiceResult<PostingResponse>.Unauthorized("Authentication required.");
+                return ServiceResult<PostingResponse>.Unauthorized("Authentication required.");
             }
 
             if (!PostingPolicy.CanManage(user, posting))
             {
-                return PostingServiceResult<PostingResponse>.Forbidden();
+                return ServiceResult<PostingResponse>.Forbidden();
             }
         }
         else if (posting.Status != PostingStatus.Published && posting.Status != PostingStatus.Filled)
@@ -119,12 +119,12 @@ public sealed class PostingQueryService
             var user = await _currentUserService.GetAsync(principal, cancellationToken);
             if (user is null || !PostingPolicy.CanManage(user, posting))
             {
-                return PostingServiceResult<PostingResponse>.NotFound("Posting not found.");
+                return ServiceResult<PostingResponse>.NotFound("Posting not found.");
             }
         }
 
         var response = await _postingMapper.ToPostingResponseAsync(posting, cancellationToken);
-        return PostingServiceResult<PostingResponse>.Success(response);
+        return ServiceResult<PostingResponse>.Success(response);
     }
 
     private static IQueryable<JobPosting> ApplyFilters(
@@ -251,35 +251,4 @@ public sealed class PostingQueryService
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
     }
-}
-
-public sealed class PostingServiceResult<T>
-{
-    private PostingServiceResult(PostingServiceResultStatus status, T? value, string? error)
-    {
-        Status = status;
-        Value = value;
-        Error = error;
-    }
-
-    public PostingServiceResultStatus Status { get; }
-    public T? Value { get; }
-    public string? Error { get; }
-
-    public static PostingServiceResult<T> Success(T value) => new(PostingServiceResultStatus.Success, value, null);
-    public static PostingServiceResult<T> BadRequest(string error) => new(PostingServiceResultStatus.BadRequest, default, error);
-    public static PostingServiceResult<T> Conflict(string error) => new(PostingServiceResultStatus.Conflict, default, error);
-    public static PostingServiceResult<T> NotFound(string error) => new(PostingServiceResultStatus.NotFound, default, error);
-    public static PostingServiceResult<T> Unauthorized(string error) => new(PostingServiceResultStatus.Unauthorized, default, error);
-    public static PostingServiceResult<T> Forbidden(string? error = null) => new(PostingServiceResultStatus.Forbidden, default, error);
-}
-
-public enum PostingServiceResultStatus
-{
-    Success,
-    BadRequest,
-    Conflict,
-    NotFound,
-    Unauthorized,
-    Forbidden,
 }

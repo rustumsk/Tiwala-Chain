@@ -93,7 +93,7 @@ public sealed class JobsController : ControllerBase
             async user =>
             {
                 var result = await _jobService.RecordJobDisputeAsync(user, request, cancellationToken);
-                if (result.Status == JobServiceResultStatus.Created)
+                if (result.Status == ServiceResultStatus.Created)
                 {
                     return CreatedAtAction(
                         nameof(GetJobDisputeByHash),
@@ -164,32 +164,32 @@ public sealed class JobsController : ControllerBase
             : await action(user);
     }
 
-    private ActionResult<T> ToActionResult<T>(JobServiceResult<T> result)
+    private ActionResult<T> ToActionResult<T>(ServiceResult<T> result)
     {
         return result.Status switch
         {
-            JobServiceResultStatus.Success => Ok(result.Value),
-            JobServiceResultStatus.BadRequest => BadRequest(result.Error),
-            JobServiceResultStatus.NotFound => NotFound(result.Error),
-            JobServiceResultStatus.Conflict => Conflict(result.Error),
-            JobServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            JobServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => Ok(result.Value),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
 
-    private IActionResult ToFileResult(JobServiceResult<JobFileDownload> result)
+    private IActionResult ToFileResult(ServiceResult<JobFileDownload> result)
     {
         return result.Status switch
         {
-            JobServiceResultStatus.Success => File(
+            ServiceResultStatus.Success => File(
                 result.Value!.Stream,
                 result.Value.ContentType,
                 result.Value.FileName),
-            JobServiceResultStatus.BadRequest => BadRequest(result.Error),
-            JobServiceResultStatus.NotFound => NotFound(result.Error),
-            JobServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            JobServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

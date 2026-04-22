@@ -11,19 +11,19 @@ public sealed class PostingCommandService
         _postingMapper = postingMapper;
     }
 
-    public async Task<PostingServiceResult<PostingResponse>> CreateAsync(
+    public async Task<ServiceResult<PostingResponse>> CreateAsync(
         User user,
         CreatePostingRequest request,
         CancellationToken cancellationToken)
     {
         if (!user.IsApproved)
         {
-            return PostingServiceResult<PostingResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<PostingResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         if (!PostingPolicy.CanCreate(user.Role))
         {
-            return PostingServiceResult<PostingResponse>.Forbidden();
+            return ServiceResult<PostingResponse>.Forbidden();
         }
 
         var validation = PostingValidator.ValidateInput(
@@ -39,7 +39,7 @@ public sealed class PostingCommandService
             request.ProposalDeadline);
         if (validation is not null)
         {
-            return PostingServiceResult<PostingResponse>.BadRequest(validation);
+            return ServiceResult<PostingResponse>.BadRequest(validation);
         }
 
         var posting = new JobPosting
@@ -69,10 +69,10 @@ public sealed class PostingCommandService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var response = await _postingMapper.ToPostingResponseAsync(posting, cancellationToken);
-        return PostingServiceResult<PostingResponse>.Success(response);
+        return ServiceResult<PostingResponse>.Success(response);
     }
 
-    public async Task<PostingServiceResult<PostingResponse>> UpdateAsync(
+    public async Task<ServiceResult<PostingResponse>> UpdateAsync(
         User user,
         int id,
         UpdatePostingRequest request,
@@ -81,19 +81,19 @@ public sealed class PostingCommandService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (posting is null)
         {
-            return PostingServiceResult<PostingResponse>.NotFound("Posting not found.");
+            return ServiceResult<PostingResponse>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
         if (!PostingPolicy.CanManage(user, posting))
         {
-            return PostingServiceResult<PostingResponse>.Forbidden();
+            return ServiceResult<PostingResponse>.Forbidden();
         }
 
         if (posting.Status is PostingStatus.Filled or PostingStatus.Expired)
         {
-            return PostingServiceResult<PostingResponse>.BadRequest("This posting can no longer be edited.");
+            return ServiceResult<PostingResponse>.BadRequest("This posting can no longer be edited.");
         }
 
         var nextTitle = request.Title ?? posting.Title;
@@ -120,7 +120,7 @@ public sealed class PostingCommandService
             nextDeadline);
         if (validation is not null)
         {
-            return PostingServiceResult<PostingResponse>.BadRequest(validation);
+            return ServiceResult<PostingResponse>.BadRequest(validation);
         }
 
         posting.Title = nextTitle.Trim();
@@ -161,10 +161,10 @@ public sealed class PostingCommandService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         var response = await _postingMapper.ToPostingResponseAsync(posting, cancellationToken);
-        return PostingServiceResult<PostingResponse>.Success(response);
+        return ServiceResult<PostingResponse>.Success(response);
     }
 
-    public async Task<PostingServiceResult<bool>> DeleteAsync(
+    public async Task<ServiceResult<bool>> DeleteAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -172,28 +172,28 @@ public sealed class PostingCommandService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (posting is null)
         {
-            return PostingServiceResult<bool>.NotFound("Posting not found.");
+            return ServiceResult<bool>.NotFound("Posting not found.");
         }
 
         if (!PostingPolicy.CanManage(user, posting))
         {
-            return PostingServiceResult<bool>.Forbidden();
+            return ServiceResult<bool>.Forbidden();
         }
 
         if (posting.Status != PostingStatus.Draft)
         {
-            return PostingServiceResult<bool>.BadRequest("Only draft postings can be deleted.");
+            return ServiceResult<bool>.BadRequest("Only draft postings can be deleted.");
         }
 
         var hasProposals = await _dbContext.Proposals.AnyAsync(p => p.PostingId == id, cancellationToken);
         if (hasProposals)
         {
-            return PostingServiceResult<bool>.BadRequest("Postings with proposals cannot be deleted.");
+            return ServiceResult<bool>.BadRequest("Postings with proposals cannot be deleted.");
         }
 
         _dbContext.JobPostings.Remove(posting);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return PostingServiceResult<bool>.Success(true);
+        return ServiceResult<bool>.Success(true);
     }
 
     private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)

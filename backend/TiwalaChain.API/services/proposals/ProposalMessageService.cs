@@ -12,7 +12,7 @@ public sealed class ProposalMessageService
         _proposalMapper = proposalMapper;
     }
 
-    public async Task<ProposalServiceResult<List<ProposalMessageResponse>>> GetMessagesAsync(
+    public async Task<ServiceResult<List<ProposalMessageResponse>>> GetMessagesAsync(
         User user,
         int proposalId,
         CancellationToken cancellationToken)
@@ -20,18 +20,18 @@ public sealed class ProposalMessageService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == proposalId, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<List<ProposalMessageResponse>>.NotFound("Proposal not found.");
+            return ServiceResult<List<ProposalMessageResponse>>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<List<ProposalMessageResponse>>.NotFound("Posting not found.");
+            return ServiceResult<List<ProposalMessageResponse>>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
-            return ProposalServiceResult<List<ProposalMessageResponse>>.Forbidden();
+            return ServiceResult<List<ProposalMessageResponse>>.Forbidden();
         }
 
         var messages = await _dbContext.ProposalMessages
@@ -52,10 +52,10 @@ public sealed class ProposalMessageService
         }
 
         var response = await _proposalMapper.ToProposalMessageResponsesAsync(messages, cancellationToken);
-        return ProposalServiceResult<List<ProposalMessageResponse>>.Success(response);
+        return ServiceResult<List<ProposalMessageResponse>>.Success(response);
     }
 
-    public async Task<ProposalServiceResult<ProposalMessageResponse>> SendMessageAsync(
+    public async Task<ServiceResult<ProposalMessageResponse>> SendMessageAsync(
         User user,
         int proposalId,
         SendProposalMessageRequest request,
@@ -63,34 +63,34 @@ public sealed class ProposalMessageService
     {
         if (!user.IsApproved)
         {
-            return ProposalServiceResult<ProposalMessageResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<ProposalMessageResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Body) || request.Body.Trim().Length > 4000)
         {
-            return ProposalServiceResult<ProposalMessageResponse>.BadRequest("Message body must be between 1 and 4000 characters.");
+            return ServiceResult<ProposalMessageResponse>.BadRequest("Message body must be between 1 and 4000 characters.");
         }
 
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == proposalId, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalMessageResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalMessageResponse>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalMessageResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalMessageResponse>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
-            return ProposalServiceResult<ProposalMessageResponse>.Forbidden();
+            return ServiceResult<ProposalMessageResponse>.Forbidden();
         }
 
         if (!ProposalPolicy.CanMessage(proposal.Status))
         {
-            return ProposalServiceResult<ProposalMessageResponse>.BadRequest("This proposal thread is closed.");
+            return ServiceResult<ProposalMessageResponse>.BadRequest("This proposal thread is closed.");
         }
 
         var message = new ProposalMessage
@@ -119,7 +119,7 @@ public sealed class ProposalMessageService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         var response = await _proposalMapper.ToProposalMessageResponseAsync(message, cancellationToken);
-        return ProposalServiceResult<ProposalMessageResponse>.Success(response);
+        return ServiceResult<ProposalMessageResponse>.Success(response);
     }
 
     private void AddNotification(
@@ -136,33 +136,4 @@ public sealed class ProposalMessageService
             DataJson = data is null ? null : JsonSerializer.Serialize(data),
         });
     }
-}
-
-public sealed class ProposalServiceResult<T>
-{
-    private ProposalServiceResult(ProposalServiceResultStatus status, T? value, string? error)
-    {
-        Status = status;
-        Value = value;
-        Error = error;
-    }
-
-    public ProposalServiceResultStatus Status { get; }
-    public T? Value { get; }
-    public string? Error { get; }
-
-    public static ProposalServiceResult<T> Success(T value) => new(ProposalServiceResultStatus.Success, value, null);
-    public static ProposalServiceResult<T> BadRequest(string error) => new(ProposalServiceResultStatus.BadRequest, default, error);
-    public static ProposalServiceResult<T> Conflict(string error) => new(ProposalServiceResultStatus.Conflict, default, error);
-    public static ProposalServiceResult<T> NotFound(string error) => new(ProposalServiceResultStatus.NotFound, default, error);
-    public static ProposalServiceResult<T> Forbidden(string? error = null) => new(ProposalServiceResultStatus.Forbidden, default, error);
-}
-
-public enum ProposalServiceResultStatus
-{
-    Success,
-    BadRequest,
-    Conflict,
-    NotFound,
-    Forbidden,
 }

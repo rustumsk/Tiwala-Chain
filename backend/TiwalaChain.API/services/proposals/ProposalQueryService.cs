@@ -12,7 +12,7 @@ public sealed class ProposalQueryService
         _proposalMapper = proposalMapper;
     }
 
-    public async Task<ProposalServiceResult<List<ProposalResponse>>> GetPostingProposalsAsync(
+    public async Task<ServiceResult<List<ProposalResponse>>> GetPostingProposalsAsync(
         User user,
         int postingId,
         CancellationToken cancellationToken)
@@ -20,7 +20,7 @@ public sealed class ProposalQueryService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == postingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<List<ProposalResponse>>.NotFound("Posting not found.");
+            return ServiceResult<List<ProposalResponse>>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
@@ -43,10 +43,10 @@ public sealed class ProposalQueryService
         }
 
         var response = await _proposalMapper.ToProposalResponsesAsync(proposals, posting, cancellationToken);
-        return ProposalServiceResult<List<ProposalResponse>>.Success(response);
+        return ServiceResult<List<ProposalResponse>>.Success(response);
     }
 
-    public async Task<ProposalServiceResult<List<ProposalResponse>>> GetMineAsync(
+    public async Task<ServiceResult<List<ProposalResponse>>> GetMineAsync(
         User user,
         CancellationToken cancellationToken)
     {
@@ -56,10 +56,10 @@ public sealed class ProposalQueryService
             .ToListAsync(cancellationToken);
 
         var response = await _proposalMapper.ToProposalResponsesAsync(proposals, cancellationToken);
-        return ProposalServiceResult<List<ProposalResponse>>.Success(response);
+        return ServiceResult<List<ProposalResponse>>.Success(response);
     }
 
-    public async Task<ProposalServiceResult<ProposalStatsResponse>> GetMineStatsAsync(
+    public async Task<ServiceResult<ProposalStatsResponse>> GetMineStatsAsync(
         User user,
         CancellationToken cancellationToken)
     {
@@ -76,10 +76,10 @@ public sealed class ProposalQueryService
                 n.Type == "proposal_message",
             cancellationToken);
 
-        return ProposalServiceResult<ProposalStatsResponse>.Success(new ProposalStatsResponse(activeApplications, unreadReplies));
+        return ServiceResult<ProposalStatsResponse>.Success(new ProposalStatsResponse(activeApplications, unreadReplies));
     }
 
-    public async Task<ProposalServiceResult<ProposalResponse>> GetAsync(
+    public async Task<ServiceResult<ProposalResponse>> GetAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -87,18 +87,18 @@ public sealed class ProposalQueryService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanAccess(user, posting, proposal))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         if (ProposalPolicy.IsPostingOwner(posting, user.WalletAddress) && proposal.Status == ProposalStatus.Submitted)
@@ -119,7 +119,7 @@ public sealed class ProposalQueryService
         }
 
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
     private async Task MarkSubmittedAsViewedAsync(

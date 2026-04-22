@@ -245,26 +245,26 @@ public sealed partial class ProposalsController : ControllerBase
         var result = await _proposalFileService.GetCvAsync(user, id, cancellationToken);
         return result.Status switch
         {
-            ProposalServiceResultStatus.Success => File(result.Value!.Stream, result.Value.ContentType, result.Value.FileName),
-            ProposalServiceResultStatus.BadRequest => BadRequest(result.Error),
-            ProposalServiceResultStatus.Conflict => Conflict(result.Error),
-            ProposalServiceResultStatus.NotFound => NotFound(result.Error),
-            ProposalServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            ProposalServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => File(result.Value!.Stream, result.Value.ContentType, result.Value.FileName),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
 
-    private ActionResult<T> ToActionResult<T>(ProposalServiceResult<T> result)
+    private ActionResult<T> ToActionResult<T>(ServiceResult<T> result)
     {
         return result.Status switch
         {
-            ProposalServiceResultStatus.Success => Ok(result.Value),
-            ProposalServiceResultStatus.BadRequest => BadRequest(result.Error),
-            ProposalServiceResultStatus.Conflict => Conflict(result.Error),
-            ProposalServiceResultStatus.NotFound => NotFound(result.Error),
-            ProposalServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            ProposalServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => Ok(result.Value),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

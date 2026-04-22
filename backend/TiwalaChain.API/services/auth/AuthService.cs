@@ -27,7 +27,7 @@ public sealed class AuthService
             .ToHashSet();
     }
 
-    public AuthServiceResult<NonceResponse> CreateNonce(
+    public ServiceResult<NonceResponse> CreateNonce(
         NonceRequest request,
         string hostValue,
         string scheme,
@@ -36,7 +36,7 @@ public sealed class AuthService
         var normalizedWallet = WalletNormalizer.NormalizeWalletAddress(request.WalletAddress);
         if (normalizedWallet is null)
         {
-            return AuthServiceResult<NonceResponse>.BadRequest("Invalid wallet address.");
+            return ServiceResult<NonceResponse>.BadRequest("Invalid wallet address.");
         }
 
         var nonce = Guid.NewGuid().ToString("N")[..12];
@@ -49,32 +49,32 @@ public sealed class AuthService
 
         _cache.Set(GetNonceCacheKey(normalizedWallet), new PendingNonce(message, nonce), expiresAt);
 
-        return AuthServiceResult<NonceResponse>.Success(new NonceResponse(message, nonce, expiresAt.UtcDateTime, domain, uri, chainId));
+        return ServiceResult<NonceResponse>.Success(new NonceResponse(message, nonce, expiresAt.UtcDateTime, domain, uri, chainId));
     }
 
-    public async Task<AuthServiceResult<AuthResponse>> VerifySignatureAsync(
+    public async Task<ServiceResult<AuthResponse>> VerifySignatureAsync(
         VerifyRequest request,
         CancellationToken cancellationToken)
     {
         var normalizedWallet = WalletNormalizer.NormalizeWalletAddress(request.WalletAddress);
         if (normalizedWallet is null)
         {
-            return AuthServiceResult<AuthResponse>.BadRequest("Invalid wallet address.");
+            return ServiceResult<AuthResponse>.BadRequest("Invalid wallet address.");
         }
 
         if (!_cache.TryGetValue(GetNonceCacheKey(normalizedWallet), out PendingNonce? pendingNonce) || pendingNonce is null)
         {
-            return AuthServiceResult<AuthResponse>.Unauthorized("Auth challenge expired. Request a new nonce.");
+            return ServiceResult<AuthResponse>.Unauthorized("Auth challenge expired. Request a new nonce.");
         }
 
         if (!string.Equals(pendingNonce.Message, request.Message, StringComparison.Ordinal))
         {
-            return AuthServiceResult<AuthResponse>.Unauthorized("Message mismatch.");
+            return ServiceResult<AuthResponse>.Unauthorized("Message mismatch.");
         }
 
         if (!request.Message.Contains($"Nonce: {pendingNonce.Nonce}", StringComparison.Ordinal))
         {
-            return AuthServiceResult<AuthResponse>.Unauthorized("Nonce mismatch.");
+            return ServiceResult<AuthResponse>.Unauthorized("Nonce mismatch.");
         }
 
         string recoveredAddress;
@@ -84,13 +84,13 @@ public sealed class AuthService
         }
         catch
         {
-            return AuthServiceResult<AuthResponse>.Unauthorized("Invalid signature.");
+            return ServiceResult<AuthResponse>.Unauthorized("Invalid signature.");
         }
 
         var normalizedRecoveredAddress = WalletNormalizer.NormalizeWalletAddress(recoveredAddress);
         if (normalizedRecoveredAddress is null || !string.Equals(normalizedRecoveredAddress, normalizedWallet, StringComparison.Ordinal))
         {
-            return AuthServiceResult<AuthResponse>.Unauthorized("Signature does not match wallet.");
+            return ServiceResult<AuthResponse>.Unauthorized("Signature does not match wallet.");
         }
 
         _cache.Remove(GetNonceCacheKey(normalizedWallet));
@@ -119,7 +119,7 @@ public sealed class AuthService
         }
 
         var (token, expiresAtUtc) = _tokenService.CreateToken(user);
-        return AuthServiceResult<AuthResponse>.Success(AuthMapper.ToAuthResponse(user, token, expiresAtUtc));
+        return ServiceResult<AuthResponse>.Success(AuthMapper.ToAuthResponse(user, token, expiresAtUtc));
     }
 
     public async Task<UserResponse> GetCurrentUserResponseAsync(
@@ -130,7 +130,7 @@ public sealed class AuthService
         return AuthMapper.ToUserResponse(user, canDeleteAccount);
     }
 
-    public async Task<AuthServiceResult<UserResponse>> UpdateProfileAsync(
+    public async Task<ServiceResult<UserResponse>> UpdateProfileAsync(
         User user,
         UpdateProfileRequest request,
         CancellationToken cancellationToken)
@@ -138,12 +138,12 @@ public sealed class AuthService
         var normalizedName = request.DisplayName?.Trim();
         if (string.IsNullOrWhiteSpace(normalizedName) || normalizedName.Length < 2)
         {
-            return AuthServiceResult<UserResponse>.BadRequest("Display name must be at least 2 characters.");
+            return ServiceResult<UserResponse>.BadRequest("Display name must be at least 2 characters.");
         }
 
         if (!AuthPolicy.TryParseRole(request.Role, out var parsedRole))
         {
-            return AuthServiceResult<UserResponse>.BadRequest("Role must be freelancer, employer, or both.");
+            return ServiceResult<UserResponse>.BadRequest("Role must be freelancer, employer, or both.");
         }
 
         user.DisplayName = normalizedName;
@@ -151,40 +151,40 @@ public sealed class AuthService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var canDeleteAccount = await CanUserDeleteOwnAccountAsync(user, cancellationToken);
-        return AuthServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user, canDeleteAccount));
+        return ServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user, canDeleteAccount));
     }
 
-    public async Task<AuthServiceResult<bool>> DeleteOwnAccountAsync(
+    public async Task<ServiceResult<bool>> DeleteOwnAccountAsync(
         User user,
         CancellationToken cancellationToken)
     {
         if (user.Role == UserRole.Admin)
         {
-            return AuthServiceResult<bool>.BadRequest("Admin accounts cannot be deleted here. Contact support if needed.");
+            return ServiceResult<bool>.BadRequest("Admin accounts cannot be deleted here. Contact support if needed.");
         }
 
         if (!AuthPolicy.IsSelfServeDeletableRole(user.Role))
         {
-            return AuthServiceResult<bool>.BadRequest("This account type cannot be deleted automatically.");
+            return ServiceResult<bool>.BadRequest("This account type cannot be deleted automatically.");
         }
 
         if (await HasOngoingJobsForWalletAsync(user.WalletAddress, cancellationToken))
         {
-            return AuthServiceResult<bool>.BadRequest("Finish or resolve pending offers and accepted jobs before deleting your account.");
+            return ServiceResult<bool>.BadRequest("Finish or resolve pending offers and accepted jobs before deleting your account.");
         }
 
         _dbContext.Users.Remove(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return AuthServiceResult<bool>.Success(true);
+        return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<AuthServiceResult<List<AdminUserResponse>>> AdminListUsersAsync(
+    public async Task<ServiceResult<List<AdminUserResponse>>> AdminListUsersAsync(
         User admin,
         CancellationToken cancellationToken)
     {
         if (admin.Role != UserRole.Admin)
         {
-            return AuthServiceResult<List<AdminUserResponse>>.Forbidden();
+            return ServiceResult<List<AdminUserResponse>>.Forbidden();
         }
 
         var users = await _dbContext.Users
@@ -210,51 +210,51 @@ public sealed class AuthService
             return AuthMapper.ToAdminUserResponse(u, canDelete);
         }).ToList();
 
-        return AuthServiceResult<List<AdminUserResponse>>.Success(result);
+        return ServiceResult<List<AdminUserResponse>>.Success(result);
     }
 
-    public async Task<AuthServiceResult<bool>> AdminDeleteUserAsync(
+    public async Task<ServiceResult<bool>> AdminDeleteUserAsync(
         User admin,
         int id,
         CancellationToken cancellationToken)
     {
         if (admin.Role != UserRole.Admin)
         {
-            return AuthServiceResult<bool>.Forbidden();
+            return ServiceResult<bool>.Forbidden();
         }
 
         var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (user is null)
         {
-            return AuthServiceResult<bool>.NotFound("User not found.");
+            return ServiceResult<bool>.NotFound("User not found.");
         }
 
         if (user.Id == admin.Id)
         {
-            return AuthServiceResult<bool>.BadRequest("Cannot delete your own admin account.");
+            return ServiceResult<bool>.BadRequest("Cannot delete your own admin account.");
         }
 
         if (user.Role == UserRole.Admin)
         {
-            return AuthServiceResult<bool>.BadRequest("Admin accounts cannot be deleted.");
+            return ServiceResult<bool>.BadRequest("Admin accounts cannot be deleted.");
         }
 
         if (user.Role != UserRole.Freelancer && user.Role != UserRole.Employer && user.Role != UserRole.Both)
         {
-            return AuthServiceResult<bool>.BadRequest("Only freelancer, employer, or both accounts can be removed this way.");
+            return ServiceResult<bool>.BadRequest("Only freelancer, employer, or both accounts can be removed this way.");
         }
 
         if (await HasOngoingJobsForWalletAsync(user.WalletAddress, cancellationToken))
         {
-            return AuthServiceResult<bool>.BadRequest("Cannot delete a user who has ongoing jobs (pending offer or accepted).");
+            return ServiceResult<bool>.BadRequest("Cannot delete a user who has ongoing jobs (pending offer or accepted).");
         }
 
         _dbContext.Users.Remove(user);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return AuthServiceResult<bool>.Success(true);
+        return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<AuthServiceResult<UserResponse>> AdminApproveUserAsync(
+    public async Task<ServiceResult<UserResponse>> AdminApproveUserAsync(
         User admin,
         int id,
         ApproveRequest request,
@@ -262,21 +262,21 @@ public sealed class AuthService
     {
         if (admin.Role != UserRole.Admin)
         {
-            return AuthServiceResult<UserResponse>.Forbidden();
+            return ServiceResult<UserResponse>.Forbidden();
         }
 
         var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (user is null)
         {
-            return AuthServiceResult<UserResponse>.NotFound("User not found.");
+            return ServiceResult<UserResponse>.NotFound("User not found.");
         }
 
         user.IsApproved = request.Approved;
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return AuthServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user));
+        return ServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user));
     }
 
-    public async Task<AuthServiceResult<UserResponse>> AdminUpdateUserRoleAsync(
+    public async Task<ServiceResult<UserResponse>> AdminUpdateUserRoleAsync(
         User admin,
         int id,
         UpdateRoleRequest request,
@@ -284,18 +284,18 @@ public sealed class AuthService
     {
         if (admin.Role != UserRole.Admin)
         {
-            return AuthServiceResult<UserResponse>.Forbidden();
+            return ServiceResult<UserResponse>.Forbidden();
         }
 
         if (!AuthPolicy.TryParseRole(request.Role, out var parsedRole))
         {
-            return AuthServiceResult<UserResponse>.BadRequest("Role must be freelancer, employer, both, or admin.");
+            return ServiceResult<UserResponse>.BadRequest("Role must be freelancer, employer, both, or admin.");
         }
 
         var user = await _dbContext.Users.FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
         if (user is null)
         {
-            return AuthServiceResult<UserResponse>.NotFound("User not found.");
+            return ServiceResult<UserResponse>.NotFound("User not found.");
         }
 
         user.Role = parsedRole;
@@ -305,7 +305,7 @@ public sealed class AuthService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return AuthServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user));
+        return ServiceResult<UserResponse>.Success(AuthMapper.ToUserResponse(user));
     }
 
     private async Task<bool> HasOngoingJobsForWalletAsync(
@@ -331,33 +331,4 @@ public sealed class AuthService
     }
 
     private static string GetNonceCacheKey(string walletAddress) => $"{NonceCacheKeyPrefix}{walletAddress}";
-}
-
-public sealed class AuthServiceResult<T>
-{
-    private AuthServiceResult(AuthServiceResultStatus status, T? value, string? error)
-    {
-        Status = status;
-        Value = value;
-        Error = error;
-    }
-
-    public AuthServiceResultStatus Status { get; }
-    public T? Value { get; }
-    public string? Error { get; }
-
-    public static AuthServiceResult<T> Success(T value) => new(AuthServiceResultStatus.Success, value, null);
-    public static AuthServiceResult<T> BadRequest(string error) => new(AuthServiceResultStatus.BadRequest, default, error);
-    public static AuthServiceResult<T> NotFound(string error) => new(AuthServiceResultStatus.NotFound, default, error);
-    public static AuthServiceResult<T> Unauthorized(string error) => new(AuthServiceResultStatus.Unauthorized, default, error);
-    public static AuthServiceResult<T> Forbidden(string? error = null) => new(AuthServiceResultStatus.Forbidden, default, error);
-}
-
-public enum AuthServiceResultStatus
-{
-    Success,
-    BadRequest,
-    NotFound,
-    Unauthorized,
-    Forbidden,
 }
