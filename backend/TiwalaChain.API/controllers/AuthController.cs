@@ -138,30 +138,30 @@ public sealed partial class AuthController : ControllerBase
         return ToActionResult(result);
     }
 
-    private ActionResult<T> ToActionResult<T>(AuthServiceResult<T> result)
+    private ActionResult<T> ToActionResult<T>(ServiceResult<T> result)
     {
         return result.Status switch
         {
-            AuthServiceResultStatus.Success => Ok(result.Value),
-            AuthServiceResultStatus.BadRequest => BadRequest(result.Error),
-            AuthServiceResultStatus.NotFound => NotFound(result.Error),
-            AuthServiceResultStatus.Unauthorized => Unauthorized(result.Error),
-            AuthServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            AuthServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => Ok(result.Value),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
 
-    private IActionResult ToNoContentActionResult(AuthServiceResult<bool> result)
+    private IActionResult ToNoContentActionResult(ServiceResult<bool> result)
     {
         return result.Status switch
         {
-            AuthServiceResultStatus.Success => NoContent(),
-            AuthServiceResultStatus.BadRequest => BadRequest(result.Error),
-            AuthServiceResultStatus.NotFound => NotFound(result.Error),
-            AuthServiceResultStatus.Unauthorized => Unauthorized(result.Error),
-            AuthServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            AuthServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => NoContent(),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

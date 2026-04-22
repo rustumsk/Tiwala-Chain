@@ -13,20 +13,20 @@ public sealed class JobService
         _storage = storage;
     }
 
-    public async Task<JobServiceResult<JobResponse>> CreateJobAsync(
+    public async Task<ServiceResult<JobResponse>> CreateJobAsync(
         User user,
         CreateJobRequest request,
         CancellationToken cancellationToken)
     {
         if (!user.IsApproved)
         {
-            return JobServiceResult<JobResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<JobResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         var validation = ValidateCreateJob(request);
         if (validation is not null)
         {
-            return JobServiceResult<JobResponse>.BadRequest(validation);
+            return ServiceResult<JobResponse>.BadRequest(validation);
         }
 
         var job = new Job
@@ -54,7 +54,7 @@ public sealed class JobService
             });
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return JobServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
     public async Task<List<JobResponse>> GetIncomingOffersAsync(User user, CancellationToken cancellationToken)
@@ -83,7 +83,7 @@ public sealed class JobService
         return jobs.Select(JobMapper.ToResponse).ToList();
     }
 
-    public async Task<JobServiceResult<JobResponse>> GetJobAsync(
+    public async Task<ServiceResult<JobResponse>> GetJobAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -91,18 +91,18 @@ public sealed class JobService
         var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
         if (job is null)
         {
-            return JobServiceResult<JobResponse>.NotFound("Job not found.");
+            return ServiceResult<JobResponse>.NotFound("Job not found.");
         }
 
         if (user.Role != UserRole.Admin && !IsParticipant(job, user.WalletAddress))
         {
-            return JobServiceResult<JobResponse>.Forbidden();
+            return ServiceResult<JobResponse>.Forbidden();
         }
 
-        return JobServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
-    public async Task<JobServiceResult<JobFileDownload>> GetJobContractAsync(
+    public async Task<ServiceResult<JobFileDownload>> GetJobContractAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -110,20 +110,20 @@ public sealed class JobService
         var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
         if (job is null)
         {
-            return JobServiceResult<JobFileDownload>.NotFound("Job not found.");
+            return ServiceResult<JobFileDownload>.NotFound("Job not found.");
         }
 
         if (user.Role != UserRole.Admin && !IsParticipant(job, user.WalletAddress))
         {
-            return JobServiceResult<JobFileDownload>.Forbidden();
+            return ServiceResult<JobFileDownload>.Forbidden();
         }
 
         var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
-        return JobServiceResult<JobFileDownload>.Success(
+        return ServiceResult<JobFileDownload>.Success(
             new JobFileDownload(stream, contentType, $"job-{job.Id}-contract"));
     }
 
-    public async Task<JobServiceResult<JobFileDownload>> GetJobContractByHashAsync(
+    public async Task<ServiceResult<JobFileDownload>> GetJobContractByHashAsync(
         User user,
         string hash,
         CancellationToken cancellationToken)
@@ -131,21 +131,21 @@ public sealed class JobService
         var normalized = HashNormalizer.NormalizeSha256Hash(hash);
         if (normalized is null)
         {
-            return JobServiceResult<JobFileDownload>.BadRequest("Invalid contract hash.");
+            return ServiceResult<JobFileDownload>.BadRequest("Invalid contract hash.");
         }
 
         var job = await FindAccessibleJobByHashAsync(user, normalized, cancellationToken);
         if (job is null)
         {
-            return JobServiceResult<JobFileDownload>.NotFound("Contract not found.");
+            return ServiceResult<JobFileDownload>.NotFound("Contract not found.");
         }
 
         var (stream, contentType) = await _storage.GetAsync(job.ContractKey, cancellationToken);
-        return JobServiceResult<JobFileDownload>.Success(
+        return ServiceResult<JobFileDownload>.Success(
             new JobFileDownload(stream, contentType, $"job-{job.Id}-contract"));
     }
 
-    public async Task<JobServiceResult<JobDisputeResponse>> GetJobDisputeByHashAsync(
+    public async Task<ServiceResult<JobDisputeResponse>> GetJobDisputeByHashAsync(
         User user,
         string hash,
         CancellationToken cancellationToken)
@@ -153,19 +153,19 @@ public sealed class JobService
         var normalized = HashNormalizer.NormalizeSha256Hash(hash);
         if (normalized is null)
         {
-            return JobServiceResult<JobDisputeResponse>.BadRequest("Invalid contract hash.");
+            return ServiceResult<JobDisputeResponse>.BadRequest("Invalid contract hash.");
         }
 
         var dispute = await _dbContext.JobDisputes.AsNoTracking()
             .FirstOrDefaultAsync(d => d.ContractHash == normalized, cancellationToken);
         if (dispute is null)
         {
-            return JobServiceResult<JobDisputeResponse>.NotFound("No dispute details recorded for this job.");
+            return ServiceResult<JobDisputeResponse>.NotFound("No dispute details recorded for this job.");
         }
 
         if (user.Role == UserRole.Admin)
         {
-            return JobServiceResult<JobDisputeResponse>.Success(JobMapper.ToDisputeResponse(dispute));
+            return ServiceResult<JobDisputeResponse>.Success(JobMapper.ToDisputeResponse(dispute));
         }
 
         var wallet = user.WalletAddress;
@@ -178,44 +178,44 @@ public sealed class JobService
 
         if (job is null)
         {
-            return JobServiceResult<JobDisputeResponse>.Forbidden();
+            return ServiceResult<JobDisputeResponse>.Forbidden();
         }
 
-        return JobServiceResult<JobDisputeResponse>.Success(JobMapper.ToDisputeResponse(dispute));
+        return ServiceResult<JobDisputeResponse>.Success(JobMapper.ToDisputeResponse(dispute));
     }
 
-    public async Task<JobServiceResult<JobDisputeResponse>> RecordJobDisputeAsync(
+    public async Task<ServiceResult<JobDisputeResponse>> RecordJobDisputeAsync(
         User user,
         RecordJobDisputeRequest request,
         CancellationToken cancellationToken)
     {
         if (!user.IsApproved)
         {
-            return JobServiceResult<JobDisputeResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<JobDisputeResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         var normalized = HashNormalizer.NormalizeSha256Hash(request.ContractHash);
         if (normalized is null)
         {
-            return JobServiceResult<JobDisputeResponse>.BadRequest("Invalid contract hash.");
+            return ServiceResult<JobDisputeResponse>.BadRequest("Invalid contract hash.");
         }
 
         var onChainJobId = request.OnChainJobId?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(onChainJobId) || onChainJobId.Length > 40 || !Regex.IsMatch(onChainJobId, "^[0-9]+$"))
         {
-            return JobServiceResult<JobDisputeResponse>.BadRequest("Invalid on-chain job id.");
+            return ServiceResult<JobDisputeResponse>.BadRequest("Invalid on-chain job id.");
         }
 
         var reasonCode = request.ReasonCode?.Trim().ToLowerInvariant() ?? string.Empty;
         if (!DisputeReasonCodes.Valid.Contains(reasonCode))
         {
-            return JobServiceResult<JobDisputeResponse>.BadRequest("Invalid dispute reason.");
+            return ServiceResult<JobDisputeResponse>.BadRequest("Invalid dispute reason.");
         }
 
         var details = string.IsNullOrWhiteSpace(request.Details) ? null : request.Details.Trim();
         if (details is not null && details.Length > 2000)
         {
-            return JobServiceResult<JobDisputeResponse>.BadRequest("Details must be at most 2000 characters.");
+            return ServiceResult<JobDisputeResponse>.BadRequest("Details must be at most 2000 characters.");
         }
 
         var job = await _dbContext.Jobs
@@ -227,13 +227,13 @@ public sealed class JobService
 
         if (job is null)
         {
-            return JobServiceResult<JobDisputeResponse>.NotFound("Job not found for this contract hash, or you are not a participant.");
+            return ServiceResult<JobDisputeResponse>.NotFound("Job not found for this contract hash, or you are not a participant.");
         }
 
         var exists = await _dbContext.JobDisputes.AnyAsync(d => d.ContractHash == normalized, cancellationToken);
         if (exists)
         {
-            return JobServiceResult<JobDisputeResponse>.Conflict("Dispute details for this job were already recorded.");
+            return ServiceResult<JobDisputeResponse>.Conflict("Dispute details for this job were already recorded.");
         }
 
         var dispute = new JobDispute
@@ -248,10 +248,10 @@ public sealed class JobService
         _dbContext.JobDisputes.Add(dispute);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return JobServiceResult<JobDisputeResponse>.Created(JobMapper.ToDisputeResponse(dispute), normalized);
+        return ServiceResult<JobDisputeResponse>.Created(JobMapper.ToDisputeResponse(dispute), normalized);
     }
 
-    public async Task<JobServiceResult<JobResponse>> GetJobByHashAsync(
+    public async Task<ServiceResult<JobResponse>> GetJobByHashAsync(
         User user,
         string hash,
         CancellationToken cancellationToken)
@@ -259,19 +259,19 @@ public sealed class JobService
         var normalized = HashNormalizer.NormalizeSha256Hash(hash);
         if (normalized is null)
         {
-            return JobServiceResult<JobResponse>.BadRequest("Invalid contract hash.");
+            return ServiceResult<JobResponse>.BadRequest("Invalid contract hash.");
         }
 
         var job = await FindAccessibleJobByHashAsync(user, normalized, cancellationToken);
         if (job is null)
         {
-            return JobServiceResult<JobResponse>.NotFound("Job not found for this contract hash.");
+            return ServiceResult<JobResponse>.NotFound("Job not found for this contract hash.");
         }
 
-        return JobServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
-    public async Task<JobServiceResult<JobResponse>> SyncJobFromChainAsync(
+    public async Task<ServiceResult<JobResponse>> SyncJobFromChainAsync(
         User user,
         SyncJobFromChainRequest request,
         CancellationToken cancellationToken)
@@ -281,24 +281,24 @@ public sealed class JobService
         var normalizedHash = HashNormalizer.NormalizeSha256Hash(request.ContractHash);
         if (normalizedEmployerWallet is null || normalizedFreelancerWallet is null)
         {
-            return JobServiceResult<JobResponse>.BadRequest("Employer and freelancer wallets are required.");
+            return ServiceResult<JobResponse>.BadRequest("Employer and freelancer wallets are required.");
         }
 
         if (normalizedHash is null)
         {
-            return JobServiceResult<JobResponse>.BadRequest("Invalid contract hash.");
+            return ServiceResult<JobResponse>.BadRequest("Invalid contract hash.");
         }
 
         if (request.AmountUsdt <= 0)
         {
-            return JobServiceResult<JobResponse>.BadRequest("Amount must be greater than 0.");
+            return ServiceResult<JobResponse>.BadRequest("Amount must be greater than 0.");
         }
 
         if (user.Role != UserRole.Admin &&
             !string.Equals(user.WalletAddress, normalizedEmployerWallet, StringComparison.OrdinalIgnoreCase) &&
             !string.Equals(user.WalletAddress, normalizedFreelancerWallet, StringComparison.OrdinalIgnoreCase))
         {
-            return JobServiceResult<JobResponse>.Forbidden();
+            return ServiceResult<JobResponse>.Forbidden();
         }
 
         IQueryable<Job> query = _dbContext.Jobs
@@ -356,10 +356,10 @@ public sealed class JobService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-        return JobServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
-    public async Task<JobServiceResult<JobResponse>> AcceptJobAsync(
+    public async Task<ServiceResult<JobResponse>> AcceptJobAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -373,7 +373,7 @@ public sealed class JobService
             cancellationToken);
     }
 
-    public async Task<JobServiceResult<JobResponse>> DeclineJobAsync(
+    public async Task<ServiceResult<JobResponse>> DeclineJobAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -387,7 +387,7 @@ public sealed class JobService
             cancellationToken);
     }
 
-    private async Task<JobServiceResult<JobResponse>> ChangeOfferStatusAsync(
+    private async Task<ServiceResult<JobResponse>> ChangeOfferStatusAsync(
         User user,
         int id,
         JobStatus status,
@@ -398,17 +398,17 @@ public sealed class JobService
         var job = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
         if (job is null)
         {
-            return JobServiceResult<JobResponse>.NotFound("Job not found.");
+            return ServiceResult<JobResponse>.NotFound("Job not found.");
         }
 
         if (!string.Equals(job.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return JobServiceResult<JobResponse>.Forbidden();
+            return ServiceResult<JobResponse>.Forbidden();
         }
 
         if (job.Status != JobStatus.PendingOffer)
         {
-            return JobServiceResult<JobResponse>.BadRequest("Job is not in a pending offer state.");
+            return ServiceResult<JobResponse>.BadRequest("Job is not in a pending offer state.");
         }
 
         job.Status = status;
@@ -423,7 +423,7 @@ public sealed class JobService
             });
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return JobServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
     private async Task<Job?> FindAccessibleJobByHashAsync(
@@ -492,36 +492,3 @@ public sealed class JobService
 }
 
 public sealed record JobFileDownload(Stream Stream, string ContentType, string FileName);
-
-public sealed class JobServiceResult<T>
-{
-    private JobServiceResult(JobServiceResultStatus status, T? value, string? error, string? locationHash)
-    {
-        Status = status;
-        Value = value;
-        Error = error;
-        LocationHash = locationHash;
-    }
-
-    public JobServiceResultStatus Status { get; }
-    public T? Value { get; }
-    public string? Error { get; }
-    public string? LocationHash { get; }
-
-    public static JobServiceResult<T> Success(T value) => new(JobServiceResultStatus.Success, value, null, null);
-    public static JobServiceResult<T> Created(T value, string locationHash) => new(JobServiceResultStatus.Created, value, null, locationHash);
-    public static JobServiceResult<T> BadRequest(string error) => new(JobServiceResultStatus.BadRequest, default, error, null);
-    public static JobServiceResult<T> NotFound(string error) => new(JobServiceResultStatus.NotFound, default, error, null);
-    public static JobServiceResult<T> Conflict(string error) => new(JobServiceResultStatus.Conflict, default, error, null);
-    public static JobServiceResult<T> Forbidden(string? error = null) => new(JobServiceResultStatus.Forbidden, default, error, null);
-}
-
-public enum JobServiceResultStatus
-{
-    Success,
-    Created,
-    BadRequest,
-    NotFound,
-    Conflict,
-    Forbidden,
-}

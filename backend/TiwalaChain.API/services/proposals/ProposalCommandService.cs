@@ -12,7 +12,7 @@ public sealed class ProposalCommandService
         _proposalMapper = proposalMapper;
     }
 
-    public async Task<ProposalServiceResult<ProposalResponse>> CreateAsync(
+    public async Task<ServiceResult<ProposalResponse>> CreateAsync(
         User user,
         int postingId,
         CreateProposalRequest request,
@@ -20,36 +20,36 @@ public sealed class ProposalCommandService
     {
         if (!user.IsApproved)
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<ProposalResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         if (!ProposalPolicy.CanSubmit(user.Role))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == postingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
         if (posting.Status != PostingStatus.Published)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("This posting is not accepting proposals.");
+            return ServiceResult<ProposalResponse>.BadRequest("This posting is not accepting proposals.");
         }
 
         if (string.Equals(posting.EmployerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("You cannot apply to your own posting.");
+            return ServiceResult<ProposalResponse>.BadRequest("You cannot apply to your own posting.");
         }
 
         var validation = ProposalValidator.ValidateInput(request.CoverLetter, request.ProposedAmount, request.EstimatedTimeline);
         if (validation is not null)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest(validation);
+            return ServiceResult<ProposalResponse>.BadRequest(validation);
         }
 
         var existing = await _dbContext.Proposals
@@ -60,7 +60,7 @@ public sealed class ProposalCommandService
                 cancellationToken);
         if (existing is not null)
         {
-            return ProposalServiceResult<ProposalResponse>.Conflict("You already have an active proposal for this posting.");
+            return ServiceResult<ProposalResponse>.Conflict("You already have an active proposal for this posting.");
         }
 
         var proposal = new Proposal
@@ -94,10 +94,10 @@ public sealed class ProposalCommandService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
-    public async Task<ProposalServiceResult<ProposalResponse>> UpdateAsync(
+    public async Task<ServiceResult<ProposalResponse>> UpdateAsync(
         User user,
         int id,
         UpdateProposalRequest request,
@@ -106,17 +106,17 @@ public sealed class ProposalCommandService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Proposal not found.");
         }
 
         if (!string.Equals(proposal.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         if (proposal.Status is ProposalStatus.Shortlisted or ProposalStatus.Selected or ProposalStatus.Rejected or ProposalStatus.Withdrawn or ProposalStatus.ConvertedToOffer)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("This proposal can no longer be edited.");
+            return ServiceResult<ProposalResponse>.BadRequest("This proposal can no longer be edited.");
         }
 
         var nextAmount = request.ProposedAmount ?? proposal.ProposedAmount;
@@ -124,7 +124,7 @@ public sealed class ProposalCommandService
         var validation = ProposalValidator.ValidateInput(request.CoverLetter ?? proposal.CoverLetter, nextAmount, nextTimeline);
         if (validation is not null)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest(validation);
+            return ServiceResult<ProposalResponse>.BadRequest(validation);
         }
 
         proposal.CoverLetter = TextNormalizer.TrimToNull(request.CoverLetter ?? proposal.CoverLetter);
@@ -148,7 +148,7 @@ public sealed class ProposalCommandService
 
         var posting = await _dbContext.JobPostings.FirstAsync(p => p.Id == proposal.PostingId, cancellationToken);
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
     private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)

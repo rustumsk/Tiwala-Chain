@@ -11,7 +11,7 @@ public sealed class PostingWorkflowService
         _postingMapper = postingMapper;
     }
 
-    public Task<PostingServiceResult<PostingResponse>> PublishAsync(
+    public Task<ServiceResult<PostingResponse>> PublishAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -19,7 +19,7 @@ public sealed class PostingWorkflowService
         return ChangeStatusAsync(user, id, PostingStatus.Published, cancellationToken);
     }
 
-    public Task<PostingServiceResult<PostingResponse>> CloseAsync(
+    public Task<ServiceResult<PostingResponse>> CloseAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -27,7 +27,7 @@ public sealed class PostingWorkflowService
         return ChangeStatusAsync(user, id, PostingStatus.Closed, cancellationToken);
     }
 
-    public Task<PostingServiceResult<PostingResponse>> ReopenAsync(
+    public Task<ServiceResult<PostingResponse>> ReopenAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -35,7 +35,7 @@ public sealed class PostingWorkflowService
         return ChangeStatusAsync(user, id, PostingStatus.Published, cancellationToken, allowFromClosed: true);
     }
 
-    private async Task<PostingServiceResult<PostingResponse>> ChangeStatusAsync(
+    private async Task<ServiceResult<PostingResponse>> ChangeStatusAsync(
         User user,
         int id,
         PostingStatus nextStatus,
@@ -45,14 +45,14 @@ public sealed class PostingWorkflowService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (posting is null)
         {
-            return PostingServiceResult<PostingResponse>.NotFound("Posting not found.");
+            return ServiceResult<PostingResponse>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
         if (!PostingPolicy.CanManage(user, posting))
         {
-            return PostingServiceResult<PostingResponse>.Forbidden();
+            return ServiceResult<PostingResponse>.Forbidden();
         }
 
         if (nextStatus == PostingStatus.Published)
@@ -60,12 +60,12 @@ public sealed class PostingWorkflowService
             if (posting.Status == PostingStatus.Published)
             {
                 var currentResponse = await _postingMapper.ToPostingResponseAsync(posting, cancellationToken);
-                return PostingServiceResult<PostingResponse>.Success(currentResponse);
+                return ServiceResult<PostingResponse>.Success(currentResponse);
             }
 
             if (posting.Status != PostingStatus.Draft && !(allowFromClosed && posting.Status == PostingStatus.Closed))
             {
-                return PostingServiceResult<PostingResponse>.BadRequest("This posting cannot be published.");
+                return ServiceResult<PostingResponse>.BadRequest("This posting cannot be published.");
             }
 
             posting.Status = PostingStatus.Published;
@@ -76,7 +76,7 @@ public sealed class PostingWorkflowService
         {
             if (posting.Status != PostingStatus.Published)
             {
-                return PostingServiceResult<PostingResponse>.BadRequest("Only published postings can be closed.");
+                return ServiceResult<PostingResponse>.BadRequest("Only published postings can be closed.");
             }
 
             posting.Status = PostingStatus.Closed;
@@ -87,7 +87,7 @@ public sealed class PostingWorkflowService
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         var response = await _postingMapper.ToPostingResponseAsync(posting, cancellationToken);
-        return PostingServiceResult<PostingResponse>.Success(response);
+        return ServiceResult<PostingResponse>.Success(response);
     }
 
     private async Task ApplyLazyExpiryAsync(JobPosting posting, CancellationToken cancellationToken)

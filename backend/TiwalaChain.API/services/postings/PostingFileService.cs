@@ -11,7 +11,7 @@ public sealed class PostingFileService
         _storage = storage;
     }
 
-    public async Task<PostingServiceResult<PostingFileDownload>> GetBriefAsync(
+    public async Task<ServiceResult<PostingFileDownload>> GetBriefAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -19,23 +19,23 @@ public sealed class PostingFileService
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (posting is null)
         {
-            return PostingServiceResult<PostingFileDownload>.NotFound("Posting not found.");
+            return ServiceResult<PostingFileDownload>.NotFound("Posting not found.");
         }
 
         await ApplyLazyExpiryAsync(posting, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(posting.BriefAttachmentKey))
         {
-            return PostingServiceResult<PostingFileDownload>.NotFound("No brief attachment found.");
+            return ServiceResult<PostingFileDownload>.NotFound("No brief attachment found.");
         }
 
         if (!PostingPolicy.CanAccessBrief(user, posting))
         {
-            return PostingServiceResult<PostingFileDownload>.Forbidden();
+            return ServiceResult<PostingFileDownload>.Forbidden();
         }
 
         var (stream, contentType) = await _storage.GetAsync(posting.BriefAttachmentKey, cancellationToken);
-        return PostingServiceResult<PostingFileDownload>.Success(new PostingFileDownload(
+        return ServiceResult<PostingFileDownload>.Success(new PostingFileDownload(
             stream,
             contentType,
             $"posting-{posting.Id}-brief"));

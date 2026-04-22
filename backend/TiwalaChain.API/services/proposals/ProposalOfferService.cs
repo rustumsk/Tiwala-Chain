@@ -10,7 +10,7 @@ public sealed class ProposalOfferService
         _dbContext = dbContext;
     }
 
-    public async Task<ProposalServiceResult<JobResponse>> ConvertToOfferAsync(
+    public async Task<ServiceResult<JobResponse>> ConvertToOfferAsync(
         User user,
         int id,
         ConvertProposalToOfferRequest request,
@@ -18,24 +18,24 @@ public sealed class ProposalOfferService
     {
         if (!user.IsApproved)
         {
-            return ProposalServiceResult<JobResponse>.Forbidden("Your account is pending admin approval.");
+            return ServiceResult<JobResponse>.Forbidden("Your account is pending admin approval.");
         }
 
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<JobResponse>.NotFound("Proposal not found.");
+            return ServiceResult<JobResponse>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<JobResponse>.NotFound("Posting not found.");
+            return ServiceResult<JobResponse>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanManage(user, posting))
         {
-            return ProposalServiceResult<JobResponse>.Forbidden();
+            return ServiceResult<JobResponse>.Forbidden();
         }
 
         if (proposal.Status == ProposalStatus.ConvertedToOffer && proposal.ConvertedJobId.HasValue)
@@ -43,31 +43,31 @@ public sealed class ProposalOfferService
             var existingJob = await _dbContext.Jobs.FirstOrDefaultAsync(j => j.Id == proposal.ConvertedJobId.Value, cancellationToken);
             if (existingJob is not null)
             {
-                return ProposalServiceResult<JobResponse>.Success(JobMapper.ToResponse(existingJob));
+                return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(existingJob));
             }
         }
 
         if (proposal.Status != ProposalStatus.Selected)
         {
-            return ProposalServiceResult<JobResponse>.BadRequest("Only selected proposals can be converted to an offer.");
+            return ServiceResult<JobResponse>.BadRequest("Only selected proposals can be converted to an offer.");
         }
 
         var normalizedHash = HashNormalizer.NormalizeSha256Hash(request.ContractHash);
         if (string.IsNullOrWhiteSpace(request.ContractKey) || normalizedHash is null)
         {
-            return ProposalServiceResult<JobResponse>.BadRequest("Contract key and a valid contract hash are required.");
+            return ServiceResult<JobResponse>.BadRequest("Contract key and a valid contract hash are required.");
         }
 
         var amount = request.AmountUsdt ?? proposal.ProposedAmount;
         if (amount <= 0)
         {
-            return ProposalServiceResult<JobResponse>.BadRequest("Offer amount must be greater than 0.");
+            return ServiceResult<JobResponse>.BadRequest("Offer amount must be greater than 0.");
         }
 
         var title = string.IsNullOrWhiteSpace(request.Title) ? posting.Title : request.Title.Trim();
         if (title.Length is < 5 or > 200)
         {
-            return ProposalServiceResult<JobResponse>.BadRequest("Title must be between 5 and 200 characters.");
+            return ServiceResult<JobResponse>.BadRequest("Title must be between 5 and 200 characters.");
         }
 
         var job = new Job
@@ -106,7 +106,7 @@ public sealed class ProposalOfferService
             });
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return ProposalServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
+        return ServiceResult<JobResponse>.Success(JobMapper.ToResponse(job));
     }
 
     private void AddNotification(

@@ -198,47 +198,47 @@ public sealed class PostingsController : ControllerBase
         return ToNoContentActionResult(result);
     }
 
-    private ActionResult<T> ToActionResult<T>(PostingServiceResult<T> result)
+    private ActionResult<T> ToActionResult<T>(ServiceResult<T> result)
     {
         return result.Status switch
         {
-            PostingServiceResultStatus.Success => Ok(result.Value),
-            PostingServiceResultStatus.BadRequest => BadRequest(result.Error),
-            PostingServiceResultStatus.Conflict => Conflict(result.Error),
-            PostingServiceResultStatus.NotFound => NotFound(result.Error),
-            PostingServiceResultStatus.Unauthorized => Unauthorized(result.Error),
-            PostingServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            PostingServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => Ok(result.Value),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
 
-    private IActionResult ToFileActionResult(PostingServiceResult<PostingFileDownload> result)
+    private IActionResult ToFileActionResult(ServiceResult<PostingFileDownload> result)
     {
         return result.Status switch
         {
-            PostingServiceResultStatus.Success => File(result.Value!.Stream, result.Value.ContentType, result.Value.FileName),
-            PostingServiceResultStatus.BadRequest => BadRequest(result.Error),
-            PostingServiceResultStatus.Conflict => Conflict(result.Error),
-            PostingServiceResultStatus.NotFound => NotFound(result.Error),
-            PostingServiceResultStatus.Unauthorized => Unauthorized(result.Error),
-            PostingServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            PostingServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => File(result.Value!.Stream, result.Value.ContentType, result.Value.FileName),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }
 
-    private IActionResult ToNoContentActionResult(PostingServiceResult<bool> result)
+    private IActionResult ToNoContentActionResult(ServiceResult<bool> result)
     {
         return result.Status switch
         {
-            PostingServiceResultStatus.Success => NoContent(),
-            PostingServiceResultStatus.BadRequest => BadRequest(result.Error),
-            PostingServiceResultStatus.Conflict => Conflict(result.Error),
-            PostingServiceResultStatus.NotFound => NotFound(result.Error),
-            PostingServiceResultStatus.Unauthorized => Unauthorized(result.Error),
-            PostingServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
-            PostingServiceResultStatus.Forbidden => Forbid(),
+            ServiceResultStatus.Success => NoContent(),
+            ServiceResultStatus.BadRequest => BadRequest(result.Error),
+            ServiceResultStatus.Conflict => Conflict(result.Error),
+            ServiceResultStatus.NotFound => NotFound(result.Error),
+            ServiceResultStatus.Unauthorized => Unauthorized(result.Error),
+            ServiceResultStatus.Forbidden when result.Error is not null => StatusCode(403, result.Error),
+            ServiceResultStatus.Forbidden => Forbid(),
             _ => StatusCode(StatusCodes.Status500InternalServerError),
         };
     }

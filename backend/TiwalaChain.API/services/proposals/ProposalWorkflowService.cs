@@ -12,7 +12,7 @@ public sealed class ProposalWorkflowService
         _proposalMapper = proposalMapper;
     }
 
-    public async Task<ProposalServiceResult<ProposalResponse>> WithdrawAsync(
+    public async Task<ServiceResult<ProposalResponse>> WithdrawAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -20,23 +20,23 @@ public sealed class ProposalWorkflowService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Proposal not found.");
         }
 
         if (!string.Equals(proposal.FreelancerWallet, user.WalletAddress, StringComparison.OrdinalIgnoreCase))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         if (proposal.Status is ProposalStatus.Rejected or ProposalStatus.Withdrawn or ProposalStatus.ConvertedToOffer or ProposalStatus.Selected)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("This proposal cannot be withdrawn.");
+            return ServiceResult<ProposalResponse>.BadRequest("This proposal cannot be withdrawn.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Posting not found.");
         }
 
         proposal.Status = ProposalStatus.Withdrawn;
@@ -54,10 +54,10 @@ public sealed class ProposalWorkflowService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
-    public Task<ProposalServiceResult<ProposalResponse>> ShortlistAsync(
+    public Task<ServiceResult<ProposalResponse>> ShortlistAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -71,7 +71,7 @@ public sealed class ProposalWorkflowService
             cancellationToken);
     }
 
-    public Task<ProposalServiceResult<ProposalResponse>> RejectAsync(
+    public Task<ServiceResult<ProposalResponse>> RejectAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -85,7 +85,7 @@ public sealed class ProposalWorkflowService
             cancellationToken);
     }
 
-    public async Task<ProposalServiceResult<ProposalResponse>> SelectAsync(
+    public async Task<ServiceResult<ProposalResponse>> SelectAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -93,28 +93,28 @@ public sealed class ProposalWorkflowService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanManage(user, posting))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         if (posting.Status != PostingStatus.Published)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("Only published postings can select a proposal.");
+            return ServiceResult<ProposalResponse>.BadRequest("Only published postings can select a proposal.");
         }
 
         if (proposal.Status is ProposalStatus.Rejected or ProposalStatus.Withdrawn or ProposalStatus.ConvertedToOffer)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("This proposal cannot be selected.");
+            return ServiceResult<ProposalResponse>.BadRequest("This proposal cannot be selected.");
         }
 
         var siblings = await _dbContext.Proposals
@@ -159,10 +159,10 @@ public sealed class ProposalWorkflowService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
-    private async Task<ProposalServiceResult<ProposalResponse>> UpdateStatusAsync(
+    private async Task<ServiceResult<ProposalResponse>> UpdateStatusAsync(
         User user,
         int id,
         ProposalStatus status,
@@ -173,23 +173,23 @@ public sealed class ProposalWorkflowService
         var proposal = await _dbContext.Proposals.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (proposal is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Proposal not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Proposal not found.");
         }
 
         var posting = await _dbContext.JobPostings.FirstOrDefaultAsync(p => p.Id == proposal.PostingId, cancellationToken);
         if (posting is null)
         {
-            return ProposalServiceResult<ProposalResponse>.NotFound("Posting not found.");
+            return ServiceResult<ProposalResponse>.NotFound("Posting not found.");
         }
 
         if (!ProposalPolicy.CanManage(user, posting))
         {
-            return ProposalServiceResult<ProposalResponse>.Forbidden();
+            return ServiceResult<ProposalResponse>.Forbidden();
         }
 
         if (proposal.Status is ProposalStatus.Withdrawn or ProposalStatus.ConvertedToOffer)
         {
-            return ProposalServiceResult<ProposalResponse>.BadRequest("This proposal can no longer be updated.");
+            return ServiceResult<ProposalResponse>.BadRequest("This proposal can no longer be updated.");
         }
 
         proposal.Status = status;
@@ -212,7 +212,7 @@ public sealed class ProposalWorkflowService
 
         await _dbContext.SaveChangesAsync(cancellationToken);
         var response = await _proposalMapper.ToProposalResponseAsync(proposal, posting, cancellationToken);
-        return ProposalServiceResult<ProposalResponse>.Success(response);
+        return ServiceResult<ProposalResponse>.Success(response);
     }
 
     private void AddNotification(
