@@ -23,16 +23,21 @@ export async function POST(request: Request) {
       );
     }
 
+    const incomingFormData = await request.formData();
+    const file = incomingFormData.get("file");
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { error: "Missing required file upload." },
+        { status: 400 }
+      );
+    }
+
+    const upstreamFormData = new FormData();
+    upstreamFormData.set("file", file, file.name);
+
     const upstream = await fetch(`${AI_SERVICE_BASE_URL}/evaluate/file`, {
       method: "POST",
-      headers: {
-        "content-type": contentType,
-      },
-      // Pass-through body avoids expensive parse/rebuild of large files.
-      body: request.body,
-      // Node fetch requires duplex when forwarding a stream body.
-      // @ts-expect-error runtime supports this field.
-      duplex: "half",
+      body: upstreamFormData,
       cache: "no-store",
     });
 
@@ -47,7 +52,21 @@ export async function POST(request: Request) {
       return response;
     }
 
-    const payload = await upstream.json();
+    const payload = (await upstream.json()) as { detail?: string; error?: string } & Record<string, unknown>;
+    if (!upstream.ok) {
+      const response = NextResponse.json(
+        {
+          error:
+            payload.detail ??
+            payload.error ??
+            `AI service request failed (${upstream.status}).`,
+        },
+        { status: upstream.status || 502 }
+      );
+      response.headers.set("x-proxy-elapsed-ms", String(Date.now() - startedAt));
+      return response;
+    }
+
     const response = NextResponse.json(payload, { status: upstream.status });
     response.headers.set("x-proxy-elapsed-ms", String(Date.now() - startedAt));
     return response;
