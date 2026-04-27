@@ -1378,11 +1378,6 @@ export default function CreateContractPage() {
                     {item.isFair ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
                     {item.isFair ? "Fair" : "Needs Review"}
                   </span>
-                  {item.confidence !== null ? (
-                    <span className={`text-xs font-medium tabular-nums ${mutedTextClass}`}>
-                      {item.confidence.toFixed(0)}% confidence
-                    </span>
-                  ) : null}
                 </div>
               </div>
               <p className={`mt-3 whitespace-pre-line text-sm leading-relaxed ${mutedTextClass}`}>{item.text}</p>

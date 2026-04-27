@@ -128,13 +128,6 @@ export default function ClauseAnalysis({
                   )}
                   {clause.isFair ? "Fair" : "Needs Review"}
                 </span>
-                {clause.confidence !== null && (
-                  <span
-                    className={`text-xs font-medium tabular-nums ${mutedTextClass}`}
-                  >
-                    {clause.confidence}%
-                  </span>
-                )}
                 {clause.suggestionSource && (
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
