@@ -56,7 +56,7 @@ const EVENT_NAMES: EventName[] = [
 ];
 
 const ZERO_BLOCK = BigInt(0);
-const LOG_BLOCK_RANGE = BigInt(9_000);
+const LOG_BLOCK_RANGE = BigInt(1_000);
 const MAX_JOB_CREATED_LOOKBACK_BLOCKS = BigInt(800_000);
 
 function shortHash(value: string) {
