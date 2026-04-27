@@ -120,6 +120,22 @@ builder.Services.AddRateLimiter(options =>
             });
     });
 
+    options.AddPolicy("contracts-evaluate", httpContext =>
+    {
+        var subject = httpContext.User?.Identity?.IsAuthenticated == true
+            ? httpContext.User.FindFirst("sub")?.Value ?? httpContext.User.FindFirst("nameid")?.Value ?? "authenticated"
+            : httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"contracts-evaluate:{subject}",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromHours(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            });
+    });
+
     options.AddPolicy("postings-browse", httpContext =>
     {
         var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
