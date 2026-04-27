@@ -273,11 +273,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<DeliverableService>();
 builder.Services.AddScoped<FileService>();
 builder.Services.AddScoped<JobService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<ProposalCommandService>();
+builder.Services.AddScoped<ProposalFileService>();
+builder.Services.AddScoped<ProposalMessageService>();
+builder.Services.AddScoped<ProposalOfferService>();
+builder.Services.AddScoped<ProposalQueryService>();
+builder.Services.AddScoped<ProposalWorkflowService>();
 builder.Services.AddScoped<ProposalMapper>();
+builder.Services.AddScoped<PostingCommandService>();
+builder.Services.AddScoped<PostingFileService>();
+builder.Services.AddScoped<PostingQueryService>();
+builder.Services.AddScoped<PostingWorkflowService>();
 builder.Services.AddScoped<PostingMapper>();
 builder.Services.AddScoped<PublicAiService>();
 builder.Services.AddScoped<PublicContractService>();

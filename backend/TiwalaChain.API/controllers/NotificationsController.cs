@@ -55,7 +55,7 @@ public sealed class NotificationsController : ControllerBase
         }
 
         var result = await _notificationService.MarkAsReadAsync(user, id, cancellationToken);
-        if (result.Status == NotificationServiceResultStatus.NotFound)
+        if (result.Status == ServiceResultStatus.NotFound)
         {
             return NotFound(result.Error);
         }

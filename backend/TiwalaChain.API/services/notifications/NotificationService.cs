@@ -37,7 +37,7 @@ public sealed class NotificationService
         return new UnreadNotificationCountResponse(unreadCount);
     }
 
-    public async Task<NotificationServiceResult<NotificationResponse>> MarkAsReadAsync(
+    public async Task<ServiceResult<NotificationResponse>> MarkAsReadAsync(
         User user,
         int id,
         CancellationToken cancellationToken)
@@ -46,7 +46,7 @@ public sealed class NotificationService
             .FirstOrDefaultAsync(n => n.Id == id && n.RecipientWallet == user.WalletAddress, cancellationToken);
         if (notification is null)
         {
-            return NotificationServiceResult<NotificationResponse>.NotFound("Notification not found.");
+            return ServiceResult<NotificationResponse>.NotFound("Notification not found.");
         }
 
         if (!notification.IsRead)
@@ -56,7 +56,7 @@ public sealed class NotificationService
             await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        return NotificationServiceResult<NotificationResponse>.Success(NotificationMapper.ToResponse(notification));
+        return ServiceResult<NotificationResponse>.Success(NotificationMapper.ToResponse(notification));
     }
 
     public async Task<UnreadNotificationCountResponse> MarkAllAsReadAsync(
@@ -83,28 +83,3 @@ public sealed class NotificationService
     }
 }
 
-public sealed class NotificationServiceResult<T>
-{
-    private NotificationServiceResult(NotificationServiceResultStatus status, T? value, string? error)
-    {
-        Status = status;
-        Value = value;
-        Error = error;
-    }
-
-    public NotificationServiceResultStatus Status { get; }
-    public T? Value { get; }
-    public string? Error { get; }
-
-    public static NotificationServiceResult<T> Success(T value) =>
-        new(NotificationServiceResultStatus.Success, value, null);
-
-    public static NotificationServiceResult<T> NotFound(string error) =>
-        new(NotificationServiceResultStatus.NotFound, default, error);
-}
-
-public enum NotificationServiceResultStatus
-{
-    Success,
-    NotFound,
-}
