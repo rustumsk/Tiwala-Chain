@@ -22,7 +22,7 @@ import {
   Eye,
 } from "lucide-react";
 import { useAppTheme } from "@/components/layout/theme-context";
-import { API_BASE_URL } from "@/lib/auth";
+import { API_BASE_URL, getStoredAuthSession } from "@/lib/auth";
 import { getStoredProfile } from "@/lib/profile";
 
 type EvaluatedClause = {
@@ -332,9 +332,17 @@ export default function CreateContractPage() {
     setCopiedHash(false);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/public/contracts/evaluate`, {
+      const session = getStoredAuthSession();
+      if (!session?.accessToken) {
+        throw new Error("You need to sign in again before running the AI fairness review.");
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/contracts/evaluate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.accessToken}`,
+        },
         body: JSON.stringify({ text: compiledContractText }),
       });
 
