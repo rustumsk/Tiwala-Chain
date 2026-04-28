@@ -211,50 +211,155 @@ body {
 
 /* Onboarding page + card theming */
 :root[data-theme="light"] .onboarding-page {
-  background: #080010 !important;
-  color: #ffffff !important;
+  background:
+    radial-gradient(ellipse 60% 55% at 10% 10%, rgba(108, 58, 220, 0.14) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 55% at 90% 90%, rgba(122, 72, 240, 0.12) 0%, transparent 74%),
+    radial-gradient(ellipse 44% 30% at 50% 100%, rgba(186, 140, 255, 0.14) 0%, transparent 78%),
+    linear-gradient(180deg, #f8f7ff 0%, #eef2ff 100%) !important;
+  color: #171b28 !important;
 }
 
 :root[data-theme="light"] .onboarding-page .pointer-events-none {
-  opacity: 1;
+  opacity: 0.9;
+}
+
+:root[data-theme="light"] .onboarding-page .text-white {
+  color: #171b28 !important;
+}
+
+:root[data-theme="light"] .onboarding-page .text-violet-300 {
+  color: #6d28d9 !important;
+}
+
+:root[data-theme="light"] .onboarding-page .text-white\/75,
+:root[data-theme="light"] .onboarding-page .text-white\/70,
+:root[data-theme="light"] .onboarding-page .text-white\/65,
+:root[data-theme="light"] .onboarding-page .text-white\/60 {
+  color: #596074 !important;
+}
+
+:root[data-theme="light"] .onboarding-page .bg-white\/5 {
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+:root[data-theme="light"] .onboarding-page .border-white\/15,
+:root[data-theme="light"] .onboarding-page .border-white\/10 {
+  border-color: rgba(109, 40, 217, 0.14) !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card {
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  background: rgba(16, 7, 32, 0.75) !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset, 0 24px 80px rgba(120, 70, 220, 0.18) !important;
+  border-color: rgba(226, 232, 240, 0.95) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: 0 18px 60px rgba(91, 33, 182, 0.12) !important;
   backdrop-filter: blur(12px) !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white,
 :root[data-theme="light"] .onboarding-form-card .text-slate-100 {
-  color: #ffffff !important;
+  color: #171b28 !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white\/85 {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: #2c3345 !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white\/75 {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: #4b5568 !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white\/70 {
-  color: rgba(255, 255, 255, 0.70) !important;
+  color: #596074 !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white\/65 {
-  color: rgba(255, 255, 255, 0.65) !important;
+  color: #667085 !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card .text-white\/60 {
-  color: rgba(255, 255, 255, 0.60) !important;
+  color: #737b8c !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-white\/10 {
+  background: rgba(148, 163, 184, 0.16) !important;
 }
 
 :root[data-theme="light"] .onboarding-form-card input {
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  background: rgba(255, 255, 255, 0.04) !important;
-  color: #ffffff !important;
+  border-color: #d8ddea !important;
+  background: rgba(248, 250, 252, 0.95) !important;
+  color: #171b28 !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card input::placeholder {
+  color: #8a93a6 !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-violet-100 {
+  color: #5b21b6 !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-violet-300 {
+  color: #7c3aed !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-violet-400\/10,
+:root[data-theme="light"] .onboarding-form-card .bg-violet-400\/20 {
+  background: rgba(124, 58, 237, 0.12) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .border-violet-300\/20,
+:root[data-theme="light"] .onboarding-form-card .border-violet-300\/40,
+:root[data-theme="light"] .onboarding-form-card .border-violet-300\/60 {
+  border-color: rgba(124, 58, 237, 0.32) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-white\/\[0\.04\] {
+  background: #f8fafc !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .hover\:bg-white\/\[0\.07\]:hover,
+:root[data-theme="light"] .onboarding-form-card .focus\:bg-white\/\[0\.06\]:focus {
+  background: #f1f5f9 !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .hover\:border-white\/30:hover,
+:root[data-theme="light"] .onboarding-form-card .border-white\/15 {
+  border-color: #d8ddea !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-white\/70.hover\:border-white\/30.hover\:bg-white\/\[0\.07\] {
+  color: #4b5568 !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-violet-500\/25 {
+  background: rgba(124, 58, 237, 0.14) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .hover\:bg-violet-500\/35:hover {
+  background: rgba(124, 58, 237, 0.2) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-amber-500\/10 {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .border-amber-300\/30 {
+  border-color: rgba(217, 119, 6, 0.28) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-amber-100 {
+  color: #92400e !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .bg-red-500\/12 {
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .border-red-300\/35 {
+  border-color: rgba(220, 38, 38, 0.24) !important;
+}
+
+:root[data-theme="light"] .onboarding-form-card .text-red-100 {
+  color: #b42318 !important;
 }
 
 /* Landing page light mode adjustments */
