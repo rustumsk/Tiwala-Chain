@@ -139,18 +139,6 @@ forge test
 - The app reads blockchain transaction logs from Sepolia RPC in block chunks to avoid provider `eth_getLogs` range limits.
 - Account approval and deletion rules are enforced by the backend.
 
-## Academic Context
-
-This repository supports a thesis project for the Bachelor of Science in Computer Science at the University of Cebu.
-
-Researchers:
-
-- Arellano, Rustum Domingo Jr. D.
-- Gutierrez, Miguel Joaquin P.
-- Pilapil, Harvey Jay T.
-- Pilapil, Shannen Mae T.
-
-Adviser: Christian Barral
 
 ## License
 
